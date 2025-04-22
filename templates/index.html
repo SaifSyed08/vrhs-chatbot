@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VRHS Chatbot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Public Sans', sans-serif;
+      margin: 12px;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .chat-container {
+      max-width: 1400px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
+      overflow: hidden;
+      position: relative;
+    }
+    .chat-header {
+      padding: 15px 20px;
+      background: linear-gradient(to bottom, #555, #222);
+      color: white;
+      font-size: 1.2rem;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+    }
+    .options-button {
+      cursor: pointer;
+      font-size: 24px;
+      user-select: none;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .chat-bubble {
+      padding: 12px 16px;
+      margin: 10px 0;
+      width: max-content; 
+      max-width: 75%;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .chat-bubble p {
+      margin: 0;
+    }
+    .bot {
+      background-color: #f1f1f1;
+      color: #333;
+      align-self: flex-start;
+      border-radius: 18px 18px 18px 0;
+      text-align: left;
+    }
+    .user {
+      background-color: #e60023;
+      color: white;
+      align-self: flex-end;
+      text-align: right;
+      margin-left: auto;
+      border-radius: 18px 18px 0 18px;
+    }
+    .chat-input {
+      display: flex;
+      align-items: center;
+      padding: 1px;
+      border-top: 1px solid #ddd;
+      background-color: white;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 18px;
+      border: 0px solid #ccc;
+      border-radius: 25px;
+      outline: none;
+    }
+    .chat-input button {
+      background-color: #999;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin-right: 12px;
+      border-radius: 55px;
+      cursor: pointer;
+    }
+
+    .chat-input input:not(:placeholder-shown) + button {
+      background-color: #e60023;
+      transition: background-color 0.4s ease-out;
+    }
+    .quick-prompts {
+
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      overflow-x: auto;
+      background-color: #fff;
+      border-top: 0px solid #eee;
+    }
+    .quick-prompts button {
+      font-family: 'Public Sans', sans-serif;
+      border: 1.5px solid #e60023;
+      color: #e60023;
+      background: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .disclaimer {
+      font-size: 0.75rem;
+      color: #888;
+      text-align: center;
+      padding: 6px 10px;
+      border-top: 1px solid #eee;
+      background-color: #f9f9f9;
+    }
+
+
+    .typing-indicator {
+      display: inline-block;
+      background-color: #f1f1f1;
+      padding: 10px 14px;
+      border-radius: 18px;
+      margin: 10px 0;
+      max-width: 75%;
+      font-style: italic;
+      color: #555;
+      align-self: flex-start;
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      position: absolute;
+    }
+
+    .small-modal {
+      padding: 10px;
+      top: 60px;
+      right: 20px;
+      width: 200px;
+    }
+
+    .report-modal {
+      padding: 20px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 500px;
+    }
+
+    .report-button {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      background: none;
+      text-align: left;
+      cursor: pointer;
+      color: #333;
+      font-family: 'Public Sans', sans-serif;
+    }
+
+    .report-button:hover {
+      background-color: #f5f5f5;
+    }
+
+    #reportDescription {
+      width: 95%;
+      height: 150px;
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: 'Public Sans', sans-serif;
+      resize: none;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .submit-button, .cancel-button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Public Sans', sans-serif;
+    }
+
+    .submit-button {
+      background-color: #e60023;
+      color: white;
+    }
+
+    .cancel-button {
+      background-color: #f1f1f1;
+      color: #333;
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 45px 15px 20px;
+      border-radius: 8px;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 2000;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .notification.error {
+      background-color: #e60023;
+    }
+    .notification.success {
+      background-color: #00C853;
+    }
+    .notification.error::before {
+      content: '✕';
+      font-size: 20px;
+    }
+    .notification.success::before {
+      content: '✓';
+    }
+    .notification.show {
+      opacity: 1;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <span>Ask Your Questions Here!</span>
+      <span class="options-button" onclick="showOptionsModal()">⋮</span>
+    </div>
+
+    <!-- Options Modal -->
+    <div id="optionsModal" class="modal">
+      <div class="modal-content small-modal">
+        <button onclick="showReportModal()" class="report-button">Report Inaccuracies</button>
+      </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="reportModal" class="modal">
+      <div class="modal-content report-modal">
+        <h2>Report Inaccuracy</h2>
+        <textarea id="reportDescription" placeholder="Describe the inaccuracy..."></textarea>
+        <div class="modal-buttons">
+          <button onclick="submitReport()" class="submit-button">Submit</button>
+          <button onclick="hideReportModal()" class="cancel-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="chat-messages" id="messages"></div>
+    <div class="quick-prompts">
+      <button onclick="quickAsk('Where do I find the calendar?')">Where do I find the calendar?</button>
+      <button onclick="quickAsk('Is tomorrow an A day or B day?')">Is tomorrow an A day or B day?</button>
+      <button onclick="quickAsk('Where are the bell schedules?')">Where are the bell schedules?</button>
+      <button onclick="quickAsk('Where can I find bus information?')">Where can I find bus information?</button>
+      <button onclick="quickAsk('How can I sign up for ACC classes?')">How can I sign up for ACC classes?</button>
+      <button onclick="quickAsk('How can I start a club?')">How can I start a club?</button>
+
+      <button onclick="quickAsk('How do I get a parking permit?')">How do I get a parking permit?</button>
+      <button onclick="quickAsk('How can I make up hours?')">How can I make up hours?</button>
+      <button onclick="quickAsk('Where is the attendance website?')">Where is the attendance website?</button>
+      <button onclick="quickAsk('Where is the library website?')">Where is the library website?</button>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="query" placeholder="Enter a message.." />
+      <button onclick="sendMessage()" id="submitButton">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="white"/>
+        </svg>
+      </button>
+    </div>
+    <div class="disclaimer">
+      Disclaimer: Responses don't reflect LISD policy. Cannot gurantee accuracy.
+    </div>
+    <div id="notification" class="notification"></div>
+  </div>
+
+  <script>
+
+    async function sendMessage() {
+      const input = document.getElementById("query");
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage(message, 'user');
+      input.value = "";
+
+      const msgContainer = document.getElementById("messages");
+      const thinking = document.createElement("div");
+      thinking.className = "typing-indicator";
+      thinking.id = "thinking";
+      thinking.innerText = "...";
+      msgContainer.appendChild(thinking);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+
+      const response = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: message })
+      });
+      const data = await response.json();
+
+      const typingBubble = document.getElementById("thinking");
+      if (typingBubble) typingBubble.remove();
+
+      appendMessage(data.answer, 'bot');
+      
+    }
+
+    function appendMessage(text, sender) {
+      const msgContainer = document.getElementById("messages");
+      const bubble = document.createElement("div");
+      bubble.className = `chat-bubble ${sender}`;
+      bubble.innerHTML = marked.parse(text);
+      msgContainer.appendChild(bubble);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    function quickAsk(text) {
+      document.getElementById("query").value = text;
+      sendMessage();
+    }
+
+    function showOptionsModal() {
+      document.getElementById('optionsModal').style.display = 'block';
+    }
+
+    function showReportModal() {
+      document.getElementById('optionsModal').style.display = 'none';
+      document.getElementById('reportModal').style.display = 'block';
+    }
+
+    function hideReportModal() {
+      document.getElementById('reportModal').style.display = 'none';
+    }
+
+    async function submitReport() {
+      const description = document.getElementById('reportDescription').value;
+      if (description.trim()) {
+        try {
+          const response = await fetch("/report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ description: description.trim() })
+          });
+          
+          if (response.ok) {
+            document.getElementById('reportDescription').value = '';
+            document.getElementById('optionsModal').style.display = 'none';
+            document.getElementById('reportModal').style.display = 'none';
+            showNotification('Thank you for your report. We will review it shortly.');
+          } else {
+            throw new Error('Failed to submit report');
+          }
+        } catch (error) {
+          showNotification('Failed to submit report. Please try again.', 'error');
+        }
+      } else {
+        showNotification('Please provide a description of the inaccuracy.', 'error');
+      }
+    }
+
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+      if (event.target.className === 'modal') {
+        event.target.style.display = 'none';
+      }
+    }
+
+    function showNotification(message, type = 'success') {
+      const notificationDiv = document.getElementById('notification');
+      notificationDiv.textContent = message;
+      if (message === "Please provide a description of the inaccuracy.") {
+        type = 'error';
+      }
+      notificationDiv.className = `notification ${type}`;
+      requestAnimationFrame(() => {
+        notificationDiv.classList.add('show');
+      });
+      setTimeout(() => {
+        notificationDiv.classList.remove('show');
+      }, 3000);
+    }
+
+    window.onload = function () {
+      appendMessage("Hi! What can I help you with?", "bot");
+      //appendMessage("Who are you?", "user");
+      //appendMessage("I am a chatbot designed to answer your questions about VRHS.", "bot");
+      //appendMessage("What can you do?", "user");
+      //appendMessage("I can answer questions about VRHS, such as where to find the calendar, how many hours you owe, and how to volunteer.", "bot");
+
+    };
+
+    const queryInput = document.getElementById("query");
+    const submitButton = document.getElementById("submitButton");
+
+    queryInput.addEventListener("input", () => {
+      if (queryInput.value.trim() !== "") {
+        submitButton.style.backgroundColor = "#e60023";
+      } else {
+        submitButton.style.backgroundColor = "#999";
+      }
+    });
+  </script>
+</body>
+</html>

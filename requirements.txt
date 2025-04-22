@@ -1,0 +1,6 @@
+flask
+openai
+numpy
+requests
+beautifulsoup4
+tiktoken
