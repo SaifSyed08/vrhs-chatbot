@@ -8,12 +8,12 @@
   <style>
     body {
       font-family: 'Public Sans', sans-serif;
-      margin: 12px;
+      margin: 18px;
       padding: 0;
       background-color: #f5f5f5;
     }
     .chat-container {
-      max-width: 1400px;
+      max-width: 1000px;
       margin: 40px auto;
       background: white;
       border-radius: 8px;
@@ -25,8 +25,8 @@
       position: relative;
     }
     .chat-header {
-      padding: 15px 20px;
-      background: linear-gradient(to bottom, #555, #222);
+      padding: 20px 25px;
+      background: linear-gradient(to bottom, #444, #111);
       color: white;
       font-size: 1.2rem;
       font-weight: bold;
@@ -35,6 +35,7 @@
       align-items: center;
       border-top-left-radius: 8px;
       border-top-right-radius: 8px;
+      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
     }
     .options-button {
       cursor: pointer;
@@ -53,6 +54,10 @@
       max-width: 75%;
       line-height: 1.5;
       word-wrap: break-word;
+      white-space: pre-line;
+    }
+    .chat-bubble strong {
+      font-weight: bold;
     }
     .chat-bubble p {
       margin: 0;
@@ -85,13 +90,15 @@
       border: 0px solid #ccc;
       border-radius: 25px;
       outline: none;
+      font-family: 'Public Sans', sans-serif;
+      font-size: 0.95rem;
     }
     .chat-input button {
       background-color: #999;
       color: white;
       border: none;
       padding: 8px 16px;
-      margin-right: 12px;
+      margin-right: 15px;
       border-radius: 55px;
       cursor: pointer;
     }
@@ -116,10 +123,16 @@
       background: white;
       padding: 6px 12px;
       border-radius: 20px;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       cursor: pointer;
       white-space: nowrap;
     }
+
+    .quick-prompts button:hover {
+      background-color: #e60023;
+      color: white;
+    }
+
     .disclaimer {
       font-size: 0.75rem;
       color: #888;
@@ -147,6 +160,12 @@
       0% { opacity: 0.3; }
       50% { opacity: 1; }
       100% { opacity: 0.3; }
+    }
+
+    .chat-bubble.bot .word {
+      display: inline-block;
+      opacity: 0;
+      transition: opacity 0.4s ease;
     }
 
     .modal {
@@ -323,46 +342,146 @@
     <div id="notification" class="notification"></div>
   </div>
 
-  <script>
+    <script>
+      // helper from before
+      function splitTokens(text) {
+        const tokens = [];
+        let cur = "", inLink = false;
+        for (let ch of text) {
+          if (ch === '[')        { inLink = true;  cur += ch; }
+          else if (ch === ')' && inLink) { cur += ch; inLink = false; }
+          else if (/\s/.test(ch) && !inLink) {
+            if (cur) { tokens.push(cur); cur = ""; }
+            tokens.push(ch);
+          } else cur += ch;
+        }
+        if (cur) tokens.push(cur);
+        return tokens;
+      }
 
-    async function sendMessage() {
-      const input = document.getElementById("query");
-      const message = input.value.trim();
-      if (!message) return;
+      async function sendMessage() {
+        // 1️⃣ grab & bail if empty
+        const input = document.getElementById("query");
+        const message = input.value.trim();
+        if (!message) return;
 
-      appendMessage(message, 'user');
-      input.value = "";
+        // 2️⃣ show the user bubble
+        appendMessage(message, 'user');
+        input.value = "";
 
-      const msgContainer = document.getElementById("messages");
-      const thinking = document.createElement("div");
-      thinking.className = "typing-indicator";
-      thinking.id = "thinking";
-      thinking.innerText = "...";
-      msgContainer.appendChild(thinking);
-      msgContainer.scrollTop = msgContainer.scrollHeight;
+        // 3️⃣ insert the “…” typing indicator
+        const msgContainer = document.getElementById("messages");
+        const thinking = document.createElement("div");
+        thinking.className = "typing-indicator";
+        thinking.id = "thinking";
+        thinking.innerText = "...";
+        msgContainer.appendChild(thinking);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
 
-      const response = await fetch("/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: message })
-      });
-      const data = await response.json();
+        // 4️⃣ fire the POST properly
+        const response = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: message })
+        });
 
-      const typingBubble = document.getElementById("thinking");
-      if (typingBubble) typingBubble.remove();
+        // 5️⃣ set up for streaming
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
 
-      appendMessage(data.answer, 'bot');
-      
-    }
+        // remove “…” and make the bot bubble
+        if (thinking) thinking.remove();
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble bot";
+        msgContainer.appendChild(bubble);
 
-    function appendMessage(text, sender) {
-      const msgContainer = document.getElementById("messages");
-      const bubble = document.createElement("div");
-      bubble.className = `chat-bubble ${sender}`;
-      bubble.innerHTML = marked.parse(text);
-      msgContainer.appendChild(bubble);
-      msgContainer.scrollTop = msgContainer.scrollHeight;
-    }
+        // 6️⃣ stream + regex‐driven link parsing + inline markdown
+        let buffer = "";
+
+        // regex to find complete [label](url)
+        const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
+        // regex to find **bold** chunks
+        const boldMarkerRe = /\*\*/g;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value);
+
+          let match;
+          // 1) Pull out every complete link, same as before
+          while ((match = linkRe.exec(buffer)) !== null) {
+            const [fullMatch, label, url] = match;
+            const idx = match.index;
+
+            // a) flush text before link (with inline markdown)
+            if (idx > 0) {
+              const chunk = buffer.slice(0, idx);
+              const html  = marked.parseInline(chunk);
+              const tmp   = document.createElement("span");
+              tmp.innerHTML = html;
+              bubble.appendChild(tmp);
+            }
+
+            // b) flush the link
+            const a = document.createElement("a");
+            a.href      = url;
+            a.target    = "_blank";
+            a.innerText = label;
+            bubble.appendChild(a);
+
+            // consume it
+            buffer = buffer.slice(idx + fullMatch.length);
+            linkRe.lastIndex = 0;
+          }
+
+          // 2) Decide whether it’s safe to flush the rest:
+          //    - no pending “[” for a link
+          //    - no unmatched "**" for bold
+          const hasOpenLink = buffer.includes("[");
+          const boldMarkers = buffer.match(boldMarkerRe) || [];
+          const hasOpenBold = (boldMarkers.length % 2) === 1;
+
+          if (!hasOpenLink && !hasOpenBold) {
+            // flush entire buffer now
+            const html = marked.parseInline(buffer);
+            const tmp  = document.createElement("span");
+            tmp.innerHTML = html;
+            bubble.appendChild(tmp);
+            buffer = "";
+          }
+
+          msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
+
+        // 3) final flush of anything left
+        if (buffer) {
+          const html = marked.parseInline(buffer);
+          const tmp  = document.createElement("span");
+          tmp.innerHTML = html;
+          bubble.appendChild(tmp);
+        }
+
+      }
+
+      </script>>
+
+<script>
+  function appendMessage(text, sender) {
+    const msgContainer = document.getElementById("messages");
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${sender}`;
+
+    // 1) strip any trailing newline(s)
+    const trimmed = text.replace(/\n+$/, "");
+
+    // 2) parse only inline markdown (no <p> wrapper)
+    bubble.innerHTML = marked.parseInline(trimmed);
+
+    msgContainer.appendChild(bubble);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+  }
+
 
     function quickAsk(text) {
       document.getElementById("query").value = text;
