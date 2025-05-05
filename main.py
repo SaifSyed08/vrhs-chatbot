@@ -112,6 +112,19 @@ def embed_chunks():
     }
     chunks.append(manual_chunk)
 
+    manual_text = (
+        "The packet to request a new club/organization can be accessed here: "
+        "[new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy)"
+    )
+    response = client.embeddings.create(model="text-embedding-ada-002",
+                                        input=manual_text)
+    manual_chunk = {
+        "text": manual_text,
+        "embedding": response.data[0].embedding,
+        "source": "manual"
+    }
+    chunks.append(manual_chunk)
+
     for chunk in chunks:
         response = client.embeddings.create(model="text-embedding-ada-002",
                                             input=chunk["text"])
