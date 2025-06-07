@@ -13,7 +13,7 @@
       background-color: #f5f5f5;
     }
     .chat-container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 40px auto;
       background: white;
       border-radius: 8px;
@@ -77,6 +77,8 @@
       margin-left: auto;
       border-radius: 18px 18px 0 18px;
     }
+
+    
     .chat-input {
       display: flex;
       align-items: center;
@@ -102,6 +104,7 @@
       border-radius: 55px;
       cursor: pointer;
     }
+
 
     .chat-input input:not(:placeholder-shown) + button {
       background-color: #e60023;
@@ -168,6 +171,102 @@
       transition: opacity 0.4s ease;
     }
 
+    .disclaimer-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+
+      /* starting state */
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+      opacity: 1;
+
+      /* animate these on close */
+      transition:
+        opacity 0.6s ease,
+        background 0.6s ease,
+        backdrop-filter 0.6s ease;
+    }
+
+    .disclaimer-overlay.closing {
+      opacity: 0;
+      background: rgba(0,0,0,0);
+      backdrop-filter: blur(0px);
+    }
+
+    .disclaimer-card {
+      background: white;
+      padding: 40px 50px;
+      border-radius: 12px;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      font-family: 'Public Sans', sans-serif;
+
+      /* starting state */
+      transform: translateY(0);
+      opacity: 1;
+
+      /* animate on close */
+      transition:
+        transform 0.7s ease,
+        opacity 0.7s ease;
+    }
+
+    @media (max-width: 500px) {
+      .disclaimer-card {
+        padding: 40px 30px;
+        max-width: 70%;
+      }
+    }
+    
+    .disclaimer-overlay.closing .disclaimer-card {
+      transform: translateY(325px); /* swipe down */
+      opacity: 0;
+    }
+
+    .disclaimer-card p {
+      font-size: 1.05rem;
+      margin-bottom: 22px;
+      color: #333;
+      line-height: 1.45;
+    }
+
+    .disclaimer-icon {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .disclaimer-icon img {
+      width: 85px;        /* adjust icon size here */
+      height: 85px;
+      opacity: 0.70;
+      object-fit: contain;
+      border-radius: 50%; /* optional if your icon is circular */
+    }
+
+    .disclaimer-button {
+      background: #e60023;
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      font-size: 1.05rem;
+      width: 100%; 
+      border-radius: 24px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+
+    .disclaimer-button:hover {
+      filter: brightness(1.1);
+    }
+
+
     .modal {
       display: none;
       position: fixed;
@@ -201,6 +300,18 @@
       width: 90%;
       max-width: 500px;
     }
+
+    .mid-disclaimer {
+      text-align: center;
+      font-size: 0.95rem;
+      font-style: italic;
+      color: #777;
+      margin: 18px 0 10px;
+      padding: 0 30px;
+      line-height: 1.35;
+    }
+
+
 
     .report-button {
       width: 100%;
@@ -247,6 +358,7 @@
       color: white;
     }
 
+    
     .cancel-button {
       background-color: #f1f1f1;
       color: #333;
@@ -284,6 +396,108 @@
     .notification.show {
       opacity: 1;
     }
+
+    .bot-feedback {
+      font-size: 0.9rem;
+      color: #555;
+      margin: 6px 0 16px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      opacity: 0;
+      transform: translateX(-18px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .bot-feedback.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* thumbs row */
+    .thumbs {
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .thumb-icon {
+      width: 22px;
+      height: 22px;
+      fill: none;                 /* outline look */
+      stroke: #333;               /* outline color */
+      stroke-width: 2;
+      transition: 0.2s ease;
+    }
+
+
+    .thumb-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1.8px solid #ddd;
+      cursor: pointer;
+      background: white;
+      transition: 0.2s ease;
+      opacity: 0.7;
+    }
+
+    .thumb-btn:hover {
+      opacity: 1;
+    }
+
+    .thumb-btn.active .thumb-icon {
+      stroke-width: 0;
+      opacity: 0.8;
+      fill: #333;        /* becomes filled */
+    }
+
+
+    .thumb-btn.active {
+      opacity: 1;
+      border-color: #aaa;
+      background: #f1f1f1;
+      transform: scale(1.07);
+    }
+
+    /* follow-up outline buttons */
+    .followup-options {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 1px;
+      align-items: flex-start; /* ensures items stay LEFT aligned */
+
+    }
+
+    .followup-btn {
+      border: 1.5px solid #bbb;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: white;
+      width: 248px;        /* stops full width */
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: 0.18s ease;
+    }
+
+    .followup-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .feedback-header {
+      display: inline-flex;   /* keeps everything compact */
+      align-items: center;
+      gap: 16px;              /* small space between text and thumbs */
+      margin-bottom: 6px;
+
+    }
+
+
+
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -295,7 +509,6 @@
       <span>Ask Your Questions Here!</span>
       <span class="options-button" onclick="showOptionsModal()">⋮</span>
     </div>
-
     <!-- Options Modal -->
     <div id="optionsModal" class="modal">
       <div class="modal-content small-modal">
@@ -314,6 +527,19 @@
         </div>
       </div>
     </div>
+
+
+    <!-- Disclaimer Modal -->
+    <div id="disclaimerOverlay" class="disclaimer-overlay">
+      <div class="disclaimer-card">
+        <div class="disclaimer-icon">
+          <img src="https://cdn.jsdelivr.net/gh/SaifSyed08/vrhs-chatbot-assets/vrhs-logo.jpg" alt="VRHS Logo">
+        </div>
+        <p>Chatbot responses may be inaccurate & do not constitute official policy.</p>
+        <button id="disclaimerBtn" class="disclaimer-button">I understand →</button>
+      </div>
+    </div>
+    
     <div class="chat-messages" id="messages"></div>
     <div class="quick-prompts">
       <button onclick="quickAsk('Where do I find the calendar?')">Where do I find the calendar?</button>
@@ -336,6 +562,7 @@
         </svg>
       </button>
     </div>
+
     <div class="disclaimer">
       Disclaimer: Responses don't reflect LISD policy. Cannot gurantee accuracy.
     </div>
@@ -358,6 +585,95 @@
         if (cur) tokens.push(cur);
         return tokens;
       }
+
+      function createFeedbackElement() {
+        const fb = document.createElement("div");
+        fb.className = "bot-feedback";
+
+        fb.innerHTML = `
+          <div class="feedback-header">
+    <span class="feedback-text">Was this helpful?</span>
+
+    <div class="thumbs">
+      <span class="thumb-btn" data-type="up">
+        <!-- THUMBS UP SVG -->
+        <svg class="thumb-icon" viewBox="0 0 24 24" fill="none">
+          <path d="M3 10C3 9.44772 3.44772 9 4 9H7V21H4C3.44772 21 3 20.5523 3 20V10Z"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 11V19L8.9923 20.3282C9.64937 20.7662 10.4214 21 11.2111 21H16.4586C17.9251 21 19.1767 19.9398 19.4178 18.4932L20.6119 11.3288C20.815 10.1097 19.875 9 18.6391 9H14"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+
+      <span class="thumb-btn" data-type="down">
+        <!-- THUMBS DOWN SVG (mirrored) -->
+        <svg class="thumb-icon" viewBox="0 0 24 24" fill="none" style="transform: rotate(180deg);">
+          <path d="M3 10C3 9.44772 3.44772 9 4 9H7V21H4C3.44772 21 3 20.5523 3 20V10Z"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 11V19L8.9923 20.3282C9.64937 20.7662 10.4214 21 11.2111 21H16.4586C17.9251 21 19.1767 19.9398 19.4178 18.4932L20.6119 11.3288C20.815 10.1097 19.875 9 18.6391 9H14"
+                stroke="currentColor"  stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+    </div>
+  </div>
+
+          <div class="followup-options">
+            <div class="followup-btn" data-reason="not_found">Didn't find what I was looking for</div>
+            <div class="followup-btn" data-reason="not_up_to_date">Not up-to-date</div>
+            <div class="followup-btn" data-reason="inaccurate">Inaccurate</div>
+          </div>
+        `;
+
+        const textEl = fb.querySelector(".feedback-text");
+        const thumbs = fb.querySelectorAll(".thumb-btn");
+        const followupBox = fb.querySelector(".followup-options");
+        const followupButtons = fb.querySelectorAll(".followup-btn");
+
+        let finalized = false;
+
+        thumbs.forEach(btn => {
+          btn.addEventListener("click", () => {
+            if (finalized) return;
+
+            // Remove previous states
+            thumbs.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            const type = btn.dataset.type;
+
+            if (type === "up") {
+              // Positive → finalize immediately
+              textEl.innerText = "Thanks for your feedback!";
+              followupBox.style.display = "none";
+              return;
+            }
+
+            // Negative → show follow-up options
+            followupBox.style.display = "flex";
+          });
+        });
+
+        followupButtons.forEach(option => {
+          option.addEventListener("click", () => {
+            if (finalized) return;
+
+            // Replace with final thank-you
+            textEl.innerText = "Thanks — we'll review this message.";
+            followupBox.style.display = "none";
+          });
+        });
+
+        return fb;
+      }
+
+
+
+
+
 
       async function sendMessage() {
         // 1️⃣ grab & bail if empty
@@ -461,26 +777,94 @@
           tmp.innerHTML = html;
           bubble.appendChild(tmp);
         }
+        if (firstBotMessageShown) {
+          const fb = createFeedbackElement();
+          msgContainer.appendChild(fb);
+
+          setTimeout(() => {
+            fb.classList.add("show");
+          }, 2400);
+        } else {
+          firstBotMessageShown = true;
+        }
+
+
 
       }
 
       </script>>
 
 <script>
+  let firstBotMessageShown = false;
   function appendMessage(text, sender) {
     const msgContainer = document.getElementById("messages");
+
+    // Create chat bubble
     const bubble = document.createElement("div");
     bubble.className = `chat-bubble ${sender}`;
 
-    // 1) strip any trailing newline(s)
+    // Strip trailing newlines + parse markdown inline
     const trimmed = text.replace(/\n+$/, "");
-
-    // 2) parse only inline markdown (no <p> wrapper)
     bubble.innerHTML = marked.parseInline(trimmed);
 
     msgContainer.appendChild(bubble);
+
+    // Add feedback ONLY for bot messages
+    if (sender === "bot") {
+
+      // ❌ If this is the very first bot message → skip
+      if (!firstBotMessageShown) {
+        firstBotMessageShown = true;
+      } else {
+        // ✅ For all other bot messages → add feedback
+        const fb = document.createElement("div");
+        fb.className = "bot-feedback";
+        fb.innerText = "Was this message helpful?";
+        msgContainer.appendChild(fb);
+
+        // Delay fade-in slide-in animation
+        setTimeout(() => {
+          fb.classList.add("show");
+        }, 900);
+
+        // Click action
+        fb.onclick = () => {
+          fb.innerText = "Thanks for your feedback!";
+          fb.style.color = "#666";
+        };
+      }
+    }
+
+    // Auto-scroll
     msgContainer.scrollTop = msgContainer.scrollHeight;
   }
+
+
+
+  
+  const overlay = document.getElementById("disclaimerOverlay");
+  const dismissBtn = document.getElementById("disclaimerBtn");
+
+  /* If user has already accepted, don't show the modal
+  if (localStorage.getItem("vrhsDisclaimerAccepted") === "true") {
+    overlay.style.display = "none";
+  } else {
+    overlay.style.display = "flex";
+  } */ // UNCOMMENT THIS TO ENABLE DISCLAIMER KIND OF 
+
+  dismissBtn.addEventListener("click", () => {
+    // start closing animation
+    overlay.classList.add("closing");
+    localStorage.setItem("vrhsDisclaimerAccepted", "true");
+  });
+
+  // After transition ends, fully hide the element
+  overlay.addEventListener("transitionend", (e) => {
+    // make sure we only trigger when the overlay transition finishes
+    if (e.target === overlay && overlay.classList.contains("closing")) {
+      overlay.style.display = "none";
+    }
+  });
 
 
     function quickAsk(text) {
@@ -551,8 +935,15 @@
 
     window.onload = function () {
       appendMessage("Hi! What can I help you with?", "bot");
-      //appendMessage("Who are you?", "user");
-      //appendMessage("I am a chatbot designed to answer your questions about VRHS.", "bot");
+      // Insert disclaimer right under the first bot message
+      const chatMessages = document.querySelector(".chat-messages");
+      const disclaimer = document.createElement("div");
+      disclaimer.className = "mid-disclaimer";
+      disclaimer.innerText = "Responses may be inaccurate. Check official VRHS or LISD sources for verified information.";
+      chatMessages.appendChild(disclaimer);
+      /* 
+      appendMessage("Who are you?", "user");
+      appendMessage("I am a chatbot designed to answer your questions about VRHS.", "bot"); */ 
       //appendMessage("What can you do?", "user");
       //appendMessage("I can answer questions about VRHS, such as where to find the calendar, how many hours you owe, and how to volunteer.", "bot");
 
