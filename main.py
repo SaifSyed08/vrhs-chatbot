@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import os
 import tiktoken
 import datetime
+import hallucination
 
 app = Flask(__name__)
 
@@ -149,8 +150,13 @@ def embed_text(text):
 
 
 def get_relevant_context(query):
+    """Return the top matching chunks plus the similarity scores behind them.
+
+    The scores are what the hallucination layer uses to tell "the site answers
+    this" apart from "the site has nothing close and the model is improvising."
+    """
     if not os.path.exists("data/vrhs_embeddings.json"):
-        return "No knowledge base available. Please visit /embed first."
+        return "No knowledge base available. Please visit /embed first.", []
 
     with open("data/vrhs_embeddings.json", "r") as f:
         docs = json.load(f)
@@ -158,8 +164,11 @@ def get_relevant_context(query):
     query_vec = embed_text(query)
     scored_chunks = [(cosine_sim(query_vec, doc['embedding']), doc['text'])
                      for doc in docs]
-    top_chunks = sorted(scored_chunks, reverse=True)[:3]
-    return "\n\n".join([chunk[1] for chunk in top_chunks])
+    top_chunks = sorted(scored_chunks, key=lambda pair: pair[0],
+                        reverse=True)[:3]
+    context = "\n\n".join([chunk[1] for chunk in top_chunks])
+    scores = [chunk[0] for chunk in top_chunks]
+    return context, scores
 
 
 @app.route("/")
@@ -199,7 +208,7 @@ def submit_report():
 def ask():
     data = request.get_json()
     question = data.get("query")
-    context = get_relevant_context(question)
+    context, scores = get_relevant_context(question)
 
     # If no KB yet, just send that and stop.
     if context.startswith("No knowledge base"):
@@ -217,6 +226,8 @@ def ask():
     }]
 
     def generate():
+        answer = []
+
         # call the OpenAI API with streaming turned on
         stream = client.chat.completions.create(model="gpt-4o",
                                                 messages=messages,
@@ -228,8 +239,24 @@ def ask():
             token = chunk.choices[0].delta.content
 
             if token:
+                # keep a copy so the answer can be checked once it is complete
+                answer.append(token)
                 # yield it straight to the HTTP response
                 yield token
+
+        # An answer is only checkable as a whole, so verification runs after
+        # the last token. A failed check appends a warning rather than
+        # retracting what the user has already read.
+        verdict = hallucination.verify_answer(client, "".join(answer), context,
+                                              scores)
+        print(f"[grounding] top_sim={verdict.retrieval_score} "
+              f"level={verdict.retrieval_level} "
+              f"bad_links={len(verdict.bad_links)} "
+              f"unsupported={len(verdict.unsupported)}")
+
+        notice = verdict.notice()
+        if notice:
+            yield notice
 
     # Wrap it in Flask’s Response so it streams chunked HTTP
     return Response(
