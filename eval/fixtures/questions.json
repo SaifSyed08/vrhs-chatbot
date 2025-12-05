@@ -1,0 +1,96 @@
+{
+  "answerable": [
+    {
+      "question": "How many hours do I owe and where do I check?",
+      "expect_source_contains": "hours-owed"
+    },
+    {
+      "question": "What is the bell schedule for this year?",
+      "expect_source_contains": "24-25-bell-schedules"
+    },
+    {
+      "question": "Who do I contact about my schedule?",
+      "expect_source_contains": "directory"
+    },
+    {
+      "question": "How do I find a teacher's email?",
+      "expect_source_contains": "directory"
+    },
+    {
+      "question": "How do I sign up to volunteer at the school?",
+      "expect_source_contains": "volunteer"
+    },
+    {
+      "question": "When are the STAAR testing dates?",
+      "expect_source_contains": "staar-testing-dates"
+    },
+    {
+      "question": "What is on the school calendar this month?",
+      "expect_source_contains": "calendar"
+    },
+    {
+      "question": "What do seniors need to do before graduation?",
+      "expect_source_contains": "senior-2025"
+    },
+    {
+      "question": "What resources are there for parents?",
+      "expect_source_contains": "parent_resources"
+    },
+    {
+      "question": "What is the student check-out policy?",
+      "expect_source_contains": "campus_information"
+    },
+    {
+      "question": "Where do I drop off my student in the morning?",
+      "expect_source_contains": "campus_information"
+    },
+    {
+      "question": "How do I log into Ranger Time?",
+      "expect_source_contains": "manual"
+    },
+    {
+      "question": "Where do I report an absence?",
+      "expect_source_contains": "manual"
+    },
+    {
+      "question": "How do I start a new club?",
+      "expect_source_contains": "manual"
+    },
+    {
+      "question": "What clubs and organizations are offered?",
+      "expect_source_contains": "clubs-organizations"
+    }
+  ],
+  "out_of_scope": [
+    {
+      "question": "What is the capital of France?"
+    },
+    {
+      "question": "Can you write me a Python function to reverse a linked list?"
+    },
+    {
+      "question": "What are Harvard's admission requirements?"
+    },
+    {
+      "question": "Who won the World Series in 2024?"
+    },
+    {
+      "question": "What is the tuition at UT Austin?"
+    },
+    {
+      "question": "How do I fix a NullPointerException in Java?"
+    },
+    {
+      "question": "What time does the mall close tonight?"
+    },
+    {
+      "question": "Explain the plot of Hamlet."
+    },
+    {
+      "question": "What is the weather going to be tomorrow?"
+    },
+    {
+      "question": "How much does a Tesla Model 3 cost?"
+    }
+  ]
+}

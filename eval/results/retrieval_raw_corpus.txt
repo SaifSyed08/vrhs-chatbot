@@ -1,0 +1,42 @@
+corpus: vrhs_embeddings.json (91 chunks)
+
+-- answerable --
+  ok  z= 4.43 top=0.830  How many hours do I owe and where do I check?
+  MISS z= 1.95 top=0.809  What is the bell schedule for this year?
+  MISS z= 2.33 top=0.785  Who do I contact about my schedule?
+  MISS z= 4.00 top=0.782  How do I find a teacher's email?
+  MISS z= 1.65 top=0.816  How do I sign up to volunteer at the school?
+  ok  z= 4.62 top=0.892  When are the STAAR testing dates?
+  ok  z= 2.51 top=0.813  What is on the school calendar this month?
+  ok  z= 2.74 top=0.836  What do seniors need to do before graduation?
+  ok  z= 2.45 top=0.783  What resources are there for parents?
+  ok  z= 4.75 top=0.843  What is the student check-out policy?
+  MISS z= 4.16 top=0.824  Where do I drop off my student in the morning?
+  ok  z= 5.24 top=0.863  How do I log into Ranger Time?
+  MISS z= 4.20 top=0.825  Where do I report an absence?
+  ok  z= 6.53 top=0.844  How do I start a new club?
+  MISS z= 3.83 top=0.816  What clubs and organizations are offered?
+
+-- out of scope (the corpus cannot answer these) --
+      z= 2.61 top=0.712  What is the capital of France?
+      z= 2.06 top=0.691  Can you write me a Python function to reverse a li
+      z= 1.99 top=0.763  What are Harvard's admission requirements?
+      z= 2.66 top=0.732  Who won the World Series in 2024?
+      z= 1.88 top=0.773  What is the tuition at UT Austin?
+      z= 2.51 top=0.696  How do I fix a NullPointerException in Java?
+      z= 3.49 top=0.771  What time does the mall close tonight?
+      z= 1.59 top=0.711  Explain the plot of Hamlet.
+      z= 2.32 top=0.728  What is the weather going to be tomorrow?
+      z= 3.15 top=0.708  How much does a Tesla Model 3 cost?
+
+retrieval: top-1 7/15 (46.7%)   top-3 8/15 (53.3%)
+z answerable    mean  3.69  p5   1.86
+z out-of-scope  mean  2.43  p95  3.34
+raw top answerable   min 0.782  mean 0.824
+raw top out-of-scope max 0.773  mean 0.729
+
+separating power:
+  raw top-1 cosine   best cutoff 0.774 -> accuracy 100.0%
+  z margin           best cutoff 3.489 -> accuracy 76.0%
+
+configured: SIMILARITY_SOLID=0.78 SIMILARITY_WEAK=0.77

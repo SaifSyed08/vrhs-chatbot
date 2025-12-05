@@ -1,0 +1,119 @@
+[
+  {
+    "name": "grounded single link",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "You can reach them via the [Staff Directory](https://vrhs.leanderisd.org/directory). Have a great day!",
+    "expected_ungrounded": []
+  },
+  {
+    "name": "grounded multi link",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "See [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed) and [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules).",
+    "expected_ungrounded": []
+  },
+  {
+    "name": "grounded with query string",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "Log in at [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx).",
+    "expected_ungrounded": []
+  },
+  {
+    "name": "grounded trailing sentence period",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "Check [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "expected_ungrounded": []
+  },
+  {
+    "name": "no links at all",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "First period starts at 8:55 AM. Hope that helps!",
+    "expected_ungrounded": []
+  },
+  {
+    "name": "fabricated lunch menu",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "The menu is at [Lunch Menu](https://vrhs.leanderisd.org/lunch-menu).",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/lunch-menu"
+    ]
+  },
+  {
+    "name": "fabricated dress code",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "See [Dress Code](https://vrhs.leanderisd.org/campus_information/dress-code).",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/campus_information/dress-code"
+    ]
+  },
+  {
+    "name": "fabricated counseling page",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "Counselors: [Counseling](https://vrhs.leanderisd.org/counseling).",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/counseling"
+    ]
+  },
+  {
+    "name": "plausible but wrong subpath",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "Try [Staff List](https://vrhs.leanderisd.org/directory/staff-list).",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/directory/staff-list"
+    ]
+  },
+  {
+    "name": "wrong host shape",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "Go to [Directory](https://leanderisd.org/vrhs/directory).",
+    "expected_ungrounded": [
+      "https://leanderisd.org/vrhs/directory"
+    ]
+  },
+  {
+    "name": "mixed real and fake",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "See [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed) and [Lunch Menu](https://vrhs.leanderisd.org/lunch-menu).",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/lunch-menu"
+    ]
+  },
+  {
+    "name": "two fakes one real",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "[Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules), [Clubs](https://vrhs.leanderisd.org/clubs-list), [Buses](https://vrhs.leanderisd.org/transportation).",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/clubs-list",
+      "https://vrhs.leanderisd.org/transportation"
+    ]
+  },
+  {
+    "name": "bare url grounded",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "Just go to https://vrhs.leanderisd.org/directory for contacts.",
+    "expected_ungrounded": []
+  },
+  {
+    "name": "bare url fabricated",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "Just go to https://vrhs.leanderisd.org/lunch-menu for the menu.",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/lunch-menu"
+    ]
+  },
+  {
+    "name": "bare fabricated url mid sentence",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "The form at https://vrhs.leanderisd.org/forms/absence must be signed.",
+    "expected_ungrounded": [
+      "https://vrhs.leanderisd.org/forms/absence"
+    ]
+  },
+  {
+    "name": "http scheme fabricated",
+    "context": "Staff contacts are listed at [Staff Directory](https://vrhs.leanderisd.org/directory). Hours owed are tracked at [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed). Bell schedules are posted at [Bell Schedules](https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules). Ranger Time Portal: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx). Attendance: [Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/).",
+    "answer": "See [Old Site](http://vrhs.leanderisd.org/archive).",
+    "expected_ungrounded": [
+      "http://vrhs.leanderisd.org/archive"
+    ]
+  }
+]
