@@ -9,6 +9,7 @@ import os
 import tiktoken
 import datetime
 import hallucination
+import corpus
 
 app = Flask(__name__)
 
@@ -61,12 +62,28 @@ def scrape_vrhs_pages():
         except Exception as e:
             print(f"Failed to scrape {url}: {e}")
 
+    # A page that yields nothing is a silent hole in the knowledge base: the
+    # chatbot will confidently not know things the site actually documents.
+    # Two of the eleven URLs above shipped empty exactly this way, so the gap
+    # is now reported instead of swallowed.
+    covered = {c["source"] for c in chunks}
+    missing = [u for u in urls if u not in covered]
+    if missing:
+        print(f"WARNING: {len(missing)}/{len(urls)} pages produced no chunks:")
+        for url in missing:
+            print(f"  - {url}")
+
     return chunks
 
 
 @app.route("/embed")
 def embed_chunks():
     chunks = scrape_vrhs_pages()
+
+    # Strip cross-page navigation before embedding. Measured at 72.5% of all
+    # scraped words; leaving it in is what drove unrelated chunks to a 0.88
+    # median cosine and made absolute similarity gating impossible.
+    chunks = corpus.prepare(chunks)
 
     manual_text = "The Ranger Time Portal for Vista Ridge High School can be accessed here: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx)"
     response = client.embeddings.create(model="text-embedding-ada-002",
@@ -156,7 +173,7 @@ def get_relevant_context(query):
     this" apart from "the site has nothing close and the model is improvising."
     """
     if not os.path.exists("data/vrhs_embeddings.json"):
-        return "No knowledge base available. Please visit /embed first.", []
+        return "No knowledge base available. Please visit /embed first.", {}
 
     with open("data/vrhs_embeddings.json", "r") as f:
         docs = json.load(f)
@@ -167,8 +184,18 @@ def get_relevant_context(query):
     top_chunks = sorted(scored_chunks, key=lambda pair: pair[0],
                         reverse=True)[:3]
     context = "\n\n".join([chunk[1] for chunk in top_chunks])
-    scores = [chunk[0] for chunk in top_chunks]
-    return context, scores
+
+    # The standard-score margin has to be computed here, while similarities to
+    # every chunk are still in hand - it cannot be recovered from the top 3.
+    sims = np.array([pair[0] for pair in scored_chunks])
+    spread = float(sims.std())
+    stats = {
+        "top": float(sims.max()),
+        "mean": float(sims.mean()),
+        "z": float((sims.max() - sims.mean()) / spread) if spread else None,
+        "n": len(sims),
+    }
+    return context, stats
 
 
 @app.route("/")
@@ -208,7 +235,7 @@ def submit_report():
 def ask():
     data = request.get_json()
     question = data.get("query")
-    context, scores = get_relevant_context(question)
+    context, stats = get_relevant_context(question)
 
     # If no KB yet, just send that and stop.
     if context.startswith("No knowledge base"):
@@ -248,8 +275,9 @@ def ask():
         # the last token. A failed check appends a warning rather than
         # retracting what the user has already read.
         verdict = hallucination.verify_answer(client, "".join(answer), context,
-                                              scores)
-        print(f"[grounding] top_sim={verdict.retrieval_score} "
+                                              stats)
+        print(f"[grounding] z={verdict.retrieval_z} "
+              f"top_sim={verdict.retrieval_top} "
               f"level={verdict.retrieval_level} "
               f"bad_links={len(verdict.bad_links)} "
               f"unsupported={len(verdict.unsupported)}")
