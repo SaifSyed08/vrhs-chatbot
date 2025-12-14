@@ -1,0 +1,122 @@
+[
+  {
+    "context": "who does not attend 90% of the days a class is offered (excused or unexcused) will be required to make-up attendance hours. Hours are calculated by class, by semester. A student cannot miss a class period more than four times per semester. Once a student misses their 5th class period, they owe 1.5 hours for every additional missed class. The following attendance codes generate hours owed: A (Absence-Excused) D (Absence w/Doctor Note-full day) O (Unverified-Unexcused) U (Unexcused) TA (Late to Class, Absent) What is the difference between owing hours and truancy? Owing hours determines whether or not a student received credit for their courses. Truancy determines whether or not a student is meeting the required attendance laws. Where can I go to check if my student owes hours? You can reach out to Joanna Norling or Micah Gillum in the AP office for your hours owed. How does my student",
+    "answer": "You are required to attend 90 percent of the days a class is offered. Hours are calculated by class, by semester.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "who does not attend 90% of the days a class is offered (excused or unexcused) will be required to make-up attendance hours. Hours are calculated by class, by semester. A student cannot miss a class period more than four times per semester. Once a student misses their 5th class period, they owe 1.5 hours for every additional missed class. The following attendance codes generate hours owed: A (Absence-Excused) D (Absence w/Doctor Note-full day) O (Unverified-Unexcused) U (Unexcused) TA (Late to Class, Absent) What is the difference between owing hours and truancy? Owing hours determines whether or not a student received credit for their courses. Truancy determines whether or not a student is meeting the required attendance laws. Where can I go to check if my student owes hours? You can reach out to Joanna Norling or Micah Gillum in the AP office for your hours owed. How does my student",
+    "answer": "You must attend 95 percent of days, and hours are calculated per year rather than per semester.",
+    "hallucinated": true,
+    "note": "90->95, semester->year"
+  },
+  {
+    "context": "who does not attend 90% of the days a class is offered (excused or unexcused) will be required to make-up attendance hours. Hours are calculated by class, by semester. A student cannot miss a class period more than four times per semester. Once a student misses their 5th class period, they owe 1.5 hours for every additional missed class. The following attendance codes generate hours owed: A (Absence-Excused) D (Absence w/Doctor Note-full day) O (Unverified-Unexcused) U (Unexcused) TA (Late to Class, Absent) What is the difference between owing hours and truancy? Owing hours determines whether or not a student received credit for their courses. Truancy determines whether or not a student is meeting the required attendance laws. Where can I go to check if my student owes hours? You can reach out to Joanna Norling or Micah Gillum in the AP office for your hours owed. How does my student",
+    "answer": "Once you miss your 5th class period you owe 1.5 hours for that class.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "who does not attend 90% of the days a class is offered (excused or unexcused) will be required to make-up attendance hours. Hours are calculated by class, by semester. A student cannot miss a class period more than four times per semester. Once a student misses their 5th class period, they owe 1.5 hours for every additional missed class. The following attendance codes generate hours owed: A (Absence-Excused) D (Absence w/Doctor Note-full day) O (Unverified-Unexcused) U (Unexcused) TA (Late to Class, Absent) What is the difference between owing hours and truancy? Owing hours determines whether or not a student received credit for their courses. Truancy determines whether or not a student is meeting the required attendance laws. Where can I go to check if my student owes hours? You can reach out to Joanna Norling or Micah Gillum in the AP office for your hours owed. How does my student",
+    "answer": "Once you miss your 3rd class period you owe 2 hours for that class.",
+    "hallucinated": true,
+    "note": "3rd/2 hours invented"
+  },
+  {
+    "context": "Make up hours? Hours can be made up by: Attending AM or PM Study Halls Attending Saturday School Attendance hours need to be documented on the Attendance Hours Tracking Form . (Forms can also be found in the AP office) Completed forms can be turned in to Joanna Norling or Micah Gillum in the Assistant Principal's office How do I request an appeal? VRHS has an hours owed appeals committee that meets regularly. If your student owes hours for any special circumstances (ie. medical procedures/surgery, etc.), please contact your assistant principal to discuss the process and request an appeals form. Please contact your Assistant Principal with any questions.",
+    "answer": "Hours can be made up by attending AM or PM study halls or Saturday School.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "Make up hours? Hours can be made up by: Attending AM or PM Study Halls Attending Saturday School Attendance hours need to be documented on the Attendance Hours Tracking Form . (Forms can also be found in the AP office) Completed forms can be turned in to Joanna Norling or Micah Gillum in the Assistant Principal's office How do I request an appeal? VRHS has an hours owed appeals committee that meets regularly. If your student owes hours for any special circumstances (ie. medical procedures/surgery, etc.), please contact your assistant principal to discuss the process and request an appeals form. Please contact your Assistant Principal with any questions.",
+    "answer": "Hours can be made up by attending summer school or by completing online modules at home.",
+    "hallucinated": true,
+    "note": "summer school/online invented"
+  },
+  {
+    "context": "Make up hours? Hours can be made up by: Attending AM or PM Study Halls Attending Saturday School Attendance hours need to be documented on the Attendance Hours Tracking Form . (Forms can also be found in the AP office) Completed forms can be turned in to Joanna Norling or Micah Gillum in the Assistant Principal's office How do I request an appeal? VRHS has an hours owed appeals committee that meets regularly. If your student owes hours for any special circumstances (ie. medical procedures/surgery, etc.), please contact your assistant principal to discuss the process and request an appeals form. Please contact your Assistant Principal with any questions.",
+    "answer": "Completed forms go to Joanna Norling or Micah Gillum in the Assistant Principal office.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "Make up hours? Hours can be made up by: Attending AM or PM Study Halls Attending Saturday School Attendance hours need to be documented on the Attendance Hours Tracking Form . (Forms can also be found in the AP office) Completed forms can be turned in to Joanna Norling or Micah Gillum in the Assistant Principal's office How do I request an appeal? VRHS has an hours owed appeals committee that meets regularly. If your student owes hours for any special circumstances (ie. medical procedures/surgery, etc.), please contact your assistant principal to discuss the process and request an appeals form. Please contact your Assistant Principal with any questions.",
+    "answer": "Completed forms should be emailed directly to the principal, Dr. Keith Morgan.",
+    "hallucinated": true,
+    "note": "wrong recipient"
+  },
+  {
+    "context": "CAMPUS INFORMATION Student Drop-off/pick-up info UPDATE TO STUDENT CHECKOUTS In order to serve our Ranger Families best, we are implementing a cutoff time for students to be checked out. Starting on 11/11/24, all in-person checkouts need to occur BEFORE 2:45 PM. Please anticipate a 20 minute wait. Due to construction on campus, several areas are closed resulting in longer times to deliver early dismissal passes to classrooms and longer times for students to walk from their classrooms to the front office. After 2:45 PM, please wait to meet your student at the normal dismissal time. Our recommendation: 1)",
+    "answer": "In-person checkouts need to happen before 2:45 PM, and you should expect about a 20 minute wait.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "CAMPUS INFORMATION Student Drop-off/pick-up info UPDATE TO STUDENT CHECKOUTS In order to serve our Ranger Families best, we are implementing a cutoff time for students to be checked out. Starting on 11/11/24, all in-person checkouts need to occur BEFORE 2:45 PM. Please anticipate a 20 minute wait. Due to construction on campus, several areas are closed resulting in longer times to deliver early dismissal passes to classrooms and longer times for students to walk from their classrooms to the front office. After 2:45 PM, please wait to meet your student at the normal dismissal time. Our recommendation: 1)",
+    "answer": "In-person checkouts need to happen before 3:30 PM, and the wait is usually under 5 minutes.",
+    "hallucinated": true,
+    "note": "times fabricated"
+  },
+  {
+    "context": "Bell Schedules Regular School Day Bell Schedule (2026-2027) Special Events Bell Schedule (2026-2027) Half Day Bell Schedule (12/18/26, 5/27/27) Late Start Bell Schedule (2026-2027)",
+    "answer": "There are regular, special events, half day and late start bell schedules for 2026-2027.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "Bell Schedules Regular School Day Bell Schedule (2026-2027) Special Events Bell Schedule (2026-2027) Half Day Bell Schedule (12/18/26, 5/27/27) Late Start Bell Schedule (2026-2027)",
+    "answer": "First period begins at 8:55 AM and the school day ends at 4:20 PM.",
+    "hallucinated": true,
+    "note": "times not in context"
+  },
+  {
+    "context": "open the document. Parents, there is a section of student registration that needs to be submitted for your student to participate in any clubs or to restrict which clubs they can participate in. If a selection is not completed during new student or returning student registration, that student will not be able to participate in any clubs. PLEASE NOTE: Many of the club sites are volunteer-created and maintained sites, and NOT official Leander ISD or Vista Ridge High School sites. Neither LISD or VRHS are responsible for content. Clubs If you have questions, please contact the club sponsors",
+    "answer": "Part of student registration must be completed for your student to participate in clubs.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "open the document. Parents, there is a section of student registration that needs to be submitted for your student to participate in any clubs or to restrict which clubs they can participate in. If a selection is not completed during new student or returning student registration, that student will not be able to participate in any clubs. PLEASE NOTE: Many of the club sites are volunteer-created and maintained sites, and NOT official Leander ISD or Vista Ridge High School sites. Neither LISD or VRHS are responsible for content. Clubs If you have questions, please contact the club sponsors",
+    "answer": "There is a $25 annual fee per club, payable through the school webstore.",
+    "hallucinated": true,
+    "note": "fee invented"
+  },
+  {
+    "context": "staar testing dates/info English I: Tuesday, April 15, 2025 2024-2025 State Testing Results English II: Wednesday, April 16, 2025 TELPAS English I & II Makeups: Thursday, April 17, 2025 -Preliminary results: June 12 US History: Tuesday, April 22, 2025 -Final results: July 29 Biology: Wednesday, April 23, 2025 Spring STAAR Assessments US History: Thursday, April 24, 2025 -Preliminary results: June 10 Algebra I: Wednesday, April 30, 2025 -Final results: July 16 Algebra I Makeups: Thursday, May 1, 2025 Spring STAAR ALT2 Assessments -Preliminary results: June 24 -Final results: July 21 June STAAR Assessments -Preliminary",
+    "answer": "English I is on Tuesday, April 15, 2025 and English II is Wednesday, April 16, 2025.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "staar testing dates/info English I: Tuesday, April 15, 2025 2024-2025 State Testing Results English II: Wednesday, April 16, 2025 TELPAS English I & II Makeups: Thursday, April 17, 2025 -Preliminary results: June 12 US History: Tuesday, April 22, 2025 -Final results: July 29 Biology: Wednesday, April 23, 2025 Spring STAAR Assessments US History: Thursday, April 24, 2025 -Preliminary results: June 10 Algebra I: Wednesday, April 30, 2025 -Final results: July 16 Algebra I Makeups: Thursday, May 1, 2025 Spring STAAR ALT2 Assessments -Preliminary results: June 24 -Final results: July 21 June STAAR Assessments -Preliminary",
+    "answer": "English I is on Monday, April 7, 2025 and results are released the following week.",
+    "hallucinated": true,
+    "note": "date + results invented"
+  },
+  {
+    "context": "staar testing dates/info English I: Tuesday, April 15, 2025 2024-2025 State Testing Results English II: Wednesday, April 16, 2025 TELPAS English I & II Makeups: Thursday, April 17, 2025 -Preliminary results: June 12 US History: Tuesday, April 22, 2025 -Final results: July 29 Biology: Wednesday, April 23, 2025 Spring STAAR Assessments US History: Thursday, April 24, 2025 -Preliminary results: June 10 Algebra I: Wednesday, April 30, 2025 -Final results: July 16 Algebra I Makeups: Thursday, May 1, 2025 Spring STAAR ALT2 Assessments -Preliminary results: June 24 -Final results: July 21 June STAAR Assessments -Preliminary",
+    "answer": "Preliminary results are expected June 12 and final results July 29.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "Volunteer Thank you for your interest in serving our students and schools. Please take a moment to make sure you have completed the volunteer registration for this school year. Register to Volunteer Log In to view campus volunteer needs. PTSA Information",
+    "answer": "You should complete the volunteer registration for this school year before serving.",
+    "hallucinated": false,
+    "note": ""
+  },
+  {
+    "context": "Volunteer Thank you for your interest in serving our students and schools. Please take a moment to make sure you have completed the volunteer registration for this school year. Register to Volunteer Log In to view campus volunteer needs. PTSA Information",
+    "answer": "Volunteers must pass a fingerprint background check costing $40 and renew it every two years.",
+    "hallucinated": true,
+    "note": "requirement invented"
+  },
+  {
+    "context": "Volunteer Thank you for your interest in serving our students and schools. Please take a moment to make sure you have completed the volunteer registration for this school year. Register to Volunteer Log In to view campus volunteer needs. PTSA Information",
+    "answer": "You can log in to view campus volunteer needs, and there is PTSA information available.",
+    "hallucinated": false,
+    "note": ""
+  }
+]

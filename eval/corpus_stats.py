@@ -15,7 +15,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import corpus  # noqa: E402
 
-EMBEDDINGS = "data/vrhs_embeddings.json"
+EMBEDDINGS = os.environ.get("VRHS_EMBEDDINGS",
+                            "data/vrhs_embeddings.json")
 
 
 def unit(docs):
@@ -92,4 +93,5 @@ def report(docs):
 if __name__ == "__main__":
     if not os.path.exists(EMBEDDINGS):
         sys.exit(f"missing {EMBEDDINGS} - run the /embed route first")
+    print(f"corpus: {os.path.basename(EMBEDDINGS)}")
     report(json.load(open(EMBEDDINGS, encoding="utf-8")))

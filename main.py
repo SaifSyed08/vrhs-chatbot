@@ -24,8 +24,8 @@ def scrape_vrhs_pages():
         "https://vrhs.leanderisd.org/senior-2025",
         "https://vrhs.leanderisd.org/campus_information/",
         "https://vrhs.leanderisd.org/campus_information/hours-owed",
-        "https://vrhs.leanderisd.org/campus_information/24-25-bell-schedules",
-        "https://vrhs.leanderisd.org/campus_information/clubs-organizations",
+        "https://vrhs.leanderisd.org/campus_information/26-27-bell-schedules",
+        "https://vrhs.leanderisd.org/campus_information/clubs",
         "https://vrhs.leanderisd.org/directory",
         "https://vrhs.leanderisd.org/volunteer",
         "https://vrhs.leanderisd.org/parent_resources",
@@ -76,84 +76,59 @@ def scrape_vrhs_pages():
     return chunks
 
 
+# Facts the scrape cannot reach: links that live behind menus or on other
+# domains. Kept as data rather than repeated code so the ingest stays one loop.
+MANUAL_CHUNKS = [
+    "The Ranger Time Portal for Vista Ridge High School can be accessed here: "
+    "[Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx)",
+
+    "The Vista Ridge High School Staff Directory, useful for contact info or "
+    "finding who manages what, can be accessed here: "
+    "[Staff Directory](https://vrhs.leanderisd.org/directory)",
+
+    "The Hours Owed page for Vista Ridge High School can be accessed here: "
+    "[Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed)",
+
+    "The Attendance page for Vista Ridge High School can be accessed here: "
+    "[Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/)",
+
+    "The packet to request a new club/organization can be accessed here: "
+    "[new club/organization request packet]"
+    "(https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy)",
+]
+
+
+def build_chunks(clean=True):
+    """Scrape, optionally run the hygiene pass, and add the manual chunks.
+
+    `clean=False` reproduces the pre-hygiene corpus for the ablation in
+    eval/rebuild_corpora.py.
+    """
+    chunks = scrape_vrhs_pages()
+    if clean:
+        # Strip cross-page navigation before embedding. Measured at ~72% of all
+        # scraped words; leaving it in is what drove unrelated chunks to a 0.88
+        # median cosine and made absolute similarity gating impossible.
+        chunks = corpus.prepare(chunks)
+    chunks += [{"text": t, "source": "manual"} for t in MANUAL_CHUNKS]
+    return chunks
+
+
 @app.route("/embed")
 def embed_chunks():
-    chunks = scrape_vrhs_pages()
+    chunks = build_chunks()
 
-    # Strip cross-page navigation before embedding. Measured at 72.5% of all
-    # scraped words; leaving it in is what drove unrelated chunks to a 0.88
-    # median cosine and made absolute similarity gating impossible.
-    chunks = corpus.prepare(chunks)
-
-    manual_text = "The Ranger Time Portal for Vista Ridge High School can be accessed here: [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx)"
-    response = client.embeddings.create(model="text-embedding-ada-002",
-                                        input=manual_text)
-    manual_chunk = {
-        "text": manual_text,
-        "embedding": response.data[0].embedding,
-        "source": "manual"
-    }
-    chunks.append(manual_chunk)
-    manual_text = "The Vista Ridge High School Staff Directory, useful for contact info or finding who manages what, can be accessed here: [Staff Directory](https://vrhs.leanderisd.org/directory)"
-    response = client.embeddings.create(model="text-embedding-ada-002",
-                                        input=manual_text)
-    manual_chunk = {
-        "text": manual_text,
-        "embedding": response.data[0].embedding,
-        "source": "manual"
-    }
-    chunks.append(manual_chunk)
-
-    manual_text = (
-        "The Hours Owed page for Vista Ridge High School can be accessed here: "
-        "[Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed)"
-    )
-    response = client.embeddings.create(model="text-embedding-ada-002",
-                                        input=manual_text)
-    manual_chunk = {
-        "text": manual_text,
-        "embedding": response.data[0].embedding,
-        "source": "manual"
-    }
-    chunks.append(manual_chunk)
-
-    # Add Attendance page
-    manual_text = (
-        "The Attendance page for Vista Ridge High School can be accessed here: "
-        "[Attendance](https://sites.google.com/leanderisd.org/vrhsattendance/)"
-    )
-    response = client.embeddings.create(model="text-embedding-ada-002",
-                                        input=manual_text)
-    manual_chunk = {
-        "text": manual_text,
-        "embedding": response.data[0].embedding,
-        "source": "manual"
-    }
-    chunks.append(manual_chunk)
-
-    manual_text = (
-        "The packet to request a new club/organization can be accessed here: "
-        "[new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy)"
-    )
-    response = client.embeddings.create(model="text-embedding-ada-002",
-                                        input=manual_text)
-    manual_chunk = {
-        "text": manual_text,
-        "embedding": response.data[0].embedding,
-        "source": "manual"
-    }
-    chunks.append(manual_chunk)
-
-    for chunk in chunks:
-        response = client.embeddings.create(model="text-embedding-ada-002",
-                                            input=chunk["text"])
-        chunk["embedding"] = response.data[0].embedding
+    # One embedding call per chunk. The manual chunks used to be embedded here
+    # and then again in this loop - five wasted calls per rebuild.
+    for i, chunk in enumerate(chunks, 1):
+        chunk["embedding"] = embed_text(chunk["text"])
+        print(f"embedded {i}/{len(chunks)}", flush=True)
 
     os.makedirs("data", exist_ok=True)
-    with open("data/vrhs_embeddings.json", "w") as f:
+    with open("data/vrhs_embeddings.json", "w", encoding="utf-8") as f:
         json.dump(chunks, f)
 
-    return "Embeddings generated and saved."
+    return f"Embeddings generated and saved ({len(chunks)} chunks)."
 
 
 def cosine_sim(a, b):
@@ -280,7 +255,7 @@ def ask():
               f"top_sim={verdict.retrieval_top} "
               f"level={verdict.retrieval_level} "
               f"bad_links={len(verdict.bad_links)} "
-              f"unsupported={len(verdict.unsupported)}")
+              f"unsupported={len(verdict.unsupported)}", flush=True)
 
         notice = verdict.notice()
         if notice:

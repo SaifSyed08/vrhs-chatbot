@@ -6,7 +6,7 @@
     },
     {
       "question": "What is the bell schedule for this year?",
-      "expect_source_contains": "24-25-bell-schedules"
+      "expect_source_contains": "26-27-bell-schedules"
     },
     {
       "question": "Who do I contact about my schedule?",
@@ -58,7 +58,7 @@
     },
     {
       "question": "What clubs and organizations are offered?",
-      "expect_source_contains": "clubs-organizations"
+      "expect_source_contains": "clubs"
     }
   ],
   "out_of_scope": [

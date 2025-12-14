@@ -110,10 +110,14 @@ class Verdict:
         if not lines:
             return ""
 
+        # The browser renders answers with marked.parseInline, which handles
+        # links and bold but not block markdown, so bullets and rules would
+        # arrive as literal text. The sentinel lets the client peel this off
+        # and render it as its own element instead.
         body = "\n".join("- " + line for line in lines)
-        return ("\n\n---\n**Heads up - please verify this one.**\n" + body +
-                "\nThe [staff directory](https://vrhs.leanderisd.org/directory) "
-                "is the reliable source if you need to be sure.")
+        return ("\n\n:::verify\n" + body +
+                "\n- The [staff directory](https://vrhs.leanderisd.org/directory) "
+                "is the most reliable source if you need to be sure.")
 
 
 def score_retrieval(stats):
