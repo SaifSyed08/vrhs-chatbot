@@ -13,6 +13,7 @@ retrieved context does not support - at very different cost points:
 Each returns (flagged, detail).
 """
 
+import json
 import re
 
 import numpy as np
@@ -105,3 +106,69 @@ def cascade(client, answer, context, low=0.55, high=0.85):
 
     flagged, judged = llm_judge(client, answer, context)
     return flagged, {"score": score, "escalated": True, **judged}
+
+
+COVE_PLAN = """You are checking a chatbot answer for unsupported claims.
+
+Break the ANSWER into its individual factual claims and write one short
+verification question for each. Ask only about facts: names, numbers, dates,
+times, requirements, locations, procedures. Ignore greetings, offers to help and
+closing pleasantries.
+
+Reply with JSON only: {"questions": ["...", "..."]}
+At most 4 questions. Use an empty list if the answer states no facts."""
+
+COVE_EXECUTE = """Answer each question using ONLY the SOURCE text.
+
+For each question reply "supported" if SOURCE states the answer, or
+"unsupported" if SOURCE does not state it. Judge against SOURCE alone, never
+against your own knowledge, and treat a partial or approximate match as
+unsupported.
+
+Reply with JSON only:
+{"verdicts": [{"question": "...", "status": "supported|unsupported"}]}"""
+
+
+def chain_of_verification(client, answer, context, model="gpt-4o-mini"):
+    """Chain-of-Verification (Dhuliawala et al., 2023), used as a detector.
+
+    The published method plans verification questions, answers them
+    independently of the original response, and rewrites the answer from the
+    results. Here only the detection half is needed, so it runs the plan and
+    execute stages and flags the answer if any verification comes back
+    unsupported.
+
+    The premise is that decomposing into narrow questions is harder to wave
+    through than judging a whole paragraph at once. It costs two model calls
+    instead of one.
+
+    On this corpus it did not pay off. Decomposition produces questions about
+    incidental details, and demanding the source state each one turns
+    paraphrase into a false positive: precision 0.615 against the judge's
+    1.000. A second run with the execute prompt loosened to accept paraphrase
+    moved precision to 0.636 but cost recall, for a slightly worse F1 (0.700 vs
+    0.727), so the stricter wording is kept. See eval/results.
+    """
+    plan = client.chat.completions.create(
+        model=model, temperature=0,
+        response_format={"type": "json_object"},
+        messages=[{"role": "system", "content": COVE_PLAN},
+                  {"role": "user", "content": "ANSWER:\n" + answer}])
+    questions = json.loads(plan.choices[0].message.content).get("questions", [])
+    questions = [str(q).strip() for q in questions if str(q).strip()][:4]
+
+    if not questions:
+        return False, {"questions": [], "unsupported": []}
+
+    numbered = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))
+    execute = client.chat.completions.create(
+        model=model, temperature=0,
+        response_format={"type": "json_object"},
+        messages=[{"role": "system", "content": COVE_EXECUTE},
+                  {"role": "user",
+                   "content": "SOURCE:\n" + context + "\n\nQUESTIONS:\n" + numbered}])
+    verdicts = json.loads(execute.choices[0].message.content).get("verdicts", [])
+
+    unsupported = [v.get("question", "") for v in verdicts
+                   if str(v.get("status", "")).lower().startswith("unsup")]
+    return bool(unsupported), {"questions": questions, "unsupported": unsupported}

@@ -78,46 +78,41 @@ class Verdict:
         return (self.retrieval_level == "solid" and not self.bad_links
                 and not self.unsupported)
 
-    def notice(self):
-        """Markdown appended to the streamed answer, or '' if all checks pass."""
+    def notice_points(self):
+        """At most two short points, or [] when every check passed.
+
+        An earlier version listed every unsupported claim it found, which meant
+        a weak answer could be buried under five bullets of hedging. The panel
+        is a caution, not a report: it names the most actionable problem and
+        stops. Order matters, a fabricated link is worth more to a reader than
+        a general warning.
+        """
         if self.grounded:
-            return ""
+            return []
 
-        lines = []
-
-        if self.retrieval_level == "none":
-            lines.append(
-                "I could not find anything on the VRHS site that covers this, "
-                "so the answer above is not based on school pages.")
-        elif self.retrieval_level == "weak":
-            lines.append(
-                "The closest match in the school pages was only loosely related "
-                "to this question, so please double-check the answer above.")
+        points = []
 
         if self.bad_links:
-            shown = ", ".join(self.bad_links[:3])
-            lines.append(
-                "These links were not in my sources and may not exist: " + shown)
+            first = self.bad_links[0]
+            extra = len(self.bad_links) - 1
+            tail = f" and {extra} other" + ("s" if extra > 1 else "") if extra else ""
+            points.append(f"This link may not exist: {first}{tail}")
 
-        if self.unsupported:
-            for claim in self.unsupported[:3]:
-                lines.append("The school pages I read do not confirm: " + claim)
+        if self.retrieval_level == "none":
+            points.append("Nothing on the VRHS site covers this, so the answer "
+                          "above is not based on school pages.")
+        elif self.retrieval_level == "weak":
+            points.append("Only a loose match on the school pages.")
 
-        if self.grader_failed:
-            lines.append("My grounding check did not finish, so this answer is "
-                         "unverified.")
+        if len(points) < 2:
+            if self.unsupported:
+                points.append("Some details are not confirmed by the pages "
+                              "I read.")
+            elif self.grader_failed:
+                points.append("The grounding check did not finish, so this "
+                              "answer is unverified.")
 
-        if not lines:
-            return ""
-
-        # The browser renders answers with marked.parseInline, which handles
-        # links and bold but not block markdown, so bullets and rules would
-        # arrive as literal text. The sentinel lets the client peel this off
-        # and render it as its own element instead.
-        body = "\n".join("- " + line for line in lines)
-        return ("\n\n:::verify\n" + body +
-                "\n- The [staff directory](https://vrhs.leanderisd.org/directory) "
-                "is the most reliable source if you need to be sure.")
+        return points[:2]
 
 
 def score_retrieval(stats):

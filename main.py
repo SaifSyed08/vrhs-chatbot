@@ -8,10 +8,15 @@ from bs4 import BeautifulSoup
 import os
 import tiktoken
 import datetime
+import traceback
 import hallucination
 import corpus
 
 app = Flask(__name__)
+
+# Marks the end of the answer stream; everything after it is a JSON block
+# carrying the verification notice and the source pages.
+META_SENTINEL = ":::meta"
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -141,36 +146,103 @@ def embed_text(text):
     return response.data[0].embedding
 
 
+EMBEDDINGS_PATH = "data/vrhs_embeddings.json"
+
+# The index was re-read and re-parsed from disk on every question. It is small
+# and immutable between rebuilds, so it is loaded once and kept in memory.
+_INDEX = {"docs": None, "matrix": None}
+
+
+def load_index():
+    """Load the corpus once, returning (docs, unit-normalised matrix)."""
+    if _INDEX["docs"] is None:
+        if not os.path.exists(EMBEDDINGS_PATH):
+            return None, None
+        with open(EMBEDDINGS_PATH, "r", encoding="utf-8") as f:
+            docs = json.load(f)
+        matrix = np.array([d["embedding"] for d in docs], dtype=np.float64)
+        matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
+        _INDEX["docs"], _INDEX["matrix"] = docs, matrix
+    return _INDEX["docs"], _INDEX["matrix"]
+
+
+# Slugs that should not be title-cased into "Staar" or "Vrhs".
+ACRONYMS = {
+    "staar": "STAAR", "vrhs": "VRHS", "lisd": "LISD", "ptsa": "PTSA",
+    "pta": "PTA", "voe": "VOE", "acc": "ACC", "ap": "AP",
+}
+
+
+def source_label(url):
+    """Readable name for a source pill, derived from the page slug."""
+    if url == "manual":
+        return "VRHS quick links"
+    tail = url.rstrip("/").split("/")[-1]
+
+    # The homepage has no path segment to name it by.
+    if not tail or "." in tail:
+        return "Vista Ridge High School"
+
+    slug = tail.replace("-", " ").replace("_", " ").strip()
+
+    # Drop leading school-year tokens so "26 27 bell schedules" reads as
+    # "Bell Schedules".
+    words = slug.split()
+    while words and words[0].isdigit():
+        words.pop(0)
+
+    labelled = [ACRONYMS.get(w.lower(), w.capitalize()) for w in words]
+    return " ".join(labelled) or "Vista Ridge High School"
+
+
 def get_relevant_context(query):
-    """Return the top matching chunks plus the similarity scores behind them.
+    """Return the top chunks, similarity stats, and the pages they came from."""
+    docs, matrix = load_index()
+    if docs is None:
+        return "No knowledge base available. Please visit /embed first.", {}, []
 
-    The scores are what the hallucination layer uses to tell "the site answers
-    this" apart from "the site has nothing close and the model is improvising."
-    """
-    if not os.path.exists("data/vrhs_embeddings.json"):
-        return "No knowledge base available. Please visit /embed first.", {}
+    q = np.array(embed_text(query), dtype=np.float64)
+    q /= np.linalg.norm(q)
+    sims = matrix @ q
 
-    with open("data/vrhs_embeddings.json", "r") as f:
-        docs = json.load(f)
-
-    query_vec = embed_text(query)
-    scored_chunks = [(cosine_sim(query_vec, doc['embedding']), doc['text'])
-                     for doc in docs]
-    top_chunks = sorted(scored_chunks, key=lambda pair: pair[0],
-                        reverse=True)[:3]
-    context = "\n\n".join([chunk[1] for chunk in top_chunks])
+    order = np.argsort(sims)[::-1][:3]
+    context = "\n\n".join(docs[i]["text"] for i in order)
 
     # The standard-score margin has to be computed here, while similarities to
     # every chunk are still in hand - it cannot be recovered from the top 3.
-    sims = np.array([pair[0] for pair in scored_chunks])
     spread = float(sims.std())
     stats = {
         "top": float(sims.max()),
         "mean": float(sims.mean()),
         "z": float((sims.max() - sims.mean()) / spread) if spread else None,
-        "n": len(sims),
+        "n": int(sims.size),
     }
-    return context, stats
+
+    # Pages behind the retrieved chunks, best first, without repeats.
+    sources, seen = [], set()
+    for i in order:
+        url = docs[i]["source"]
+        if url == "manual" or url in seen:
+            continue
+        seen.add(url)
+        sources.append({"url": url, "label": source_label(url)})
+
+    return context, stats, sources
+
+
+@app.route("/health")
+def health():
+    """Deployment check: is the key set, and did the index actually load?"""
+    docs, _ = load_index()
+    return jsonify({
+        "ok": bool(os.getenv("OPENAI_API_KEY")) and docs is not None,
+        "openai_key_present": bool(os.getenv("OPENAI_API_KEY")),
+        "index_path": EMBEDDINGS_PATH,
+        "index_found": docs is not None,
+        "chunks": len(docs) if docs else 0,
+        "sources": len({d["source"] for d in docs}) if docs else 0,
+        "working_directory": os.getcwd(),
+    })
 
 
 @app.route("/")
@@ -210,7 +282,7 @@ def submit_report():
 def ask():
     data = request.get_json()
     question = data.get("query")
-    context, stats = get_relevant_context(question)
+    context, stats, sources = get_relevant_context(question)
 
     # If no KB yet, just send that and stop.
     if context.startswith("No knowledge base"):
@@ -257,16 +329,80 @@ def ask():
               f"bad_links={len(verdict.bad_links)} "
               f"unsupported={len(verdict.unsupported)}", flush=True)
 
-        notice = verdict.notice()
-        if notice:
-            yield notice
+        # One trailing JSON block rather than more prose: the client needs the
+        # notice and the sources as data, and parsing prose out of a stream was
+        # fragile. Sources are withheld when the gate says the corpus does not
+        # cover the question, since citing a page that did not support the
+        # answer is its own kind of false confidence.
+        meta = {
+            "notice": verdict.notice_points(),
+            "sources": sources if verdict.retrieval_level != "none" else [],
+            "retrieval": {
+                "level": verdict.retrieval_level,
+                "top": verdict.retrieval_top,
+            },
+        }
+        yield META_SENTINEL + json.dumps(meta)
 
     # Wrap it in Flask’s Response so it streams chunked HTTP
     return Response(
         stream_with_context(generate()),
         content_type='text/plain; charset=utf-8',
-        # you can also try 'text/event-stream' here if you want SSE
     )
+
+
+@app.errorhandler(Exception)
+def handle_unexpected(error):
+    """Return the failure as readable text instead of a blank 500 page.
+
+    The stack trace goes to the process log, where a deployment can actually
+    surface it; the user gets a sentence rather than "Internal Server Error".
+    """
+    traceback.print_exc()
+    print(f"[error] {type(error).__name__}: {error}", flush=True)
+    return (
+        "Something went wrong reaching the assistant. If this keeps happening, "
+        "check /health.",
+        500,
+    )
+
+
+@app.route("/feedback", methods=["POST"])
+def submit_feedback():
+    """Record a thumbs rating against the retrieval diagnostics for that answer.
+
+    The rating on its own says an answer was poor. Paired with the retrieval
+    score it says why: a thumbs-down on a question that scored below the gate
+    is missing content, while a thumbs-down on a well-retrieved question is a
+    generation or phrasing problem. The two need different fixes.
+    """
+    data = request.get_json(silent=True) or {}
+
+    entry = {
+        "question": (data.get("question") or "")[:500],
+        "rating": data.get("rating"),
+        "reason": data.get("reason"),
+        "retrieval_top": data.get("retrieval_top"),
+        "retrieval_level": data.get("retrieval_level"),
+        "flagged": bool(data.get("flagged")),
+        "timestamp": datetime.datetime.now().isoformat(),
+    }
+
+    os.makedirs("data", exist_ok=True)
+    path = "data/feedback.json"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            entries = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        entries = []
+
+    entries.append(entry)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(entries, f, indent=2)
+
+    print(f"[feedback] {entry['rating']} level={entry['retrieval_level']} "
+          f"q={entry['question'][:60]}", flush=True)
+    return jsonify({"status": "success"})
 
 
 if __name__ == "__main__":

@@ -1,115 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="700" viewBox="0 0 1160 700" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
-  <rect width="1160" height="700" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="300" viewBox="0 0 900 300" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="900" height="300" fill="#ffffff"/>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8c959f"/>
-    </marker>
-    <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d9a441"/>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa0a6"/>
     </marker>
   </defs>
 
-  <!-- ================= INGEST ================= -->
-  <rect x="24" y="34" width="1112" height="150" rx="10" fill="#fafbfc" stroke="#e4e8ec"/>
-  <text x="44" y="60" font-size="12" font-weight="700" fill="#6b7280" letter-spacing="1.2">INGEST — OFFLINE, RUN ON /embed</text>
+  <rect x="20" y="40" width="150" height="62" rx="8" fill="#fff" stroke="#d8dce0"/>
+  <text x="95" y="70" font-size="13.5" font-weight="600" fill="#24292f" text-anchor="middle">Question</text>
+  <text x="95" y="89" font-size="11.5" fill="#6b7280" text-anchor="middle">embed, 327 ms</text>
 
-  <rect x="44" y="76" width="200" height="76" rx="8" fill="#ffffff" stroke="#d0d7de"/>
-  <text x="144" y="104" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">11 school pages</text>
-  <text x="144" y="126" font-size="12" fill="#57606a" text-anchor="middle">scraped + chunked</text>
-  <text x="144" y="143" font-size="12" fill="#57606a" text-anchor="middle">150 words each</text>
+  <line x1="176" y1="71" x2="208" y2="71" stroke="#9aa0a6" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <line x1="252" y1="114" x2="296" y2="114" stroke="#8c959f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <rect x="214" y="40" width="150" height="62" rx="8" fill="#fff" stroke="#d8dce0"/>
+  <text x="289" y="70" font-size="13.5" font-weight="600" fill="#24292f" text-anchor="middle">Retrieve top 3</text>
+  <text x="289" y="89" font-size="11.5" fill="#6b7280" text-anchor="middle">44 chunks, under 1 ms</text>
 
-  <rect x="304" y="76" width="216" height="76" rx="8" fill="#ffffff" stroke="#d0d7de"/>
-  <text x="412" y="104" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">corpus hygiene</text>
-  <text x="412" y="126" font-size="12" fill="#57606a" text-anchor="middle">strip cross-page nav, dedupe</text>
-  <text x="412" y="143" font-size="12" fill="#b45309" text-anchor="middle">removes 76% of words</text>
+  <line x1="370" y1="71" x2="402" y2="71" stroke="#9aa0a6" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <line x1="528" y1="114" x2="572" y2="114" stroke="#8c959f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <rect x="408" y="40" width="150" height="62" rx="8" fill="#fff" stroke="#d8dce0"/>
+  <text x="483" y="70" font-size="13.5" font-weight="600" fill="#24292f" text-anchor="middle">gpt-4o streams</text>
+  <text x="483" y="89" font-size="11.5" fill="#6b7280" text-anchor="middle">430 ms to first token</text>
 
-  <rect x="580" y="76" width="200" height="76" rx="8" fill="#ffffff" stroke="#d0d7de"/>
-  <text x="680" y="104" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">embed</text>
-  <text x="680" y="126" font-size="12" fill="#57606a" text-anchor="middle">text-embedding-ada-002</text>
-  <text x="680" y="143" font-size="12" fill="#57606a" text-anchor="middle">1536 dimensions</text>
+  <line x1="564" y1="71" x2="596" y2="71" stroke="#9aa0a6" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <line x1="788" y1="114" x2="832" y2="114" stroke="#8c959f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <rect x="602" y="40" width="150" height="62" rx="8" fill="#fff" stroke="#d8dce0"/>
+  <text x="677" y="70" font-size="13.5" font-weight="600" fill="#24292f" text-anchor="middle">Reader sees text</text>
+  <text x="677" y="89" font-size="11.5" fill="#6b7280" text-anchor="middle">757 ms total wait</text>
 
-  <rect x="840" y="76" width="200" height="76" rx="8" fill="#ffffff" stroke="#d0d7de"/>
-  <text x="940" y="104" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">JSON index</text>
-  <text x="940" y="126" font-size="12" fill="#57606a" text-anchor="middle">44 chunks, in-process</text>
-  <text x="940" y="143" font-size="12" fill="#57606a" text-anchor="middle">no vector database</text>
+  <path d="M 677 108 L 677 132" fill="none" stroke="#9aa0a6" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="694" y="126" font-size="11.5" fill="#6b7280">then, after the last token</text>
 
-  <!-- ================= QUERY ================= -->
-  <rect x="24" y="204" width="1112" height="158" rx="10" fill="#fffafa" stroke="#f3dcdc"/>
-  <text x="44" y="230" font-size="12" font-weight="700" fill="#b02a37" letter-spacing="1.2">ANSWER PATH — PER QUESTION</text>
+  <rect x="20" y="140" width="732" height="118" rx="8" fill="#fcfcfd" stroke="#e3e6e9"/>
+  <text x="40" y="165" font-size="12.5" font-weight="700" fill="#57606a">VERIFICATION, 701 ms</text>
 
-  <rect x="44" y="246" width="182" height="88" rx="8" fill="#ffffff" stroke="#e6c4c4"/>
-  <text x="135" y="278" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">student question</text>
-  <text x="135" y="300" font-size="12" fill="#57606a" text-anchor="middle">POST /ask</text>
+  <rect x="40" y="178" width="220" height="62" rx="6" fill="#fff" stroke="#e3e6e9"/>
+  <text x="56" y="201" font-size="12.5" font-weight="600" fill="#24292f">1. Retrieval gate</text>
+  <text x="56" y="222" font-size="11.5" fill="#6b7280">free, 96% separation</text>
 
-  <line x1="234" y1="290" x2="272" y2="290" stroke="#8c959f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <rect x="276" y="178" width="220" height="62" rx="6" fill="#fff" stroke="#e3e6e9"/>
+  <text x="292" y="201" font-size="12.5" font-weight="600" fill="#24292f">2. Link grounding</text>
+  <text x="292" y="222" font-size="11.5" fill="#6b7280">free, P 1.00 / R 1.00</text>
 
-  <rect x="280" y="246" width="182" height="88" rx="8" fill="#ffffff" stroke="#e6c4c4"/>
-  <text x="371" y="278" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">embed question</text>
-  <text x="371" y="300" font-size="12" fill="#57606a" text-anchor="middle">ada-002</text>
-  <text x="371" y="320" font-size="12" font-weight="600" fill="#b02a37" text-anchor="middle">327 ms</text>
+  <rect x="512" y="178" width="220" height="62" rx="6" fill="#fff" stroke="#e3e6e9"/>
+  <text x="528" y="201" font-size="12.5" font-weight="600" fill="#24292f">3. Claim grounding</text>
+  <text x="528" y="222" font-size="11.5" fill="#6b7280">gpt-4o-mini, $0.00007</text>
 
-  <line x1="470" y1="290" x2="508" y2="290" stroke="#8c959f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="758" y1="199" x2="790" y2="199" stroke="#9aa0a6" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <rect x="516" y="246" width="182" height="88" rx="8" fill="#ffffff" stroke="#e6c4c4"/>
-  <text x="607" y="272" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">retrieve top 3</text>
-  <text x="607" y="292" font-size="12" fill="#57606a" text-anchor="middle">cosine over 44 vectors</text>
-  <text x="607" y="309" font-size="12" fill="#57606a" text-anchor="middle">+ similarity stats</text>
-  <text x="607" y="326" font-size="12" font-weight="600" fill="#b02a37" text-anchor="middle">&lt; 1 ms</text>
-
-  <line x1="706" y1="290" x2="744" y2="290" stroke="#8c959f" stroke-width="1.6" marker-end="url(#arrow)"/>
-
-  <rect x="752" y="246" width="182" height="88" rx="8" fill="#ffffff" stroke="#e6c4c4"/>
-  <text x="843" y="278" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">gpt-4o</text>
-  <text x="843" y="300" font-size="12" fill="#57606a" text-anchor="middle">streamed tokens</text>
-  <text x="843" y="320" font-size="12" font-weight="600" fill="#b02a37" text-anchor="middle">430 ms to first token</text>
-
-  <line x1="942" y1="290" x2="980" y2="290" stroke="#8c959f" stroke-width="1.6" marker-end="url(#arrow)"/>
-
-  <rect x="988" y="246" width="128" height="88" rx="8" fill="#ffffff" stroke="#e6c4c4"/>
-  <text x="1052" y="284" font-size="14" font-weight="600" fill="#24292f" text-anchor="middle">browser</text>
-  <text x="1052" y="304" font-size="12" fill="#57606a" text-anchor="middle">text appears</text>
-
-  <!-- index feeds retrieval -->
-  <path d="M 940 152 L 940 176 L 607 176 L 607 240" fill="none" stroke="#8c959f" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
-
-  <!-- ================= VERIFY ================= -->
-  <rect x="24" y="382" width="1112" height="292" rx="10" fill="#fffdf7" stroke="#f0e2c8"/>
-  <text x="44" y="408" font-size="12" font-weight="700" fill="#8a6420" letter-spacing="1.2">HALLUCINATION LAYER — AFTER THE LAST TOKEN, 701 ms</text>
-
-  <!-- flow in from the stream -->
-  <path d="M 1052 340 L 1052 362 L 580 362 L 580 424" fill="none" stroke="#d9a441" stroke-width="1.8" marker-end="url(#arrowAmber)"/>
-  <text x="700" y="356" font-size="12" fill="#8a6420">complete answer + retrieved context</text>
-
-  <rect x="60" y="432" width="330" height="112" rx="8" fill="#ffffff" stroke="#e8d5b0"/>
-  <text x="80" y="458" font-size="14" font-weight="600" fill="#24292f">1 · retrieval gate</text>
-  <text x="80" y="480" font-size="12" fill="#57606a">Is the corpus even relevant?</text>
-  <text x="80" y="499" font-size="12" fill="#57606a">top-1 cosine vs 0.78 threshold</text>
-  <text x="80" y="522" font-size="12" font-weight="600" fill="#1a7f37">free · 96% separation</text>
-
-  <rect x="414" y="432" width="330" height="112" rx="8" fill="#ffffff" stroke="#e8d5b0"/>
-  <text x="434" y="458" font-size="14" font-weight="600" fill="#24292f">2 · link grounding</text>
-  <text x="434" y="480" font-size="12" fill="#57606a">Every URL must appear verbatim</text>
-  <text x="434" y="499" font-size="12" fill="#57606a">in the retrieved context</text>
-  <text x="434" y="522" font-size="12" font-weight="600" fill="#1a7f37">free · P 1.00 / R 1.00</text>
-
-  <rect x="768" y="432" width="330" height="112" rx="8" fill="#ffffff" stroke="#e8d5b0"/>
-  <text x="788" y="458" font-size="14" font-weight="600" fill="#24292f">3 · claim grounding</text>
-  <text x="788" y="480" font-size="12" fill="#57606a">Second model reads context +</text>
-  <text x="788" y="499" font-size="12" fill="#57606a">answer, reports unsupported claims</text>
-  <text x="788" y="522" font-size="12" font-weight="600" fill="#8a6420">gpt-4o-mini · $0.00007 / check</text>
-
-  <line x1="225" y1="552" x2="225" y2="586" stroke="#d9a441" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
-  <line x1="579" y1="552" x2="579" y2="586" stroke="#d9a441" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
-  <line x1="933" y1="552" x2="933" y2="586" stroke="#d9a441" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
-
-  <rect x="60" y="594" width="1038" height="60" rx="8" fill="#fffaf2" stroke="#e0a44a"/>
-  <text x="82" y="620" font-size="14" font-weight="600" fill="#8a6420">⚠ notice appended to the answer — never a retraction</text>
-  <text x="82" y="641" font-size="12" fill="#6b5638">Tokens are already on screen by the time an answer can be judged as a whole, so a failed check annotates rather than deletes.</text>
+  <rect x="796" y="168" width="88" height="82" rx="8" fill="#fff" stroke="#e8c88a"/>
+  <text x="840" y="196" font-size="12.5" font-weight="600" fill="#9a7b3a" text-anchor="middle">Sources</text>
+  <text x="840" y="215" font-size="12.5" font-weight="600" fill="#9a7b3a" text-anchor="middle">or</text>
+  <text x="840" y="234" font-size="12.5" font-weight="600" fill="#9a7b3a" text-anchor="middle">caution</text>
 </svg>

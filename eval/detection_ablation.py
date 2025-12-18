@@ -113,6 +113,23 @@ def run():
                  judge_cost * escalated / len(cases),
                  f"{escalated}/{len(cases)} escalated"))
 
+    # 5. chain-of-verification - plan verification questions, then answer them
+    flags, times, cove_in, cove_out = [], [], 0, 0
+    for c in cases:
+        t0 = time.perf_counter()
+        flagged, _ = detectors.chain_of_verification(client, c["answer"],
+                                                     c["context"])
+        times.append((time.perf_counter() - t0) * 1000)
+        flags.append(flagged)
+        words = len(c["context"].split()) + len(c["answer"].split())
+        cove_in += words * 1.3 + 340   # two calls, two system prompts
+        cove_out += 130
+    p, r, f1 = score(flags, labels)
+    cove_cost = ((cove_in / 1e6) * MINI_IN_PER_M +
+                 (cove_out / 1e6) * MINI_OUT_PER_M) / len(cases)
+    rows.append(("chain-of-verification", p, r, f1, statistics.median(times),
+                 cove_cost, "2 calls per check"))
+
     header = f"{'architecture':26}{'prec':>7}{'rec':>7}{'F1':>7}{'p50 ms':>9}{'$/check':>11}  notes"
     print(header)
     print("-" * len(header))

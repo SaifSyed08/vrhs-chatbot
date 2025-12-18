@@ -520,47 +520,68 @@
 
     }
 
-    /* Verification notice from the hallucination layer. Deliberately quiet:
-       it is a caution about an answer already on screen, not an error. */
-    .verify-card {
+    /* Pages the answer was retrieved from. Shown only when the retrieval gate
+       is satisfied, so a pill always points at a page that actually matched. */
+    .source-pills {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
       max-width: 75%;
-      margin: 2px 0 10px 0;
-      padding: 12px 14px;
-      background: #fffaf2;
-      border: 1px solid #f0dcc0;
-      border-left: 3px solid #e0a44a;
-      border-radius: 10px;
-      font-size: 0.86rem;
-      line-height: 1.5;
-      color: #6b5638;
-      animation: verifyIn 0.22s ease both;
+      margin: 6px 0 2px 0;
+      animation: fadeUp 0.22s ease both;
     }
 
-    @keyframes verifyIn {
+    .source-lead {
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #9aa0a6;
+      margin-right: 2px;
+    }
+
+    .source-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border: 1px solid #e3e5e8;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.78rem;
+      color: #5f6368;
+      text-decoration: none;
+      transition: border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .source-pill:hover {
+      border-color: #e60023;
+      color: #e60023;
+    }
+
+    /* Verification notice. Deliberately quiet: it is a caution about an answer
+       already on screen, not an error, so it reads as a margin note. */
+    .verify-card {
+      max-width: 75%;
+      margin: 8px 0 10px 0;
+      padding: 2px 0 2px 11px;
+      border-left: 2px solid #e8c88a;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: #8a8178;
+      animation: fadeUp 0.22s ease both;
+    }
+
+    @keyframes fadeUp {
       from { opacity: 0; transform: translateY(3px); }
       to   { opacity: 1; transform: none; }
     }
 
     .verify-card .verify-title {
-      display: flex;
-      align-items: center;
-      gap: 7px;
       font-weight: 600;
-      color: #8a6420;
-      margin-bottom: 6px;
+      color: #9a7b3a;
+      margin-bottom: 1px;
     }
 
-    .verify-card ul {
-      margin: 0;
-      padding-left: 18px;
-    }
-
-    .verify-card li { margin: 3px 0; }
-
-    .verify-card a {
-      color: #8a6420;
-      text-decoration: underline;
-    }
+    .verify-line { margin: 1px 0; }
 
   </style>
 
@@ -699,6 +720,26 @@
 
         let finalized = false;
 
+        // The rating used to change this text and go nowhere. It is now filed
+        // with the question and the verification result, so a run of negative
+        // ratings on well-retrieved answers reads differently from negative
+        // ratings on questions the corpus never covered.
+        const context = lastAnswerMeta;
+        const sendFeedback = (rating, reason) => {
+          fetch("/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: context.question,
+              rating: rating,
+              reason: reason || null,
+              retrieval_level: (context.retrieval || {}).level || null,
+              retrieval_top: (context.retrieval || {}).top || null,
+              flagged: (context.notice || []).length > 0
+            })
+          }).catch(err => console.warn("feedback not recorded", err));
+        };
+
         thumbs.forEach(btn => {
           btn.addEventListener("click", () => {
             if (finalized) return;
@@ -711,6 +752,8 @@
 
             if (type === "up") {
               // Positive → finalize immediately
+              sendFeedback("up", null);
+              finalized = true;
               textEl.innerText = "Thanks for your feedback!";
               followupBox.style.display = "none";
               return;
@@ -725,8 +768,9 @@
           option.addEventListener("click", () => {
             if (finalized) return;
 
-            // Replace with final thank-you
-            textEl.innerText = "Thanks — we'll review this message.";
+            sendFeedback("down", option.dataset.reason);
+            finalized = true;
+            textEl.innerText = "Thanks, we'll review this message.";
             followupBox.style.display = "none";
           });
         });
@@ -778,16 +822,16 @@
         // 6️⃣ stream + regex‐driven link parsing + inline markdown
         let buffer = "";
 
-        // Everything after this marker is the hallucination layer's notice
-        // about the answer, not part of the answer itself.
-        const VERIFY_SENTINEL = ":::verify";
-        let verifyBuffer = null;
+        // Everything after this marker is a JSON block describing the answer:
+        // the verification notice and the pages it was retrieved from.
+        const META_SENTINEL = ":::meta";
+        let metaBuffer = null;
 
         // The marker can straddle two network chunks, so hold back any tail
         // that could still grow into one.
         const endsWithSentinelPrefix = (s) => {
-          for (let n = Math.min(VERIFY_SENTINEL.length - 1, s.length); n > 0; n--) {
-            if (s.endsWith(VERIFY_SENTINEL.slice(0, n))) return true;
+          for (let n = Math.min(META_SENTINEL.length - 1, s.length); n > 0; n--) {
+            if (s.endsWith(META_SENTINEL.slice(0, n))) return true;
           }
           return false;
         };
@@ -803,16 +847,15 @@
           const incoming = decoder.decode(value);
 
           // Past the marker, nothing more belongs in the answer bubble.
-          if (verifyBuffer !== null) {
-            verifyBuffer += incoming;
-            msgContainer.scrollTop = msgContainer.scrollHeight;
+          if (metaBuffer !== null) {
+            metaBuffer += incoming;
             continue;
           }
 
           buffer += incoming;
-          const sentinelAt = buffer.indexOf(VERIFY_SENTINEL);
+          const sentinelAt = buffer.indexOf(META_SENTINEL);
           if (sentinelAt !== -1) {
-            verifyBuffer = buffer.slice(sentinelAt + VERIFY_SENTINEL.length);
+            metaBuffer = buffer.slice(sentinelAt + META_SENTINEL.length);
             buffer = buffer.slice(0, sentinelAt);
           }
 
@@ -850,7 +893,7 @@
           const boldMarkers = buffer.match(boldMarkerRe) || [];
           const hasOpenBold = (boldMarkers.length % 2) === 1;
           const hasPartialSentinel =
-            verifyBuffer === null && endsWithSentinelPrefix(buffer);
+            metaBuffer === null && endsWithSentinelPrefix(buffer);
 
           if (!hasOpenLink && !hasOpenBold && !hasPartialSentinel) {
             // flush entire buffer now
@@ -872,34 +915,60 @@
           bubble.appendChild(tmp);
         }
 
-        // 4) the verification notice, if any check failed
-        if (verifyBuffer && verifyBuffer.trim()) {
-          const points = verifyBuffer
-            .split("\n")
-            .map(line => line.replace(/^\s*-\s*/, "").trim())
-            .filter(Boolean);
-
-          if (points.length) {
-            const card = document.createElement("div");
-            card.className = "verify-card";
-
-            const title = document.createElement("div");
-            title.className = "verify-title";
-            title.innerHTML = "<span>⚠</span><span>Worth double-checking</span>";
-            card.appendChild(title);
-
-            const list = document.createElement("ul");
-            points.forEach(point => {
-              const li = document.createElement("li");
-              li.innerHTML = marked.parseInline(point);
-              li.querySelectorAll("a").forEach(a => { a.target = "_blank"; });
-              list.appendChild(li);
-            });
-            card.appendChild(list);
-            msgContainer.appendChild(card);
-            msgContainer.scrollTop = msgContainer.scrollHeight;
+        // 4) source pills and the verification notice
+        let meta = {};
+        if (metaBuffer && metaBuffer.trim()) {
+          try {
+            meta = JSON.parse(metaBuffer.trim());
+          } catch (err) {
+            console.warn("could not parse answer metadata", err);
           }
         }
+        lastAnswerMeta = {
+          question: message,
+          notice: meta.notice || [],
+          retrieval: meta.retrieval || {}
+        };
+
+        if (Array.isArray(meta.sources) && meta.sources.length) {
+          const row = document.createElement("div");
+          row.className = "source-pills";
+
+          const lead = document.createElement("span");
+          lead.className = "source-lead";
+          lead.innerText = "Sources";
+          row.appendChild(lead);
+
+          meta.sources.forEach(src => {
+            const pill = document.createElement("a");
+            pill.className = "source-pill";
+            pill.href = src.url;
+            pill.target = "_blank";
+            pill.rel = "noopener";
+            pill.innerText = src.label;
+            row.appendChild(pill);
+          });
+          msgContainer.appendChild(row);
+        }
+
+        if (Array.isArray(meta.notice) && meta.notice.length) {
+          const card = document.createElement("div");
+          card.className = "verify-card";
+
+          const title = document.createElement("div");
+          title.className = "verify-title";
+          title.innerText = "Worth double-checking";
+          card.appendChild(title);
+
+          meta.notice.forEach(point => {
+            const line = document.createElement("div");
+            line.className = "verify-line";
+            line.innerText = point;
+            card.appendChild(line);
+          });
+          msgContainer.appendChild(card);
+        }
+        msgContainer.scrollTop = msgContainer.scrollHeight;
         if (firstBotMessageShown) {
           const fb = createFeedbackElement();
           msgContainer.appendChild(fb);
@@ -919,6 +988,10 @@
 
 <script>
   let firstBotMessageShown = false;
+
+  // Kept so a thumbs rating can be filed against the question that produced it
+  // and the checks that ran on it, rather than as a bare vote.
+  let lastAnswerMeta = { question: "", notice: [] };
   function appendMessage(text, sender) {
     const msgContainer = document.getElementById("messages");
 
