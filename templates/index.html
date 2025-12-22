@@ -4,13 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VRHS Chatbot</title>
+  <!-- Inline so there is no extra request and no 404 in the console. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='19' font-weight='bold' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Public Sans', sans-serif;
       margin: 18px;
       padding: 0;
-      background-color: #f5f5f5;
+      background-color: #eef0f2;
+      color: #2c2f33;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Keyboard users get a visible target; mouse users do not see a ring. */
+    button:focus-visible,
+    a:focus-visible,
+    .thumb-btn:focus-visible,
+    .followup-btn:focus-visible {
+      outline: 2px solid #e60023;
+      outline-offset: 2px;
     }
     .chat-container {
       max-width: 1000px;
@@ -26,36 +39,52 @@
       position: relative;
     }
     .chat-header {
-      padding: 20px 25px;
-      background: linear-gradient(to bottom, #444, #111);
+      padding: 18px 24px;
+      background: linear-gradient(to bottom, #2f3237, #17191c);
       color: white;
-      font-size: 1.2rem;
-      font-weight: bold;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-top-left-radius: 12px;
       border-top-right-radius: 12px;
-      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
     }
     .options-button {
       cursor: pointer;
-      font-size: 24px;
+      font-size: 22px;
+      line-height: 1;
       user-select: none;
+      opacity: 0.7;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: opacity 0.15s ease, background-color 0.15s ease;
+    }
+    .options-button:hover {
+      opacity: 1;
+      background-color: rgba(255, 255, 255, 0.1);
     }
     .chat-messages {
       flex: 1;
-      padding: 20px;
+      padding: 24px 26px 18px 26px;
       overflow-y: auto;
+      scroll-behavior: smooth;
     }
+
+    /* Keep the scrollbar from competing with the conversation. */
+    .chat-messages::-webkit-scrollbar { width: 0; height: 0; }
+    .chat-messages { scrollbar-width: none; -ms-overflow-style: none; }
+
     .chat-bubble {
-      padding: 12px 16px;
+      padding: 13px 17px;
       margin: 10px 0;
-      width: max-content; 
+      width: max-content;
       max-width: 75%;
-      line-height: 1.5;
+      line-height: 1.58;
       word-wrap: break-word;
       white-space: pre-line;
+      animation: fadeUp 0.24s ease both;
     }
     .chat-bubble strong {
       font-weight: bold;
@@ -64,56 +93,95 @@
       margin: 0;
     }
     .bot {
-      background-color: #f1f1f1;
-      color: #333;
+      background-color: #f4f5f6;
+      color: #2c2f33;
       align-self: flex-start;
-      border-radius: 18px 18px 18px 0;
+      /* a small corner radius rather than a hard point reads less dated */
+      border-radius: 18px 18px 18px 4px;
       text-align: left;
     }
+
+    .bot a {
+      color: #c40020;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(196, 0, 32, 0.3);
+      transition: border-color 0.15s ease;
+    }
+
+    .bot a:hover { border-bottom-color: #c40020; }
+
     .user {
       background-color: #e60023;
       color: white;
       align-self: flex-end;
-      text-align: right;
+      text-align: left;
       margin-left: auto;
-      border-radius: 18px 18px 0 18px;
+      border-radius: 18px 18px 4px 18px;
+      box-shadow: 0 1px 2px rgba(230, 0, 35, 0.22);
     }
 
     
     .chat-input {
       display: flex;
-      align-items: center;
-      padding: 1px;
-      border-top: 1px solid #ddd;
+      justify-content: center;
+      padding: 12px 16px 14px 16px;
       background-color: white;
     }
+
+    /* One centred pill rather than a full-width bar: the composer reads as a
+       single control, and on a 1000px container an edge-to-edge input is a lot
+       of empty space to type one line into. */
+    .input-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      max-width: 620px;
+      padding: 5px 5px 5px 6px;
+      border: 1px solid #e4e6e9;
+      border-radius: 999px;
+      background-color: #fafbfc;
+      transition: border-color 0.18s ease, background-color 0.18s ease,
+                  box-shadow 0.18s ease;
+    }
+
+    .input-pill:focus-within {
+      background-color: #fff;
+      border-color: #e60023;
+      box-shadow: 0 0 0 3px rgba(230, 0, 35, 0.09);
+    }
+
     .chat-input input {
       flex: 1;
-      padding: 18px;
-      border: 0px solid #ccc;
-      border-radius: 25px;
+      min-width: 0;
+      padding: 11px 14px;
+      border: none;
+      border-radius: 999px;
       outline: none;
       font-family: 'Public Sans', sans-serif;
       font-size: 0.95rem;
+      color: #2c2f33;
       background-color: transparent;
-      transition: background-color 0.2s ease;
     }
-    /* outline is removed above, so give focus a visible state of its own */
-    .chat-input input:focus {
-      background-color: #f7f7f7;
-    }
+    .chat-input input::placeholder { color: #a8adb3; }
+
     .chat-input button {
-      background-color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      background-color: #c9cdd2;
       color: white;
       border: none;
-      padding: 8px 16px;
-      margin-right: 15px;
-      border-radius: 55px;
+      padding: 0;
+      border-radius: 50%;
       cursor: pointer;
       transition: background-color 0.25s ease, transform 0.12s ease;
     }
     .chat-input button:active {
-      transform: scale(0.94);
+      transform: scale(0.92);
     }
 
 
@@ -122,43 +190,40 @@
       transition: background-color 0.4s ease-out;
     }
     .quick-prompts {
-
       display: flex;
-      gap: 10px;
-      padding: 10px;
+      gap: 8px;
+      padding: 10px 14px 12px 14px;
       overflow-x: auto;
       background-color: #fff;
-      border-top: 0px solid #eee;
+      /* fade the right edge so it is obvious the strip keeps going */
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px),
+                                          transparent 100%);
+      mask-image: linear-gradient(to right, #000 calc(100% - 34px),
+                                  transparent 100%);
     }
     .quick-prompts button {
       font-family: 'Public Sans', sans-serif;
-      border: 1.5px solid #e60023;
-      color: #e60023;
-      background: white;
-      padding: 6px 12px;
+      border: 1px solid #f0c3cb;
+      color: #d1001f;
+      background: #fff;
+      padding: 7px 14px;
       border-radius: 20px;
-      font-size: 0.9rem;
+      font-size: 0.86rem;
       cursor: pointer;
       white-space: nowrap;
-      transition: background-color 0.18s ease, color 0.18s ease;
+      transition: background-color 0.18s ease, color 0.18s ease,
+                  border-color 0.18s ease;
     }
 
     .quick-prompts button:hover {
       background-color: #e60023;
+      border-color: #e60023;
       color: white;
     }
 
-    /* the prompt strip scrolls horizontally; keep its scrollbar unobtrusive */
-    .quick-prompts::-webkit-scrollbar {
-      height: 6px;
-    }
-    .quick-prompts::-webkit-scrollbar-thumb {
-      background: #e0e0e0;
-      border-radius: 3px;
-    }
-    .quick-prompts::-webkit-scrollbar-thumb:hover {
-      background: #ccc;
-    }
+    /* the strip still scrolls; the faded right edge is the affordance */
+    .quick-prompts::-webkit-scrollbar { height: 0; }
+    .quick-prompts { scrollbar-width: none; -ms-overflow-style: none; }
 
     .disclaimer {
       font-size: 0.75rem;
@@ -170,23 +235,34 @@
     }
 
 
+    /* Three settling dots rather than a pulsing "...", which read as a
+       rendering glitch more than as activity. */
     .typing-indicator {
-      display: inline-block;
-      background-color: #f1f1f1;
-      padding: 10px 14px;
-      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background-color: #f4f5f6;
+      padding: 13px 16px;
+      border-radius: 18px 18px 18px 4px;
       margin: 10px 0;
-      max-width: 75%;
-      font-style: italic;
-      color: #555;
       align-self: flex-start;
-      animation: pulse 1s infinite ease-in-out;
+      width: max-content;
     }
 
-    @keyframes pulse {
-      0% { opacity: 0.3; }
-      50% { opacity: 1; }
-      100% { opacity: 0.3; }
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #b6bbc0;
+      animation: typingDot 1.2s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.16s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.32s; }
+
+    @keyframes typingDot {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+      30%           { transform: translateY(-4px); opacity: 1; }
     }
 
     .chat-bubble.bot .word {
@@ -640,12 +716,15 @@
       <button onclick="quickAsk('Where is the library website?')">Where is the library website?</button>
     </div>
     <div class="chat-input">
-      <input type="text" id="query" placeholder="Enter a message.." />
-      <button onclick="sendMessage()" id="submitButton">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="white"/>
-        </svg>
-      </button>
+      <div class="input-pill">
+        <input type="text" id="query" placeholder="Ask about VRHS..."
+               autocomplete="off" aria-label="Ask a question" />
+        <button onclick="sendMessage()" id="submitButton" aria-label="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="white"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div class="disclaimer">
@@ -792,13 +871,15 @@
         // 2️⃣ show the user bubble
         appendMessage(message, 'user');
         input.value = "";
+        if (window.updateSendState) window.updateSendState();
 
         // 3️⃣ insert the “…” typing indicator
         const msgContainer = document.getElementById("messages");
         const thinking = document.createElement("div");
         thinking.className = "typing-indicator";
         thinking.id = "thinking";
-        thinking.innerText = "...";
+        thinking.innerHTML = "<span></span><span></span><span></span>";
+        thinking.setAttribute("aria-label", "Assistant is typing");
         msgContainer.appendChild(thinking);
         msgContainer.scrollTop = msgContainer.scrollHeight;
 
@@ -987,6 +1068,20 @@
       </script>>
 
 <script>
+  // Enter sends. The composer is a single-line input, so there is no newline
+  // to preserve, and reaching for the mouse to send every message was the
+  // largest friction in the interface.
+  document.addEventListener("DOMContentLoaded", () => {
+    const box = document.getElementById("query");
+    if (!box) return;
+    box.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  });
+
   let firstBotMessageShown = false;
 
   // Kept so a thumbs rating can be filed against the question that produced it
@@ -1065,6 +1160,7 @@
 
     function quickAsk(text) {
       document.getElementById("query").value = text;
+      if (window.updateSendState) window.updateSendState();
       sendMessage();
     }
 
@@ -1148,13 +1244,16 @@
     const queryInput = document.getElementById("query");
     const submitButton = document.getElementById("submitButton");
 
-    queryInput.addEventListener("input", () => {
-      if (queryInput.value.trim() !== "") {
-        submitButton.style.backgroundColor = "#e60023";
-      } else {
-        submitButton.style.backgroundColor = "#999";
-      }
-    });
+    // Clearing the box in code fires no "input" event, so the button used to
+    // stay red after sending. Both paths now call the same updater.
+    window.updateSendState = () => {
+      const hasText = queryInput.value.trim() !== "";
+      submitButton.style.backgroundColor = hasText ? "#e60023" : "#c9cdd2";
+      submitButton.style.cursor = hasText ? "pointer" : "default";
+    };
+
+    queryInput.addEventListener("input", window.updateSendState);
+    window.updateSendState();
   </script>
 </body>
 </html>

@@ -250,8 +250,20 @@ python eval/latency.py                # per-stage timings
 VRHS_EMBEDDINGS=data/vrhs_embeddings_baseline.json python eval/retrieval_eval.py
 ```
 
-`GET /health` reports whether the API key is set and the index actually loaded,
-which is the fastest way to diagnose a deployment.
+### Diagnosing a deployment
+
+`GET /health` reports whether the API key is set, which key it is (last four
+characters), whether the index loaded, and the working directory.
+
+`GET /health?deep=1` spends one embedding call and reports whether this process
+can actually reach the API, naming the error class if it cannot. In a broken
+deployment that is the question that matters, and it answers it from a browser
+rather than from the platform log:
+
+```json
+{ "ok": false, "api_call": "failed", "api_error_type": "AuthenticationError",
+  "api_error": "Error code: 401 - Incorrect API key provided ..." }
+```
 
 ## Layout
 

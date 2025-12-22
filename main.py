@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from werkzeug.exceptions import HTTPException
 from openai import OpenAI
 import json
 import numpy as np
@@ -232,17 +233,42 @@ def get_relevant_context(query):
 
 @app.route("/health")
 def health():
-    """Deployment check: is the key set, and did the index actually load?"""
+    """Deployment check.
+
+    Plain /health is cheap and answers "is this box configured". Adding
+    ?deep=1 spends one embedding call to answer the question that actually
+    matters in a broken deployment: can this process reach the API, and if
+    not, with which error. Without it the only way to see the cause is the
+    platform log, which is not always to hand.
+    """
     docs, _ = load_index()
-    return jsonify({
-        "ok": bool(os.getenv("OPENAI_API_KEY")) and docs is not None,
-        "openai_key_present": bool(os.getenv("OPENAI_API_KEY")),
+    key = os.getenv("OPENAI_API_KEY") or ""
+
+    report = {
+        "ok": bool(key) and docs is not None,
+        "openai_key_present": bool(key),
+        "openai_key_tail": key[-4:] if key else None,
         "index_path": EMBEDDINGS_PATH,
         "index_found": docs is not None,
         "chunks": len(docs) if docs else 0,
         "sources": len({d["source"] for d in docs}) if docs else 0,
         "working_directory": os.getcwd(),
-    })
+        "data_writable": os.access("data", os.W_OK) if os.path.isdir("data")
+                         else None,
+    }
+
+    if request.args.get("deep"):
+        try:
+            client.embeddings.create(model="text-embedding-ada-002",
+                                     input="health check")
+            report["api_call"] = "ok"
+        except Exception as e:
+            report["ok"] = False
+            report["api_call"] = "failed"
+            report["api_error_type"] = type(e).__name__
+            report["api_error"] = str(e)[:300]
+
+    return jsonify(report)
 
 
 @app.route("/")
@@ -355,14 +381,19 @@ def ask():
 def handle_unexpected(error):
     """Return the failure as readable text instead of a blank 500 page.
 
-    The stack trace goes to the process log, where a deployment can actually
-    surface it; the user gets a sentence rather than "Internal Server Error".
+    The stack trace goes to the process log, and the error class goes to the
+    reader. A student cannot act on "RateLimitError", but whoever they forward
+    the screenshot to can, and it saves a round trip through the logs.
     """
+    # Let Flask handle its own 404s and 405s rather than turning them into 500s.
+    if isinstance(error, HTTPException):
+        return error
+
     traceback.print_exc()
     print(f"[error] {type(error).__name__}: {error}", flush=True)
     return (
-        "Something went wrong reaching the assistant. If this keeps happening, "
-        "check /health.",
+        "Something went wrong reaching the assistant "
+        f"({type(error).__name__}). If this keeps happening, open /health?deep=1.",
         500,
     )
 
