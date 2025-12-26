@@ -8,14 +8,28 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='19' font-weight='bold' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    /* The app is a fixed frame: only the message list scrolls, never the page
+       behind it. Previously the container was 90vh inside a margined body, so
+       the whole document scrolled by a few dozen pixels. */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
     body {
       font-family: 'Public Sans', sans-serif;
-      margin: 18px;
-      padding: 0;
+      margin: 0;
+      padding: 16px;
       background-color: #eef0f2;
       color: #2c2f33;
       -webkit-font-smoothing: antialiased;
     }
+
+    /* One width shared by the composer and the suggestion strip, so they line
+       up instead of the suggestions running the full width of the window. */
+    :root { --composer-width: 620px; }
 
     /* Keyboard users get a visible target; mouse users do not see a ring. */
     button:focus-visible,
@@ -27,14 +41,14 @@
     }
     .chat-container {
       max-width: 1000px;
-      margin: 40px auto;
+      margin: 0 auto;
       background: white;
       border-radius: 12px;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05),
                   0 8px 24px rgba(0, 0, 0, 0.08);
       display: flex;
       flex-direction: column;
-      height: 90vh;
+      height: 100%;
       overflow: hidden;
       position: relative;
     }
@@ -124,31 +138,36 @@
     .chat-input {
       display: flex;
       justify-content: center;
-      padding: 12px 16px 14px 16px;
+      padding: 4px 16px 12px 16px;
       background-color: white;
     }
 
     /* One centred pill rather than a full-width bar: the composer reads as a
        single control, and on a 1000px container an edge-to-edge input is a lot
-       of empty space to type one line into. */
+       of empty space to type one line into. It grows on focus, because that is
+       when the extra room is actually useful. */
     .input-pill {
       display: flex;
       align-items: center;
       gap: 6px;
       width: 100%;
-      max-width: 620px;
-      padding: 5px 5px 5px 6px;
-      border: 1px solid #e4e6e9;
+      max-width: var(--composer-width);
+      padding: 5px 5px 5px 8px;
+      border: 1.5px solid #e0e3e6;
       border-radius: 999px;
       background-color: #fafbfc;
-      transition: border-color 0.18s ease, background-color 0.18s ease,
-                  box-shadow 0.18s ease;
+      transition: max-width 0.26s cubic-bezier(0.22, 0.9, 0.3, 1),
+                  padding 0.26s ease,
+                  border-color 0.18s ease,
+                  background-color 0.18s ease;
     }
 
     .input-pill:focus-within {
+      max-width: 880px;
+      padding: 9px 9px 9px 14px;
       background-color: #fff;
+      /* an outline, not a glow */
       border-color: #e60023;
-      box-shadow: 0 0 0 3px rgba(230, 0, 35, 0.09);
     }
 
     .chat-input input {
@@ -162,7 +181,10 @@
       font-size: 0.95rem;
       color: #2c2f33;
       background-color: transparent;
+      transition: font-size 0.26s ease;
     }
+
+    .input-pill:focus-within input { font-size: 1.02rem; }
     .chat-input input::placeholder { color: #a8adb3; }
 
     .chat-input button {
@@ -192,14 +214,23 @@
     .quick-prompts {
       display: flex;
       gap: 8px;
-      padding: 10px 14px 12px 14px;
+      width: 100%;
+      max-width: var(--composer-width);
+      margin: 0 auto;
+      padding: 6px 0 4px 0;
       overflow-x: auto;
       background-color: #fff;
+      cursor: grab;
       /* fade the right edge so it is obvious the strip keeps going */
       -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px),
                                           transparent 100%);
       mask-image: linear-gradient(to right, #000 calc(100% - 34px),
                                   transparent 100%);
+    }
+
+    .quick-prompts.dragging {
+      cursor: grabbing;
+      scroll-behavior: auto;
     }
     .quick-prompts button {
       font-family: 'Public Sans', sans-serif;
@@ -1073,13 +1104,63 @@
   // largest friction in the interface.
   document.addEventListener("DOMContentLoaded", () => {
     const box = document.getElementById("query");
-    if (!box) return;
-    box.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.isComposing) {
-        e.preventDefault();
-        sendMessage();
-      }
+    if (box) {
+      box.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+    }
+
+    // The suggestion strip scrolls sideways, but a plain mouse has no
+    // horizontal wheel and the scrollbar is hidden. Translate a vertical
+    // wheel into horizontal movement, and allow click and drag.
+    const strip = document.querySelector(".quick-prompts");
+    if (!strip) return;
+
+    strip.addEventListener("wheel", (e) => {
+      const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (!delta) return;
+      const before = strip.scrollLeft;
+      strip.scrollLeft += delta;
+      // Only swallow the event if the strip actually moved, so the page can
+      // still scroll when the strip is already at its end.
+      if (strip.scrollLeft !== before) e.preventDefault();
+    }, { passive: false });
+
+    let dragging = false, startX = 0, startScroll = 0, moved = 0;
+
+    strip.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      moved = 0;
+      startX = e.clientX;
+      startScroll = strip.scrollLeft;
+      strip.classList.add("dragging");
     });
+
+    strip.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      moved = Math.max(moved, Math.abs(dx));
+      strip.scrollLeft = startScroll - dx;
+    });
+
+    const endDrag = () => {
+      dragging = false;
+      strip.classList.remove("dragging");
+    };
+    strip.addEventListener("pointerup", endDrag);
+    strip.addEventListener("pointerleave", endDrag);
+
+    // A drag that moved should not also fire the button underneath it.
+    strip.addEventListener("click", (e) => {
+      if (moved > 6) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
   });
 
   let firstBotMessageShown = false;

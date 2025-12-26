@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from werkzeug.exceptions import HTTPException
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 import json
 import numpy as np
 from numpy.linalg import norm
@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 import os
 import tiktoken
 import datetime
+import time
 import traceback
 import hallucination
 import corpus
@@ -137,13 +138,38 @@ def embed_chunks():
     return f"Embeddings generated and saved ({len(chunks)} chunks)."
 
 
+def is_out_of_credit(error):
+    """True when a 429 means the account has no quota, not that it is busy.
+
+    OpenAI raises RateLimitError for both. One is transient and worth a retry,
+    the other will fail identically forever, and retrying it just makes the
+    reader wait longer for the same failure.
+    """
+    text = str(error).lower()
+    return "insufficient_quota" in text or "exceeded your current quota" in text
+
+
+def with_retry(call, attempts=3, base_delay=0.6):
+    """Retry a transient rate limit with backoff. Quota errors raise at once."""
+    delay = base_delay
+    for attempt in range(attempts):
+        try:
+            return call()
+        except RateLimitError as error:
+            if is_out_of_credit(error) or attempt == attempts - 1:
+                raise
+            print(f"[retry] rate limited, waiting {delay:.1f}s", flush=True)
+            time.sleep(delay)
+            delay *= 2.5
+
+
 def cosine_sim(a, b):
     return np.dot(a, b) / (norm(a) * norm(b))
 
 
 def embed_text(text):
-    response = client.embeddings.create(model="text-embedding-ada-002",
-                                        input=text)
+    response = with_retry(lambda: client.embeddings.create(
+        model="text-embedding-ada-002", input=text))
     return response.data[0].embedding
 
 
@@ -329,9 +355,8 @@ def ask():
         answer = []
 
         # call the OpenAI API with streaming turned on
-        stream = client.chat.completions.create(model="gpt-4o",
-                                                messages=messages,
-                                                stream=True)
+        stream = with_retry(lambda: client.chat.completions.create(
+            model="gpt-4o", messages=messages, stream=True))
 
         # for each chunk that comes in…
         for chunk in stream:
@@ -391,6 +416,23 @@ def handle_unexpected(error):
 
     traceback.print_exc()
     print(f"[error] {type(error).__name__}: {error}", flush=True)
+
+    # A student cannot act on "RateLimitError". Say what it means for them, and
+    # keep the diagnostic pointer for whoever maintains the deployment.
+    if isinstance(error, RateLimitError):
+        if is_out_of_credit(error):
+            return (
+                "The assistant has run out of API credit and cannot answer "
+                "right now. Please let a site admin know. (quota exhausted, "
+                "see /health?deep=1)",
+                503,
+            )
+        return (
+            "The assistant is handling too many questions at once. Please try "
+            "again in a few seconds.",
+            503,
+        )
+
     return (
         "Something went wrong reaching the assistant "
         f"({type(error).__name__}). If this keeps happening, open /health?deep=1.",
