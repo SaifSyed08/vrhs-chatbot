@@ -47,6 +47,12 @@ def strip_boilerplate(chunks):
 
     cleaned = []
     for chunk in chunks:
+        # Link chunks are deliberately short and already deduplicated by URL,
+        # so the length rule below would throw them all away.
+        if chunk.get("kind") == "link":
+            cleaned.append(chunk)
+            continue
+
         words = chunk["text"].split()
         covered = [False] * len(words)
         for i in range(len(words) - SHINGLE_WIDTH + 1):

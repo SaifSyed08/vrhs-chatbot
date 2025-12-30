@@ -20,10 +20,10 @@ BASELINE = "data/vrhs_embeddings_baseline.json"
 
 
 def embed_all(main, chunks, label):
-    for i, chunk in enumerate(chunks, 1):
-        chunk["embedding"] = main.embed_text(chunk["text"])
-        print(f"  {label}: embedded {i}/{len(chunks)}", end="\r")
-    print()
+    print(f"  {label}: embedding {len(chunks)} chunks")
+    vectors = main.embed_texts([c["text"] for c in chunks])
+    for chunk, vector in zip(chunks, vectors):
+        chunk["embedding"] = vector
     return chunks
 
 

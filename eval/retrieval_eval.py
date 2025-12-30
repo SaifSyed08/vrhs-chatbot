@@ -20,6 +20,8 @@ import json
 import os
 import sys
 
+import re
+
 import numpy as np
 from openai import OpenAI
 
@@ -34,7 +36,10 @@ EMBEDDINGS = os.environ.get(
 EMBED_MODEL = "text-embedding-ada-002"
 
 
-def probe(client, matrix, sources, question):
+MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\((https?://[^)\s]+\))")
+
+
+def probe(client, matrix, sources, question, texts=None):
     """Retrieve for one question, returning (stats, sources of the top 3)."""
     response = client.embeddings.create(model=EMBED_MODEL, input=question)
     q = np.array(response.data[0].embedding, dtype=np.float64)
@@ -47,7 +52,11 @@ def probe(client, matrix, sources, question):
         "top": float(sims.max()),
         "z": float((sims.max() - sims.mean()) / spread) if spread else None,
     }
-    return stats, [sources[i] for i in order[:3]]
+    top = order[:3]
+    if texts is not None:
+        context = " ".join(texts[i] for i in top)
+        stats["links_in_context"] = len(MARKDOWN_LINK.findall(context))
+    return stats, [sources[i] for i in top]
 
 
 def run():
@@ -57,29 +66,31 @@ def run():
     matrix = np.array([d["embedding"] for d in docs], dtype=np.float64)
     matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
     sources = [d["source"] for d in docs]
+    texts = [d["text"] for d in docs]
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     print(f"corpus: {os.path.basename(EMBEDDINGS)} ({len(docs)} chunks)\n")
 
-    hit1 = hit3 = 0
+    hit1 = hit3 = with_link = 0
     z_answerable, z_oos = [], []
     top_answerable, top_oos = [], []
 
     print("-- answerable --")
     for case in fx["answerable"]:
-        stats, srcs = probe(client, matrix, sources, case["question"])
+        stats, srcs = probe(client, matrix, sources, case["question"], texts)
         want = case["expect_source_contains"]
         hit1 += want in srcs[0]
         top3 = any(want in s for s in srcs)
         hit3 += top3
         z_answerable.append(stats["z"])
         top_answerable.append(stats["top"])
+        with_link += 1 if stats.get("links_in_context") else 0
         print(f"  {'ok ' if top3 else 'MISS'} z={stats['z']:5.2f} "
               f"top={stats['top']:.3f}  {case['question'][:50]}")
 
     print("\n-- out of scope (the corpus cannot answer these) --")
     for case in fx["out_of_scope"]:
-        stats, _ = probe(client, matrix, sources, case["question"])
+        stats, _ = probe(client, matrix, sources, case["question"], texts)
         z_oos.append(stats["z"])
         top_oos.append(stats["top"])
         print(f"      z={stats['z']:5.2f} top={stats['top']:.3f}  "
@@ -90,6 +101,8 @@ def run():
     ta, to = np.array(top_answerable), np.array(top_oos)
     print(f"\nretrieval: top-1 {hit1}/{n} ({hit1 / n:.1%})   "
           f"top-3 {hit3}/{n} ({hit3 / n:.1%})")
+    print(f"answerable questions whose context carries a usable link: "
+          f"{with_link}/{n} ({with_link / n:.1%})")
     print(f"z answerable    mean {a.mean():5.2f}  p5  {np.percentile(a, 5):5.2f}")
     print(f"z out-of-scope  mean {o.mean():5.2f}  p95 {np.percentile(o, 95):5.2f}")
 

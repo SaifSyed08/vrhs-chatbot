@@ -666,15 +666,31 @@
 
     /* Verification notice. Deliberately quiet: it is a caution about an answer
        already on screen, not an error, so it reads as a margin note. */
+    /* An elbow, not a rule: the line drops from the answer above and turns in
+       toward the note, so the two read as connected rather than as two
+       separate blocks that happen to sit near each other. */
     .verify-card {
+      position: relative;
       max-width: 75%;
-      margin: 8px 0 10px 0;
-      padding: 2px 0 2px 11px;
-      border-left: 2px solid #e8c88a;
+      margin: 6px 0 10px 6px;
+      padding: 2px 0 2px 26px;
       font-size: 0.8rem;
       line-height: 1.45;
       color: #8a8178;
       animation: fadeUp 0.22s ease both;
+    }
+
+    .verify-card::before {
+      content: "";
+      position: absolute;
+      left: 1px;
+      top: -9px;
+      width: 15px;
+      height: 26px;
+      border-left: 2px solid #e8c88a;
+      border-bottom: 2px solid #e8c88a;
+      border-bottom-left-radius: 7px;
+      pointer-events: none;
     }
 
     @keyframes fadeUp {
