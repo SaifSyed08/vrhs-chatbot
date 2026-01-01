@@ -70,6 +70,18 @@ answer built on retrieved text that does not support it. The concrete version
 here is an invented URL: a student follows a link, gets a 404, and stops
 trusting the tool.
 
+Before any of that, the prompt tries to stop the problem happening. The model
+is told to answer only from the retrieved context, never to infer times, dates,
+fees, names or requirements the context does not state, never to construct a
+URL, and to say plainly that it does not know rather than assemble something
+plausible. Because the retrieval score is computed before generation and not
+only after it, a weak match adds a further instruction telling the model the
+site probably does not cover the question at all.
+
+That is prevention, and it is cheap but not sufficient: a model told to abstain
+still sometimes does not. The three checks below run after the fact and assume
+prevention failed.
+
 Three checks run on every answer, cheapest first.
 
 | Check | Question it answers | Cost | Measured |
@@ -296,21 +308,6 @@ python eval/latency.py                # per-stage timings
 
 # point the corpus evals at either index
 VRHS_EMBEDDINGS=data/vrhs_embeddings_baseline.json python eval/retrieval_eval.py
-```
-
-### Diagnosing a deployment
-
-`GET /health` reports whether the API key is set, which key it is (last four
-characters), whether the index loaded, and the working directory.
-
-`GET /health?deep=1` spends one embedding call and reports whether this process
-can actually reach the API, naming the error class if it cannot. In a broken
-deployment that is the question that matters, and it answers it from a browser
-rather than from the platform log:
-
-```json
-{ "ok": false, "api_call": "failed", "api_error_type": "AuthenticationError",
-  "api_error": "Error code: 401 - Incorrect API key provided ..." }
 ```
 
 ## Layout

@@ -146,10 +146,21 @@ def cited_urls(answer):
     return [u.rstrip(".,;:") for u in urls]
 
 
+# URLs the system prompt itself hands the model as a fallback when the corpus
+# cannot answer. They are verified site pages, but they do not arrive through
+# retrieval, so without this the check flags the assistant for following its
+# own instructions.
+ALWAYS_GROUNDED = {
+    "https://vrhs.leanderisd.org/directory",
+}
+
+
 def find_ungrounded_links(answer, context):
     """Return URLs cited in the answer that do not appear in the context."""
     seen, bad = set(), []
     for url in cited_urls(answer):
+        if url in ALWAYS_GROUNDED:
+            continue
         if url not in context and url not in seen:
             seen.add(url)
             bad.append(url)

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VRHS Chatbot</title>
   <!-- Inline so there is no extra request and no 404 in the console. -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='19' font-weight='bold' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'%3EVR%3C/text%3E%3C/svg%3E" />
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     /* The app is a fixed frame: only the message list scrolls, never the page
@@ -156,15 +156,15 @@
       border: 1.5px solid #e0e3e6;
       border-radius: 999px;
       background-color: #fafbfc;
-      transition: max-width 0.26s cubic-bezier(0.22, 0.9, 0.3, 1),
-                  padding 0.26s ease,
-                  border-color 0.18s ease,
-                  background-color 0.18s ease;
+      transition: max-width 0.42s cubic-bezier(0.33, 0.9, 0.35, 1),
+                  padding 0.42s ease,
+                  border-color 0.2s ease,
+                  background-color 0.2s ease;
     }
 
     .input-pill:focus-within {
-      max-width: 880px;
-      padding: 9px 9px 9px 14px;
+      max-width: 730px;
+      padding: 7px 7px 7px 12px;
       background-color: #fff;
       /* an outline, not a glow */
       border-color: #e60023;
@@ -184,7 +184,7 @@
       transition: font-size 0.26s ease;
     }
 
-    .input-pill:focus-within input { font-size: 1.02rem; }
+    .input-pill:focus-within input { font-size: 0.98rem; }
     .chat-input input::placeholder { color: #a8adb3; }
 
     .chat-input button {
@@ -221,12 +221,19 @@
       overflow-x: auto;
       background-color: #fff;
       cursor: grab;
-      /* fade the right edge so it is obvious the strip keeps going */
-      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px),
-                                          transparent 100%);
-      mask-image: linear-gradient(to right, #000 calc(100% - 34px),
-                                  transparent 100%);
+      /* Whichever end has more behind it fades. A static fade would blur the
+         first pill even at rest, and a hard edge on the left read as a cut. */
+      --fade-left: transparent 0, #000 0;
+      --fade-right: #000 100%, transparent 100%;
+      -webkit-mask-image: linear-gradient(to right, var(--fade-left),
+                                          var(--fade-right));
+      mask-image: linear-gradient(to right, var(--fade-left),
+                                  var(--fade-right));
+      transition: none;
     }
+
+    .quick-prompts.fade-start { --fade-left: transparent 0, #000 34px; }
+    .quick-prompts.fade-end { --fade-right: #000 calc(100% - 34px), transparent 100%; }
 
     .quick-prompts.dragging {
       cursor: grabbing;
@@ -256,14 +263,9 @@
     .quick-prompts::-webkit-scrollbar { height: 0; }
     .quick-prompts { scrollbar-width: none; -ms-overflow-style: none; }
 
-    .disclaimer {
-      font-size: 0.75rem;
-      color: #888;
-      text-align: center;
-      padding: 6px 10px;
-      border-top: 1px solid #eee;
-      background-color: #f9f9f9;
-    }
+    /* The credit bar that used to sit here was a full-width slab under the
+       composer, eating vertical space the conversation could use. The credit
+       moved into the options menu. */
 
 
     /* Three settling dots rather than a pulsing "...", which read as a
@@ -416,11 +418,32 @@
       position: absolute;
     }
 
-    .small-modal {
-      padding: 10px;
-      top: 60px;
-      right: 20px;
-      width: 200px;
+    /* Anchored to the button that opens it. This was a full-screen overlay
+       positioned 20px from the right of the viewport, so on any window wider
+       than the centred container the menu opened a long way from the dots. */
+    .options-menu {
+      display: none;
+      position: absolute;
+      top: 54px;
+      right: 14px;
+      z-index: 1000;
+      min-width: 210px;
+      padding: 6px;
+      background: #fff;
+      border: 1px solid #e6e8ea;
+      border-radius: 10px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.13);
+      animation: fadeUp 0.14s ease both;
+    }
+
+    .options-menu.open { display: block; }
+
+    .options-credit {
+      padding: 7px 10px 4px 10px;
+      font-size: 0.72rem;
+      color: #a2a7ac;
+      border-top: 1px solid #f0f1f2;
+      margin-top: 5px;
     }
 
     .report-modal {
@@ -640,9 +663,7 @@
     }
 
     .source-lead {
-      font-size: 0.72rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      font-size: 0.76rem;
       color: #9aa0a6;
       margin-right: 2px;
     }
@@ -715,13 +736,12 @@
   <div class="chat-container">
     <div class="chat-header">
       <span>Ask Your Questions Here!</span>
-      <span class="options-button" onclick="showOptionsModal()">⋮</span>
+      <span class="options-button" onclick="showOptionsModal(event)">⋮</span>
     </div>
     <!-- Options Modal -->
-    <div id="optionsModal" class="modal">
-      <div class="modal-content small-modal">
-        <button onclick="showReportModal()" class="report-button">Report Inaccuracies</button>
-      </div>
+    <div id="optionsModal" class="options-menu">
+      <button onclick="showReportModal()" class="report-button">Report Inaccuracies</button>
+      <div class="options-credit">Built by Saif Syed &amp; Junayd Elhassan</div>
     </div>
 
     <!-- Report Modal -->
@@ -774,9 +794,6 @@
       </div>
     </div>
 
-    <div class="disclaimer">
-      Product created by Saif Syed & Junayd Elhassan 
-    </div>
     <div id="notification" class="notification"></div>
   </div>
 
@@ -1135,6 +1152,16 @@
     const strip = document.querySelector(".quick-prompts");
     if (!strip) return;
 
+    // Fade an end only when there is something past it.
+    const updateFades = () => {
+      const max = strip.scrollWidth - strip.clientWidth;
+      strip.classList.toggle("fade-start", strip.scrollLeft > 4);
+      strip.classList.toggle("fade-end", strip.scrollLeft < max - 4);
+    };
+    strip.addEventListener("scroll", updateFades, { passive: true });
+    window.addEventListener("resize", updateFades);
+    updateFades();
+
     strip.addEventListener("wheel", (e) => {
       const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
       if (!delta) return;
@@ -1261,12 +1288,28 @@
       sendMessage();
     }
 
-    function showOptionsModal() {
-      document.getElementById('optionsModal').style.display = 'block';
+    function showOptionsModal(event) {
+      if (event) event.stopPropagation();
+      document.getElementById('optionsModal').classList.toggle('open');
     }
 
+    // Clicking anywhere else closes the menu, which is what a popover should
+    // do and what the full-screen overlay used to handle.
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('optionsModal');
+      if (!menu || !menu.classList.contains('open')) return;
+      if (!menu.contains(e.target)) menu.classList.remove('open');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const menu = document.getElementById('optionsModal');
+        if (menu) menu.classList.remove('open');
+      }
+    });
+
     function showReportModal() {
-      document.getElementById('optionsModal').style.display = 'none';
+      document.getElementById('optionsModal').classList.remove('open');
       document.getElementById('reportModal').style.display = 'block';
     }
 

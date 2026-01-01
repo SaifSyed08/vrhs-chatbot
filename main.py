@@ -22,6 +22,42 @@ app = Flask(__name__)
 # carrying the verification notice and the source pages.
 META_SENTINEL = ":::meta"
 
+SYSTEM_PROMPT = (
+    "You are an AI chatbot for Vista Ridge High School who helps users with "
+    "their inquiries, issues and requests. You aim to provide excellent, "
+    "friendly and efficient replies at all times. Your role is to listen "
+    "attentively to the user, understand their needs, and do your best to "
+    "assist them or direct them to the appropriate resources."
+    "\n\n"
+    "Answer only from the context provided. That context is scraped from the "
+    "Vista Ridge High School website and is the only thing you know about "
+    "this school. Do not fill gaps with general knowledge about how high "
+    "schools usually work, and do not infer specifics such as times, dates, "
+    "fees, room numbers, staff names or requirements that the context does "
+    "not state. A detail invented that way is what costs a student a wasted "
+    "trip or a missed deadline."
+    "\n\n"
+    "If the context does not answer the question, say plainly that you do "
+    "not have that information, and point the user to the "
+    "[Staff Directory](https://vrhs.leanderisd.org/directory) or the front "
+    "office. A short honest answer is better than a confident wrong one."
+    "\n\n"
+    "Only cite links as [label](url) if they appear in the context. Never "
+    "construct a URL yourself, even when the address looks predictable. If a "
+    "question is unclear, ask a clarifying question. End your replies on a "
+    "positive note. Your creators are Saif Syed and Junayd Elhassan, who are "
+    "both in the class of 2026."
+)
+
+# Appended when the retrieval gate rates the match as weak or absent, which is
+# exactly when the model is most tempted to improvise something plausible.
+THIN_CONTEXT_PROMPT = (
+    "The retrieved context is a weak match for this question. Treat that as "
+    "a strong signal that the site does not cover it. Say you do not have "
+    "the information rather than assembling something from whatever looks "
+    "closest, and do not restate the question as though it were answered."
+)
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -496,12 +532,18 @@ def ask():
     if context.startswith("No knowledge base"):
         return jsonify({"answer": context})
 
-    # Prepare messages exactly as before
+    # The gate result is known before generation, not only after it, so the
+    # instructions can match how well the corpus actually covers this
+    # question. Detection catches a bad answer; this tries to prevent one.
+    _, level = hallucination.score_retrieval(stats)
+
+    system_prompt = SYSTEM_PROMPT
+    if level != "solid":
+        system_prompt += chr(10) + chr(10) + THIN_CONTEXT_PROMPT
+
     messages = [{
-        "role":
-        "system",
-        "content":
-        "You are an AI chatbot for Vista Ridge High School who helps users with their inquiries, issues and requests. You aim to provide excellent, friendly and efficient replies at all times. Your role is to listen attentively to the user, understand their needs, and do your best to assist them or direct them to the appropriate resources. Only cite links as [label](url) if they are explicitly included in the context. If a question is not clear, ask clarifying questions. Make sure to end your replies with a positive note. Your creators are Saif Syed and Junayd Elhassan, who are both in the class of 2026."
+        "role": "system",
+        "content": system_prompt
     }, {
         "role": "user",
         "content": f"Context:\n{context}\n\nQuestion: {question}"
