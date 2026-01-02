@@ -74,13 +74,24 @@ Before any of that, the prompt tries to stop the problem happening. The model
 is told to answer only from the retrieved context, never to infer times, dates,
 fees, names or requirements the context does not state, never to construct a
 URL, and to say plainly that it does not know rather than assemble something
-plausible. Because the retrieval score is computed before generation and not
-only after it, a weak match adds a further instruction telling the model the
-site probably does not cover the question at all.
+plausible.
 
-That is prevention, and it is cheap but not sufficient: a model told to abstain
-still sometimes does not. The three checks below run after the fact and assume
-prevention failed.
+A second instruction adds today's date and the school year derived from it.
+The site carries more than one year at once: the calendar page still links a
+2025-2026 district calendar while the navigation already points at 26-27 bell
+schedules. With no sense of the date the model could not tell which was
+current, and presented last year's calendar as this year's. It now names the
+year a page refers to, and says when the current one is missing:
+
+> I couldn't find the district calendar for the 2026-2027 school year. However,
+> you can check the 2025-2026 LISD District Calendar.
+
+An earlier version also appended a warning whenever the retrieval score was
+weak. It was removed: it made answers hedge more without making them more
+accurate, and the three checks below already cover that case after the fact.
+
+Prevention is cheap but not sufficient, since a model told to abstain still
+sometimes does not. The checks assume it failed.
 
 Three checks run on every answer, cheapest first.
 
@@ -232,7 +243,7 @@ Both corpora below come from the same scrape, so the comparison is clean.
 | Duplicate chunks | 18 | **0** |
 | Words inside cross-page boilerplate | 72.3% | **22.7%** |
 | Separable by an absolute cutoff | no | **yes** |
-| Top-1 retrieval | 46.7% | 46.7% |
+| Top-1 retrieval | 40.0% | **46.7%** |
 | Top-3 retrieval | 53.3% | **60.0%** |
 | Answerable questions with a link in context | 100% | 100% |
 

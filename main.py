@@ -49,14 +49,33 @@ SYSTEM_PROMPT = (
     "both in the class of 2026."
 )
 
-# Appended when the retrieval gate rates the match as weak or absent, which is
-# exactly when the model is most tempted to improvise something plausible.
-THIN_CONTEXT_PROMPT = (
-    "The retrieved context is a weak match for this question. Treat that as "
-    "a strong signal that the site does not cover it. Say you do not have "
-    "the information rather than assembling something from whatever looks "
-    "closest, and do not restate the question as though it were answered."
-)
+def school_year(today=None):
+    """The academic year that contains `today`, as "2026-2027".
+
+    The site carries pages from more than one year at once: the calendar page
+    still says 2025-2026 while the navigation already links 26-27 bell
+    schedules. Without knowing today's date the model cannot tell which of the
+    two is current, so it was presenting last year's calendar as though it were
+    this year's. Derived from the date rather than hardcoded, so it stays true
+    after the next rollover.
+    """
+    today = today or datetime.date.today()
+    start = today.year if today.month >= 7 else today.year - 1
+    return f"{start}-{start + 1}"
+
+
+def dated_prompt():
+    """The system prompt with today's date and school year filled in."""
+    today = datetime.date.today()
+    return SYSTEM_PROMPT + chr(10) + chr(10) + (
+        f"Today is {today:%A, %d %B %Y}, so the current school year is "
+        f"{school_year(today)}. Pages on this site are not all updated at the "
+        f"same time, and some still describe an earlier year. When the context "
+        f"names a school year, say which year it refers to instead of "
+        f"presenting it as current, and if only an older year is available, "
+        f"say that the current one was not found."
+    )
+
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -100,6 +119,14 @@ LINK_STOPLIST = {
 }
 
 
+YEAR_IN_LABEL = re.compile(r"(19|20)\d\d")
+
+
+def label_rank(label):
+    """How informative a link label is. A year beats length; length breaks ties."""
+    return (1 if YEAR_IN_LABEL.search(label) else 0, len(label))
+
+
 def link_chunks(links):
     """One small chunk per unique link, alongside the prose chunks.
 
@@ -111,16 +138,25 @@ def link_chunks(links):
     being matched, which is what a "where do I find X" question is actually
     asking for.
     """
-    chunks, seen = [], set()
-
+    # A URL is often linked more than once on a page under different labels,
+    # and taking the first one loses information: the district calendar is
+    # linked as both "2025-2026 LISD District Calendar" and "District
+    # Calendar". Keeping the bare label left the model unable to tell which
+    # school year the file belonged to, so it presented last year's calendar as
+    # this year's. Prefer the label that says the most.
+    best = {}
     for label, href, source in links:
         key = href.rstrip("/")
         clean = " ".join(label.split())
-        if key in seen:
-            continue
         if len(clean) < 4 or clean.lower() in LINK_STOPLIST:
             continue
-        seen.add(key)
+        current = best.get(key)
+        if current is None or label_rank(clean) > label_rank(current[0]):
+            best[key] = (clean, href, source)
+
+    chunks = []
+
+    for clean, href, source in best.values():
         # The shared "at Vista Ridge High School" suffix is deliberate. It
         # repeats across every link chunk and does lift the median cosine
         # between unrelated chunks from 0.79 to 0.85, so it was tried without.
@@ -532,18 +568,9 @@ def ask():
     if context.startswith("No knowledge base"):
         return jsonify({"answer": context})
 
-    # The gate result is known before generation, not only after it, so the
-    # instructions can match how well the corpus actually covers this
-    # question. Detection catches a bad answer; this tries to prevent one.
-    _, level = hallucination.score_retrieval(stats)
-
-    system_prompt = SYSTEM_PROMPT
-    if level != "solid":
-        system_prompt += chr(10) + chr(10) + THIN_CONTEXT_PROMPT
-
     messages = [{
         "role": "system",
-        "content": system_prompt
+        "content": dated_prompt()
     }, {
         "role": "user",
         "content": f"Context:\n{context}\n\nQuestion: {question}"

@@ -1,43 +1,43 @@
 corpus: vrhs_embeddings_baseline.json (263 chunks)
 
 -- answerable --
-  ok  z= 5.57 top=0.843  How many hours do I owe and where do I check?
+  ok  z= 5.79 top=0.843  How many hours do I owe and where do I check?
   ok  z= 4.65 top=0.859  What is the bell schedule for this year?
-  MISS z= 3.17 top=0.800  Who do I contact about my schedule?
-  MISS z= 3.71 top=0.783  How do I find a teacher's email?
-  ok  z= 4.45 top=0.849  How do I sign up to volunteer at the school?
-  ok  z= 5.53 top=0.852  When are the STAAR testing dates?
-  ok  z= 3.27 top=0.839  What is on the school calendar this month?
-  MISS z= 4.45 top=0.802  What do seniors need to do before graduation?
-  ok  z= 5.45 top=0.827  What resources are there for parents?
-  MISS z= 5.42 top=0.836  What is the student check-out policy?
-  MISS z= 5.80 top=0.831  Where do I drop off my student in the morning?
-  ok  z= 4.95 top=0.863  How do I log into Ranger Time?
-  MISS z= 4.87 top=0.826  Where do I report an absence?
-  ok  z= 7.09 top=0.844  How do I start a new club?
-  MISS z= 4.88 top=0.816  What clubs and organizations are offered?
+  MISS z= 3.20 top=0.800  Who do I contact about my schedule?
+  MISS z= 3.62 top=0.783  How do I find a teacher's email?
+  ok  z= 4.43 top=0.850  How do I sign up to volunteer at the school?
+  ok  z= 5.48 top=0.852  When are the STAAR testing dates?
+  ok  z= 3.33 top=0.839  What is on the school calendar this month?
+  MISS z= 4.51 top=0.802  What do seniors need to do before graduation?
+  ok  z= 5.40 top=0.827  What resources are there for parents?
+  MISS z= 5.43 top=0.836  What is the student check-out policy?
+  MISS z= 5.68 top=0.831  Where do I drop off my student in the morning?
+  ok  z= 4.94 top=0.863  How do I log into Ranger Time?
+  MISS z= 4.82 top=0.826  Where do I report an absence?
+  ok  z= 6.96 top=0.843  How do I start a new club?
+  MISS z= 5.41 top=0.827  What clubs and organizations are offered?
 
 -- out of scope (the corpus cannot answer these) --
-      z= 3.73 top=0.712  What is the capital of France?
-      z= 3.27 top=0.694  Can you write me a Python function to reverse a li
-      z= 3.94 top=0.783  What are Harvard's admission requirements?
-      z= 3.39 top=0.725  Who won the World Series in 2024?
-      z= 2.46 top=0.779  What is the tuition at UT Austin?
-      z= 3.58 top=0.713  How do I fix a NullPointerException in Java?
-      z= 4.13 top=0.765  What time does the mall close tonight?
-      z= 3.79 top=0.723  Explain the plot of Hamlet.
-      z= 3.14 top=0.745  What is the weather going to be tomorrow?
-      z= 3.53 top=0.714  How much does a Tesla Model 3 cost?
+      z= 3.87 top=0.712  What is the capital of France?
+      z= 3.29 top=0.694  Can you write me a Python function to reverse a li
+      z= 3.98 top=0.784  What are Harvard's admission requirements?
+      z= 3.28 top=0.725  Who won the World Series in 2024?
+      z= 2.45 top=0.780  What is the tuition at UT Austin?
+      z= 3.62 top=0.713  How do I fix a NullPointerException in Java?
+      z= 4.15 top=0.765  What time does the mall close tonight?
+      z= 3.76 top=0.723  Explain the plot of Hamlet.
+      z= 3.18 top=0.745  What is the weather going to be tomorrow?
+      z= 3.58 top=0.714  How much does a Tesla Model 3 cost?
 
-retrieval: top-1 7/15 (46.7%)   top-3 8/15 (53.3%)
+retrieval: top-1 6/15 (40.0%)   top-3 8/15 (53.3%)
 answerable questions whose context carries a usable link: 15/15 (100.0%)
-z answerable    mean  4.88  p5   3.24
-z out-of-scope  mean  3.50  p95  4.04
-raw top answerable   min 0.783  mean 0.831
-raw top out-of-scope max 0.783  mean 0.735
+z answerable    mean  4.91  p5   3.29
+z out-of-scope  mean  3.52  p95  4.07
+raw top answerable   min 0.783  mean 0.832
+raw top out-of-scope max 0.784  mean 0.735
 
 separating power:
-  raw top-1 cosine   best cutoff 0.779 -> accuracy 96.0%
-  z margin           best cutoff 4.131 -> accuracy 88.0%
+  raw top-1 cosine   best cutoff 0.780 -> accuracy 96.0%
+  z margin           best cutoff 4.153 -> accuracy 88.0%
 
 configured: SIMILARITY_SOLID=0.78 SIMILARITY_WEAK=0.77
