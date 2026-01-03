@@ -6,12 +6,12 @@
 
 stage                         median ms      min      max
 ---------------------------------------------------------
-embed query (ada-002)               255      207      658
-retrieve (cosine, in-process)          0        0        1
-time to first token (gpt-4o)        613      553     1624
-full answer stream                 1601      997     2258
-grounding check (post-stream)        683      631      950
-end to end                         2827     1888     3547
+embed query (ada-002)               227      220      758
+retrieve (cosine, in-process)          0        0        0
+time to first token (gpt-4o)        518      467      787
+full answer stream                 1246     1059     1286
+grounding check (post-stream)        713      583      832
+end to end                         2223     1862     2583
 
-perceived wait before text appears: 868 ms
-verification adds 683 ms after the last token, not before the first
+perceived wait before text appears: 746 ms
+verification adds 713 ms after the last token, not before the first

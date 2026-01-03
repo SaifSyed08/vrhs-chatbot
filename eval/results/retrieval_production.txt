@@ -1,43 +1,43 @@
-corpus: vrhs_embeddings.json (218 chunks)
+corpus: vrhs_embeddings.json (279 chunks)
 
 -- answerable --
-  ok  z= 5.21 top=0.843  How many hours do I owe and where do I check?
-  ok  z= 5.04 top=0.886  What is the bell schedule for this year?
-  MISS z= 2.98 top=0.802  Who do I contact about my schedule?
-  MISS z= 3.42 top=0.782  How do I find a teacher's email?
-  ok  z= 4.11 top=0.856  How do I sign up to volunteer at the school?
-  ok  z= 7.01 top=0.894  When are the STAAR testing dates?
-  ok  z= 2.98 top=0.839  What is on the school calendar this month?
-  MISS z= 4.43 top=0.802  What do seniors need to do before graduation?
-  ok  z= 5.00 top=0.827  What resources are there for parents?
-  MISS z= 5.55 top=0.853  What is the student check-out policy?
-  MISS z= 5.40 top=0.839  Where do I drop off my student in the morning?
-  ok  z= 5.08 top=0.863  How do I log into Ranger Time?
-  MISS z= 4.20 top=0.826  Where do I report an absence?
-  ok  z= 5.82 top=0.843  How do I start a new club?
-  ok  z= 4.81 top=0.827  What clubs and organizations are offered?
+  ok  z= 5.54 top=0.843  How many hours do I owe and where do I check?
+  ok  z= 5.39 top=0.885  What is the bell schedule for this year?
+  MISS z= 2.93 top=0.802  Who do I contact about my schedule?
+  MISS z= 3.66 top=0.795  How do I find a teacher's email?
+  ok  z= 3.97 top=0.856  How do I sign up to volunteer at the school?
+  ok  z= 6.93 top=0.895  When are the STAAR testing dates?
+  ok  z= 3.18 top=0.839  What is on the school calendar this month?
+  MISS z= 4.31 top=0.802  What do seniors need to do before graduation?
+  ok  z= 5.09 top=0.827  What resources are there for parents?
+  ok  z= 5.46 top=0.853  What is the student check-out policy?
+  MISS z= 5.17 top=0.839  Where do I drop off my student in the morning?
+  ok  z= 5.42 top=0.863  How do I log into Ranger Time?
+  MISS z= 4.11 top=0.828  Where do I report an absence?
+  ok  z= 6.17 top=0.843  How do I start a new club?
+  ok  z= 5.24 top=0.827  What clubs and organizations are offered?
 
 -- out of scope (the corpus cannot answer these) --
-      z= 3.70 top=0.712  What is the capital of France?
-      z= 3.04 top=0.694  Can you write me a Python function to reverse a li
-      z= 3.52 top=0.783  What are Harvard's admission requirements?
-      z= 3.05 top=0.725  Who won the World Series in 2024?
-      z= 3.01 top=0.791  What is the tuition at UT Austin?
-      z= 3.38 top=0.713  How do I fix a NullPointerException in Java?
-      z= 5.10 top=0.784  What time does the mall close tonight?
-      z= 3.42 top=0.723  Explain the plot of Hamlet.
-      z= 2.90 top=0.745  What is the weather going to be tomorrow?
-      z= 3.82 top=0.723  How much does a Tesla Model 3 cost?
+      z= 3.28 top=0.712  What is the capital of France?
+      z= 2.86 top=0.694  Can you write me a Python function to reverse a li
+      z= 3.31 top=0.784  What are Harvard's admission requirements?
+      z= 3.21 top=0.727  Who won the World Series in 2024?
+      z= 3.10 top=0.792  What is the tuition at UT Austin?
+      z= 3.28 top=0.713  How do I fix a NullPointerException in Java?
+      z= 5.19 top=0.784  What time does the mall close tonight?
+      z= 3.34 top=0.723  Explain the plot of Hamlet.
+      z= 2.95 top=0.745  What is the weather going to be tomorrow?
+      z= 3.57 top=0.723  How much does a Tesla Model 3 cost?
 
-retrieval: top-1 7/15 (46.7%)   top-3 9/15 (60.0%)
+retrieval: top-1 7/15 (46.7%)   top-3 10/15 (66.7%)
 answerable questions whose context carries a usable link: 15/15 (100.0%)
-z answerable    mean  4.74  p5   2.98
-z out-of-scope  mean  3.49  p95  4.53
-raw top answerable   min 0.782  mean 0.839
-raw top out-of-scope max 0.791  mean 0.739
+z answerable    mean  4.84  p5   3.11
+z out-of-scope  mean  3.41  p95  4.46
+raw top answerable   min 0.795  mean 0.840
+raw top out-of-scope max 0.792  mean 0.740
 
 separating power:
-  raw top-1 cosine   best cutoff 0.791 -> accuracy 96.0%
-  z margin           best cutoff 3.824 -> accuracy 84.0%
+  raw top-1 cosine   best cutoff 0.792 -> accuracy 100.0%
+  z margin           best cutoff 3.570 -> accuracy 88.0%
 
-configured: SIMILARITY_SOLID=0.78 SIMILARITY_WEAK=0.77
+configured: SIMILARITY_SOLID=0.79 SIMILARITY_WEAK=0.78

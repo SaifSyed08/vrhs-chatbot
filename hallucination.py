@@ -48,8 +48,17 @@ import re
 # populations treated as weak. The margin is still computed and logged as a
 # diagnostic. Caveat: 25 questions is a small calibration set, and these
 # thresholds are specific to text-embedding-ada-002 on this corpus.
-SIMILARITY_SOLID = 0.78
-SIMILARITY_WEAK = 0.77
+SIMILARITY_SOLID = 0.79
+SIMILARITY_WEAK = 0.78
+
+# Recalibrated after the corpus grew to a full crawl. The populations now
+# separate completely on the question set: answerable questions bottom out at
+# 0.795 and out-of-scope questions top out at 0.792, so a cutoff of 0.793
+# scores 100%. That is not the number used. A 0.003 margin measured on 25
+# questions will not hold, and the two errors are not symmetric: a false
+# "solid" only means no caution panel on an answer the other two checks still
+# inspect, while a false "weak" puts a warning on a good answer and teaches
+# readers to ignore the panel. 0.79 leans toward answering on purpose.
 
 # Model used for the grounding pass. Deliberately not the answering model - a
 # grader that shares the generator's mistakes will happily ratify them.

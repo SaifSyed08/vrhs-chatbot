@@ -12,6 +12,7 @@ import datetime
 import time
 import re
 import traceback
+from collections import deque
 from urllib.parse import parse_qs, unquote, urlparse
 import hallucination
 import corpus
@@ -98,19 +99,19 @@ SEED_URLS = [
 # Hubs whose navigation is read to find the rest.
 HUB_URLS = [SITE + "/", SITE + "/campus_information/"]
 
-# Topics worth following when they turn up in the navigation. This is what
-# replaces hardcoded years: "26-27-bell-schedules" was named explicitly and
-# 404'd the moment the school rolled over from 24-25, and the same would happen
-# again next summer. The page is now found by what it is about.
-TOPIC = re.compile(
-    r"bell.?schedul|club|organi|senior|graduat|attendance|counsel|"
-    r"hours.?owed|volunteer|parent.?resource|staar|calendar|handbook|"
-    r"registration|transport|bus",
-    re.I)
+# Files that are not pages. Following these wastes a request and parses binary
+# as HTML.
+SKIP_SUFFIXES = (
+    ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".doc", ".docx",
+    ".xls", ".xlsx", ".ppt", ".pptx", ".zip", ".ics", ".mp4", ".mp3",
+)
 
-MAX_PAGES = 22
+# Bounds on the crawl. The site is about two dozen pages, so these are a
+# safety net rather than a limit that bites.
+MAX_PAGES = 40
+MAX_DEPTH = 2
 
-# Navigation furniture that is a link but not an answer to anything.
+
 LINK_STOPLIST = {
     "home", "search this site", "skip to main content", "skip to navigation",
     "more", "read more", "back", "next", "previous", "here", "click here",
@@ -230,33 +231,60 @@ def fetch(url):
     return BeautifulSoup(response.text, "html.parser")
 
 
-def discover_urls():
-    """Seed pages plus whatever the live navigation currently points at."""
-    urls = list(SEED_URLS)
+def normalise(url):
+    """Strip the fragment and query so one page is not crawled several times."""
+    url = url.split("#")[0].split("?")[0].rstrip("/")
+    return url or SITE
 
-    for hub in HUB_URLS:
+
+def crawl_urls():
+    """Every page on the school site, found by following its own links.
+
+    This replaced a list of topic patterns matched against the navigation. A
+    whitelist only finds what somebody thought to name: "when do doors open for
+    the Saturday SAT" was unanswerable because no pattern matched
+    /saturday-sat-test, even though the homepage links it directly. Nine of the
+    site's pages were missing for that reason.
+
+    The site is around two dozen pages, so crawling all of it costs about
+    twenty seconds and removes the whole class of gap.
+    """
+    seen = {normalise(SITE)}
+    found = []
+    queue = deque([(normalise(SITE), 0)])
+
+    while queue and len(found) < MAX_PAGES:
+        url, depth = queue.popleft()
         try:
-            soup = fetch(hub)
+            soup = fetch(url)
         except Exception as e:
-            print(f"Could not read navigation from {hub}: {e}", flush=True)
+            print(f"Could not read {url}: {e}", flush=True)
+            continue
+
+        found.append(url)
+        if depth >= MAX_DEPTH:
             continue
 
         for anchor in soup.find_all("a", href=True):
-            href = absolute(anchor["href"])
-            label = anchor.get_text(" ", strip=True)
-            if not href.startswith(SITE):
+            link = normalise(absolute(anchor["href"]))
+            if not link.startswith(SITE) or link in seen:
                 continue
-            if href.rstrip("/") in (u.rstrip("/") for u in urls):
+            if link.lower().endswith(SKIP_SUFFIXES):
                 continue
-            if TOPIC.search(href) or TOPIC.search(label):
-                urls.append(href)
+            seen.add(link)
+            queue.append((link, depth + 1))
 
-    return urls[:MAX_PAGES]
+    # Seeds are crawled too, in case one is orphaned from the navigation.
+    for url in SEED_URLS:
+        if normalise(url) not in found and len(found) < MAX_PAGES:
+            found.append(normalise(url))
+
+    return found
 
 
 def scrape_vrhs_pages():
-    urls = discover_urls()
-    print(f"scraping {len(urls)} pages discovered from the live site",
+    urls = crawl_urls()
+    print(f"crawled {len(urls)} pages from the live site",
           flush=True)
     chunks = []
 
@@ -403,6 +431,11 @@ def embed_texts(texts):
 
 EMBEDDINGS_PATH = "data/vrhs_embeddings.json"
 
+# Retrieval quotas, see get_relevant_context. Three prose chunks carry the
+# explanation, two link chunks carry somewhere to go.
+PROSE_SLOTS = 3
+LINK_SLOTS = 2
+
 # The index was re-read and re-parsed from disk on every question. It is small
 # and immutable between rebuilds, so it is loaded once and kept in memory.
 _INDEX = {"docs": None, "matrix": None}
@@ -460,7 +493,21 @@ def get_relevant_context(query):
     q /= np.linalg.norm(q)
     sims = matrix @ q
 
-    order = np.argsort(sims)[::-1][:3]
+    # Prose and links are retrieved under separate quotas rather than as one
+    # top-3. There are roughly twice as many link chunks as prose chunks, so a
+    # plain top-k fills with links: asking who the principal is returned his
+    # name as a link label at rank 2, with nothing saying he is the principal,
+    # while the paragraph that said so sat at rank 6. The model then correctly
+    # declined to answer. Reserving slots keeps a narrative answer and a place
+    # to go in the same context.
+    ranked = np.argsort(sims)[::-1]
+    is_link = [docs[i].get("kind") == "link" for i in range(len(docs))]
+
+    prose = [i for i in ranked if not is_link[i]][:PROSE_SLOTS]
+    links = [i for i in ranked if is_link[i]][:LINK_SLOTS]
+
+    # Keep overall similarity order so the strongest match leads the context.
+    order = sorted(set(prose) | set(links), key=lambda i: -sims[i])
     context = "\n\n".join(docs[i]["text"] for i in order)
 
     # The standard-score margin has to be computed here, while similarities to

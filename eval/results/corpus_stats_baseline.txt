@@ -1,33 +1,33 @@
 corpus: vrhs_embeddings_baseline.json
-chunks 263 | dim 1536 | sources 15
+chunks 356 | dim 1536 | sources 24
 
 -- background similarity (unrelated chunk pairs) --
-   p5   0.8081
-   p25  0.8378
-   p50  0.8579
-   p75  0.8787
-   p95  0.9169
-   mean 0.8583   n_pairs 34453
+   p5   0.8060
+   p25  0.8355
+   p50  0.8550
+   p75  0.8772
+   p95  0.9239
+   mean 0.8573   n_pairs 63190
 
 -- duplicates --
-   duplicate groups 6 | redundant chunks 18
+   duplicate groups 16 | redundant chunks 38
 
 -- boilerplate --
-   cross-page shingles 209 | words in boilerplate 8406/11703 (71.8%)
+   cross-page shingles 209 | words in boilerplate 13452/18407 (73.1%)
 
 -- can an absolute threshold work? --
-   perfect-match top-1, p5 : 0.8950
-   unrelated background, p50: 0.8579
+   perfect-match top-1, p5 : 0.8982
+   unrelated background, p50: 0.8550
    separable by a single cutoff? yes
 
 -- standard-score margin instead --
-   p5   z 1.94
-   p25  z 2.44
-   p50  z 2.81
-   p95  z 4.86
-   min z 1.56  (pseudo-query lower bound -> Z_SOLID)
+   p5   z 2.14
+   p25  z 2.51
+   p50  z 2.86
+   p95  z 5.25
+   min z 1.67  (pseudo-query lower bound -> Z_SOLID)
 
 -- effect of the hygiene pass --
-corpus: 263 chunks -> 60 after boilerplate strip and dedupe
-   chunks 263 -> 60 | words 11784 -> 2560 (78.3% removed)
+corpus: 356 chunks -> 80 after boilerplate strip and dedupe
+   chunks 356 -> 80 | words 18488 -> 3376 (81.7% removed)
    note: background similarity after stripping requires re-embedding (run /embed), since the stored vectors encode the boilerplate.

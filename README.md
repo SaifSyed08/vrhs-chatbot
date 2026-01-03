@@ -12,10 +12,10 @@ repository sidebar.
 
 ## What it does
 
-* Answers from 218 chunks scraped off the live school site, not from model
-  memory. The page list is discovered from the site's own navigation, so a
-  year rollover does not break it.
-* Streams tokens, so text appears after about 870 ms.
+* Answers from 279 chunks covering all 23 pages of the school site, not from
+  model memory. Pages are found by crawling, so a year rollover does not break
+  it and nothing has to be added to a list by hand.
+* Streams tokens, so text appears after about 750 ms.
 * Attaches **source pills** linking to the pages behind the answer.
 * Runs three grounding checks and posts a short caution when one fails.
 * Records thumbs ratings against retrieval scores, so gaps become visible.
@@ -24,23 +24,31 @@ repository sidebar.
 
 ![Question, retrieval, streaming, then three verification checks](docs/architecture.svg)
 
-The index is a JSON file of 218 vectors held in memory. At this size a vector
-database would add operational weight and no speed: brute-force cosine over 218
+The index is a JSON file of 279 vectors held in memory. At this size a vector
+database would add operational weight and no speed: brute-force cosine over 279
 vectors takes under a millisecond, which is three orders of magnitude below the
 network round trip in front of it. The bottleneck is API latency, not search.
 
-### Pages are discovered, not listed
+### Pages are crawled, not listed
 
-Two of the original eleven URLs were year-scoped (`24-25-bell-schedules`) and
-started returning 404 the moment the school rolled the site over, taking those
-pages out of the corpus silently. Naming `26-27` instead would have failed the
-same way next summer.
+This took two attempts, and the first was still a whitelist.
 
-Ingest now reads the live navigation and follows links whose label or path
-matches a topic it cares about, so the current bell schedule page is found by
-what it is about rather than by its name. The seed list holds only stable
-URLs. On the last run this found 14 pages, including two the hardcoded list had
-never included.
+Originally eleven URLs were named directly. Two were year-scoped
+(`24-25-bell-schedules`) and started returning 404 the moment the school rolled
+the site over, silently dropping those pages. Naming `26-27` instead would have
+failed the same way next summer, so discovery replaced it: read the live
+navigation, follow links whose label or path matches a topic worth having.
+
+That was better and still wrong. A topic list only finds what somebody thought
+to name. Asked when doors open for the Saturday SAT, the bot had nothing,
+because no pattern matched `/saturday-sat-test` even though the homepage links
+it directly. Nine pages were missing for that reason, including the principal's
+office and the staff page.
+
+Ingest now crawls the site: breadth-first from the homepage, same domain only,
+skipping binary files, bounded at 40 pages and depth 2. It finds all 23 pages in
+about twenty seconds, and removes the entire class of gap rather than the
+instance of it.
 
 ### Links live inline, and each one is also its own chunk
 
@@ -62,6 +70,21 @@ matched, which is what a "where do I find X" question is actually asking.
 The same question now retrieves *Bus Info* at rank 1, and **100% of answerable
 questions retrieve a context containing a usable link**, measured across the
 eval set.
+
+### Prose and links are retrieved under separate quotas
+
+Link chunks outnumber prose chunks roughly two to one, so a plain top-3 fills
+with links. Asked who the principal is, retrieval returned his name as a link
+label at rank 2 with nothing stating he holds the job, while the paragraph that
+said so sat at rank 6. The model then correctly declined to answer a question
+the corpus could answer.
+
+Retrieval now fills three prose slots and two link slots separately, so an
+answer and somewhere to go both make it into the context. Top-3 source accuracy
+went 60.0% to 66.7%, and the retrieval gate went from 96% to **100%**
+separation on the question set. `eval/retrieval_eval.py` selects under the same
+quotas, because measuring a plain top-k while the app runs quotas would report
+numbers describing a system nobody is running.
 
 ## The hallucination layer
 
@@ -97,7 +120,7 @@ Three checks run on every answer, cheapest first.
 
 | Check | Question it answers | Cost | Measured |
 | --- | --- | --- | --- |
-| Retrieval gate | Does the corpus cover this at all? | free | 96% separation, answerable vs out of scope |
+| Retrieval gate | Does the corpus cover this at all? | free | 100% separation, answerable vs out of scope |
 | Link grounding | Does every URL appear verbatim in the context? | free | precision 1.00, recall 1.00 |
 | Claim grounding | Does the context support each claim? | $0.00007 | precision 1.00, recall 1.00 |
 
@@ -238,13 +261,11 @@ Both corpora below come from the same scrape, so the comparison is clean.
 
 | | Baseline | After hygiene |
 | --- | --- | --- |
-| Chunks | 263 | **218** |
-| Words | 11,710 | **4,203** |
-| Duplicate chunks | 18 | **0** |
-| Words inside cross-page boilerplate | 72.3% | **22.7%** |
-| Separable by an absolute cutoff | no | **yes** |
+| Chunks | 356 | **279** |
+| Duplicate chunks | 38 | **0** |
+| Words inside cross-page boilerplate | 73.1% | **21.5%** |
 | Top-1 retrieval | 40.0% | **46.7%** |
-| Top-3 retrieval | 53.3% | **60.0%** |
+| Top-3 retrieval | 66.7% | 66.7% |
 | Answerable questions with a link in context | 100% | 100% |
 
 The pass strips 64% of the words and every duplicate, and on the current corpus
@@ -265,15 +286,14 @@ Median over 5 real questions, from `eval/latency.py`.
 
 | Stage | Median | Range |
 | --- | --- | --- |
-| Embed question (ada-002) | 255 ms | 207 to 658 |
-| Retrieve top 3 (in memory) | under 1 ms | 0 to 1 |
-| Time to first token (gpt-4o) | 613 ms | 553 to 1,624 |
-| Full answer stream | 1,601 ms | 997 to 2,258 |
-| Grounding check (after last token) | 683 ms | 631 to 950 |
-| End to end | 2,827 ms | 1,888 to 3,547 |
+| Embed question (ada-002) | 227 ms | 220 to 758 |
+| Retrieve under quotas (in memory) | under 1 ms | 0 to 1 |
+| Time to first token (gpt-4o) | 518 ms | 467 to 787 |
+| Grounding check (after last token) | 713 ms | 583 to 832 |
+| End to end | 2,223 ms | 1,862 to 2,583 |
 
-The number that matters is **868 ms**, the wait before any text appears.
-Verification's 683 ms lands after the last token, so the accuracy layer costs
+The number that matters is **746 ms**, the wait before any text appears.
+Verification's 713 ms lands after the last token, so the accuracy layer costs
 nothing in perceived latency. That is the whole reason it runs post-stream.
 
 Retrieval being under a millisecond is worth noting: essentially all
@@ -290,15 +310,17 @@ would buy nothing.
   another embedding model.
 * **Cost figures are computed** from published per-token rates, not read off a
   billing dashboard.
-* **Retrieval is still the weak point.** Top-3 source accuracy is 60%, though
+* **Retrieval is still the weak point.** Top-3 source accuracy is 66.7%, though
   that metric now undercounts: a link chunk is attributed to the page it was
   found on, not the page it points at, so a correct answer can score as a miss.
   Link availability, which is what the "where do I find X" case actually needs,
   is 100%.
-* **The gate populations overlap.** Answerable questions bottom out at 0.782
-  top-1 cosine and out-of-scope questions reach 0.791, so 96% is the ceiling
-  for any single cutoff. The configured 0.78 sits slightly below the measured
-  optimum of 0.791, which favours answering over cautioning.
+* **The gate separates perfectly, by 0.003.** Answerable questions bottom out
+  at 0.795 and out-of-scope reach 0.792, so 0.793 scores 100%. That margin will
+  not survive contact with a larger question set, so the configured cutoff is
+  0.79: it leans toward answering, on the grounds that a missed caution still
+  faces two more checks while a spurious one teaches readers to ignore the
+  panel.
 
 Ranked next steps: hybrid retrieval (BM25 plus dense, since the remaining misses
 are lexical), semantic chunking on headings instead of a fixed 150-word window,

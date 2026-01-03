@@ -39,8 +39,24 @@ EMBED_MODEL = "text-embedding-ada-002"
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\((https?://[^)\s]+\))")
 
 
-def probe(client, matrix, sources, question, texts=None):
-    """Retrieve for one question, returning (stats, sources of the top 3)."""
+PROSE_SLOTS = 3
+LINK_SLOTS = 2
+
+
+def select(sims, kinds):
+    """The same prose and link quotas production retrieves under.
+
+    Measuring a plain top-k while the app retrieves under quotas would report
+    numbers that describe a system nobody is running.
+    """
+    ranked = np.argsort(sims)[::-1]
+    prose = [i for i in ranked if kinds[i] != "link"][:PROSE_SLOTS]
+    links = [i for i in ranked if kinds[i] == "link"][:LINK_SLOTS]
+    return sorted(set(prose) | set(links), key=lambda i: -sims[i])
+
+
+def probe(client, matrix, sources, question, texts=None, kinds=None):
+    """Retrieve for one question, returning (stats, sources retrieved)."""
     response = client.embeddings.create(model=EMBED_MODEL, input=question)
     q = np.array(response.data[0].embedding, dtype=np.float64)
     q /= np.linalg.norm(q)
@@ -52,7 +68,7 @@ def probe(client, matrix, sources, question, texts=None):
         "top": float(sims.max()),
         "z": float((sims.max() - sims.mean()) / spread) if spread else None,
     }
-    top = order[:3]
+    top = select(sims, kinds) if kinds is not None else list(order[:3])
     if texts is not None:
         context = " ".join(texts[i] for i in top)
         stats["links_in_context"] = len(MARKDOWN_LINK.findall(context))
@@ -67,6 +83,7 @@ def run():
     matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
     sources = [d["source"] for d in docs]
     texts = [d["text"] for d in docs]
+    kinds = [d.get("kind", "prose") for d in docs]
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     print(f"corpus: {os.path.basename(EMBEDDINGS)} ({len(docs)} chunks)\n")
@@ -77,7 +94,7 @@ def run():
 
     print("-- answerable --")
     for case in fx["answerable"]:
-        stats, srcs = probe(client, matrix, sources, case["question"], texts)
+        stats, srcs = probe(client, matrix, sources, case["question"], texts, kinds)
         want = case["expect_source_contains"]
         hit1 += want in srcs[0]
         top3 = any(want in s for s in srcs)
@@ -90,7 +107,7 @@ def run():
 
     print("\n-- out of scope (the corpus cannot answer these) --")
     for case in fx["out_of_scope"]:
-        stats, _ = probe(client, matrix, sources, case["question"], texts)
+        stats, _ = probe(client, matrix, sources, case["question"], texts, kinds)
         z_oos.append(stats["z"])
         top_oos.append(stats["top"])
         print(f"      z={stats['z']:5.2f} top={stats['top']:.3f}  "
