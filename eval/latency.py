@@ -35,11 +35,85 @@ SYSTEM = ("You are an AI chatbot for Vista Ridge High School. Answer from the "
           "context.")
 
 
-def run():
+def cold_start():
+    """Costs paid once per container, and who used to pay them.
+
+    The stage table below this measures a warm process, which is the right
+    way to read steady-state cost and the wrong way to understand why the
+    deployed bot feels slow. Cloud Run scales to zero, so the first question
+    after a quiet period lands on a container that has parsed no index and
+    opened no connection to the API. Those costs are real and they are not
+    in the stage table.
+
+    Must run before anything else touches the network, or the handshake it is
+    trying to measure has already happened.
+    """
+    t0 = time.perf_counter()
     docs = json.load(open(EMBEDDINGS, encoding="utf-8"))
     matrix = np.array([d["embedding"] for d in docs], dtype=np.float64)
     matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
+    t_index = (time.perf_counter() - t0) * 1000
+
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    t0 = time.perf_counter()
+    client.embeddings.create(model="text-embedding-ada-002", input="cold")
+    t_first = (time.perf_counter() - t0) * 1000
+
+    pooled = []
+    for _ in range(4):
+        t0 = time.perf_counter()
+        client.embeddings.create(model="text-embedding-ada-002", input="warm")
+        pooled.append((time.perf_counter() - t0) * 1000)
+    t_pooled = statistics.median(pooled)
+
+    print(f"{'cold start (once per container)':40}{'ms':>10}")
+    print("-" * 50)
+    print(f"{'parse index and normalise':40}{t_index:10.0f}")
+    print(f"{'first API call, fresh process':40}{t_first:10.0f}")
+    print(f"{'same call once pooled':40}{t_pooled:10.0f}")
+    print(f"{'  of which DNS + TLS handshake':40}{t_first - t_pooled:10.0f}")
+    print()
+    print(f"{'total charged to the first question':40}"
+          f"{t_index + (t_first - t_pooled):10.0f}")
+    print("warm_start() in main.py moves all of it to boot, on a daemon "
+          "thread.")
+    print()
+
+    return docs, matrix, client
+
+
+def cache_effect(client, docs, matrix):
+    """What a repeat question saves by not embedding again.
+
+    Worth measuring separately because it is the only per-question saving
+    available: the embed round trip is 218 ms that nothing else can overlap,
+    since retrieval cannot start until the vector exists and the chat call
+    cannot start until retrieval finishes.
+    """
+    q = QUESTIONS[0]
+
+    t0 = time.perf_counter()
+    v = client.embeddings.create(model="text-embedding-ada-002",
+                                 input=q).data[0].embedding
+    miss = (time.perf_counter() - t0) * 1000
+
+    cache = {" ".join(q.lower().split()): v}
+    t0 = time.perf_counter()
+    cache[" ".join(q.lower().split())]
+    hit = (time.perf_counter() - t0) * 1000
+
+    print(f"{'query embedding':40}{'ms':>10}")
+    print("-" * 50)
+    print(f"{'cache miss (round trip)':40}{miss:10.1f}")
+    print(f"{'cache hit (dict lookup)':40}{hit:10.3f}")
+    print(f"{'saved per repeated question':40}{miss - hit:10.1f}")
+    print()
+
+
+def run():
+    docs, matrix, client = cold_start()
+    cache_effect(client, docs, matrix)
 
     stages = {k: [] for k in ("embed", "retrieve", "ttft", "stream", "verify",
                               "total")}

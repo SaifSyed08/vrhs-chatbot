@@ -4,15 +4,13 @@ from openai import OpenAI, RateLimitError
 import json
 import numpy as np
 from numpy.linalg import norm
-import requests
-from bs4 import BeautifulSoup
 import os
-import tiktoken
 import datetime
+import threading
 import time
 import re
 import traceback
-from collections import deque
+from collections import OrderedDict, deque
 from urllib.parse import parse_qs, unquote, urlparse
 import hallucination
 import corpus
@@ -226,6 +224,18 @@ def page_markdown(soup):
 
 
 def fetch(url):
+    """Fetch and parse one page.
+
+    `requests` and `bs4` are imported here rather than at module scope. They
+    are reachable only from a rebuild, never from answering a question, so a
+    cold start should not pay for them. Measured marginal saving is about
+    50 ms, not the 525 ms the two cost in isolation - openai and flask already
+    pull most of their dependency tree in, so only the top of it was ours to
+    remove. Small, but it is free and the coupling was wrong regardless.
+    """
+    import requests
+    from bs4 import BeautifulSoup
+
     response = requests.get(url, timeout=25)
     response.raise_for_status()
     return BeautifulSoup(response.text, "html.parser")
@@ -403,6 +413,53 @@ def cosine_sim(a, b):
     return np.dot(a, b) / (norm(a) * norm(b))
 
 
+# Embedding one question is a network round trip that sits directly in front
+# of the answer: nothing can be retrieved, so no chat call can start, until it
+# comes back. Measured at a 218 ms median, it is roughly a fifth of the wait
+# before any text appears.
+#
+# Swapping the model does not help - text-embedding-3-small measures 211 ms,
+# inside the noise, because the cost is the round trip and not the model. What
+# does help is not making the call. A school chatbot is asked the same few
+# things over and over ("bell schedule", "when does school start"), so repeat
+# questions can answer from a cache and skip the hop entirely.
+#
+# Keyed on the question with case and whitespace normalised away, which is
+# what makes "Bell schedule?" and "bell  schedule?" one entry. Bounded, so a
+# long-lived process cannot grow without limit; ada-002 vectors are about
+# 12 KB each, so 512 entries is roughly 6 MB.
+QUERY_CACHE_SIZE = 512
+_query_cache = OrderedDict()
+_query_cache_lock = threading.Lock()
+_query_cache_stats = {"hits": 0, "misses": 0}
+
+
+def cache_key(text):
+    return " ".join(text.lower().split())
+
+
+def embed_query(text):
+    """Embed a user question, reusing a recent identical one when possible."""
+    key = cache_key(text)
+
+    with _query_cache_lock:
+        if key in _query_cache:
+            _query_cache.move_to_end(key)
+            _query_cache_stats["hits"] += 1
+            return _query_cache[key]
+        _query_cache_stats["misses"] += 1
+
+    vector = embed_text(text)
+
+    with _query_cache_lock:
+        _query_cache[key] = vector
+        _query_cache.move_to_end(key)
+        while len(_query_cache) > QUERY_CACHE_SIZE:
+            _query_cache.popitem(last=False)
+
+    return vector
+
+
 def embed_text(text):
     response = with_retry(lambda: client.embeddings.create(
         model="text-embedding-ada-002", input=text))
@@ -439,19 +496,70 @@ LINK_SLOTS = 2
 # The index was re-read and re-parsed from disk on every question. It is small
 # and immutable between rebuilds, so it is loaded once and kept in memory.
 _INDEX = {"docs": None, "matrix": None}
+_INDEX_LOCK = threading.Lock()
 
 
 def load_index():
-    """Load the corpus once, returning (docs, unit-normalised matrix)."""
-    if _INDEX["docs"] is None:
-        if not os.path.exists(EMBEDDINGS_PATH):
-            return None, None
-        with open(EMBEDDINGS_PATH, "r", encoding="utf-8") as f:
-            docs = json.load(f)
-        matrix = np.array([d["embedding"] for d in docs], dtype=np.float64)
-        matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
-        _INDEX["docs"], _INDEX["matrix"] = docs, matrix
+    """Load the corpus once, returning (docs, unit-normalised matrix).
+
+    Locked because warm_start() loads on a background thread while a request
+    may already be asking for it. Without the lock both would parse the same
+    9.7 MB of JSON; the result is identical either way, so this is about not
+    doing the work twice rather than about correctness.
+    """
+    if _INDEX["docs"] is not None:
+        return _INDEX["docs"], _INDEX["matrix"]
+
+    with _INDEX_LOCK:
+        if _INDEX["docs"] is None:
+            if not os.path.exists(EMBEDDINGS_PATH):
+                return None, None
+            with open(EMBEDDINGS_PATH, "r", encoding="utf-8") as f:
+                docs = json.load(f)
+            matrix = np.array([d["embedding"] for d in docs], dtype=np.float64)
+            matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
+            _INDEX["docs"], _INDEX["matrix"] = docs, matrix
+
     return _INDEX["docs"], _INDEX["matrix"]
+
+
+def warm_start():
+    """Pay the first-question costs at boot instead of at the first question.
+
+    Deployment target is Cloud Run, which scales to zero. A container that has
+    just started has done none of the one-time work the answer path needs, and
+    all of it used to land on whoever asked first after a quiet period:
+
+      * parsing the 9.7 MB index and normalising it, measured at 137 ms here
+        and slower on a smaller cloud instance;
+      * DNS and the TLS handshake to the API, which the connection pool then
+        reuses for every later question.
+
+    Both run on a daemon thread so opening the port is not delayed, which is
+    what Cloud Run watches to decide the container is ready. Failures are
+    swallowed on purpose: this is an optimisation, and a warm-up that cannot
+    reach the network must not stop the app from booting. The real request
+    path calls load_index() itself and will do the work then if this lost the
+    race.
+    """
+    if os.getenv("VRHS_NO_WARM"):
+        return
+
+    def run():
+        try:
+            load_index()
+        except Exception as e:
+            print(f"[warm] index preload failed: {e}", flush=True)
+        try:
+            if os.getenv("OPENAI_API_KEY"):
+                client.embeddings.create(
+                    model="text-embedding-ada-002", input="warm")
+        except Exception as e:
+            print(f"[warm] connection warm-up failed: {e}", flush=True)
+        else:
+            print("[warm] index and API connection ready", flush=True)
+
+    threading.Thread(target=run, name="warm-start", daemon=True).start()
 
 
 # Slugs that should not be title-cased into "Staar" or "Vrhs".
@@ -489,7 +597,7 @@ def get_relevant_context(query):
     if docs is None:
         return "No knowledge base available. Please visit /embed first.", {}, []
 
-    q = np.array(embed_text(query), dtype=np.float64)
+    q = np.array(embed_query(query), dtype=np.float64)
     q /= np.linalg.norm(q)
     sims = matrix @ q
 
@@ -556,6 +664,14 @@ def health():
         "working_directory": os.getcwd(),
         "data_writable": os.access("data", os.W_OK) if os.path.isdir("data")
                          else None,
+        # Hit rate is the thing to watch: it is what says whether skipping the
+        # embedding round trip is actually buying anything in production, as
+        # opposed to on the repeated questions of a benchmark.
+        "query_cache": {
+            "entries": len(_query_cache),
+            "hits": _query_cache_stats["hits"],
+            "misses": _query_cache_stats["misses"],
+        },
     }
 
     if request.args.get("deep"):
@@ -748,6 +864,9 @@ def submit_feedback():
     print(f"[feedback] {entry['rating']} level={entry['retrieval_level']} "
           f"q={entry['question'][:60]}", flush=True)
     return jsonify({"status": "success"})
+
+
+warm_start()
 
 
 if __name__ == "__main__":
