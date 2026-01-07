@@ -176,6 +176,34 @@ def find_ungrounded_links(answer, context):
     return bad
 
 
+# The exclusion list below is long and specific because a short one did not
+# work. It used to read "ignore greetings, offers to help, closing
+# pleasantries, and hedged suggestions to contact the school", and the grader
+# ignored none of them.
+#
+# Measured in eval/hallucination_rate.py: on out-of-scope questions, where the
+# bot correctly refuses, 18 of 20 refusals were flagged as containing an
+# unsupported claim. The flagged text was the refusal itself.
+#
+#   "I don't have the information about the plot of Hamlet."
+#   "I'm here to help with inquiries related to Vista Ridge High School."
+#   "contact the front office for assistance."
+#
+# None of those are assertions about the school, so no source could ever
+# support them, and the grader is right that the context does not state them.
+# It was asked the wrong question. A sentence describing what the assistant
+# knows is not a claim about the world, and grading it against a scrape of the
+# school website is a category error.
+#
+# The cost was not academic. Every one of those refusals shipped with a
+# "Some details are not confirmed by the pages I read" caution attached to it,
+# so the panel fired hardest on the answers behaving best. That is the failure
+# the whole layer is supposed to avoid: a warning a reader learns to ignore is
+# worse than no warning, because it spends the credibility the real ones need.
+#
+# Naming the exclusions concretely rather than by category fixed it, and the
+# distinction the prompt now leads with - claims about the school, not claims
+# about the assistant - is what carries the weight.
 GRADER_PROMPT = """You are checking whether an answer is supported by source text.
 
 You will be given SOURCE (text scraped from a high school's website) and ANSWER.
@@ -183,8 +211,28 @@ List every factual claim in ANSWER that SOURCE does not support. A claim counts
 as unsupported if SOURCE does not state it, even if you personally believe it is
 true - you are grading against SOURCE only, never against your own knowledge.
 
-Ignore greetings, offers to help, closing pleasantries, and hedged suggestions
-to contact the school. Those are not factual claims.
+Grade ONLY assertions about the school itself: its schedules, policies, dates,
+fees, staff, rooms, events, requirements, or where something can be found.
+
+Do NOT list any of the following. They are not claims about the school, and no
+source text could support them:
+
+* Statements about what the assistant knows, has, or was given - for example
+  "I don't have that information", "the context doesn't say", "I couldn't find
+  the 2026-2027 calendar", "that isn't in the pages I read".
+* Statements about the assistant's role or scope - for example "I can only
+  help with Vista Ridge High School questions", "that's outside what I cover".
+* Suggestions to go somewhere or ask someone - for example "contact the front
+  office", "check the staff directory", "you might find it on that page".
+  Suggesting a place is not asserting a fact about it.
+* Greetings, offers of further help, and closing pleasantries - for example
+  "feel free to ask", "have a great day", "hope that helps".
+* Statements naming which school year something refers to, when the source
+  shows that year - saying a calendar is the 2025-2026 one is reporting the
+  source, not adding to it.
+
+A hedged statement is still a claim if it asserts something about the school:
+"I believe lunch is at 12:30" is a claim about lunch and must be graded.
 
 Reply with JSON only, in this shape:
 {"unsupported": ["claim one", "claim two"]}

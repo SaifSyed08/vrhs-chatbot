@@ -3,10 +3,10 @@ cases 20 | hallucinated 9 | grounded 11
 architecture                 prec    rec     F1   p50 ms    $/check  notes
 --------------------------------------------------------------------------
 lexical overlap             0.889  0.889  0.889        0   0.000000  threshold 0.71
-embedding similarity        0.800  0.889  0.842      400   0.000014  threshold 0.904
-llm judge (gpt-4o-mini)     1.000  1.000  1.000      629   0.000072  no threshold
+embedding similarity        0.800  0.889  0.842      318   0.000014  threshold 0.904
+llm judge (gpt-4o-mini)     1.000  1.000  1.000      766   0.000072  no threshold
 cascade (lexical -> llm)    1.000  0.889  0.941        0   0.000025  7/20 escalated
-chain-of-verification       0.692  1.000  0.818     1534   0.000150  2 calls per check
+chain-of-verification       0.667  0.889  0.762     1403   0.000150  2 calls per check
 
 threshold detectors are shown at their best achievable F1, which overstates them:
 that threshold was chosen on this same 20-case set.

@@ -1,0 +1,36 @@
+trials: 50 (30 answerable, 20 out of scope), 2 run(s) per question, gpt-4o at production temperature
+
+rate                                             count      of          
+------------------------------------------------------------------------
+fabricated link                                      0      50      0.0%
+unsupported claim                                   12      50     24.0%
+answered an uncovered question                       0      20      0.0%
+declined a question the corpus covers                7      30     23.3%
+
+what the reader sees                             count      of          
+------------------------------------------------------------------------
+trials with any fault                               12      50     24.0%
+  of those, flagged to the reader                   12      12    100.0%
+  of those, reached reader unflagged                 0      12      0.0%
+answerable, no fault, warned anyway                  0      30      0.0%
+
+refused a question the corpus covers (the opposite failure):
+  How do I find a teacher's email?
+      retrieval=solid top=0.7949997783775413
+  What do seniors need to do before graduation?
+      retrieval=solid top=0.8023228097217172
+  What do seniors need to do before graduation?
+      retrieval=solid top=0.8023228097217172
+  Where do I drop off my student in the morning?
+      retrieval=solid top=0.8386402808832989
+  Where do I drop off my student in the morning?
+      retrieval=solid top=0.8386402808832989
+  Where do I report an absence?
+      retrieval=solid top=0.8282149403104404
+  Where do I report an absence?
+      retrieval=solid top=0.8282149403104404
+
+Read with care: at this sample size a single trial moves any rate by several points, and
+temperature 1.0 means a rerun will not reproduce these exactly. The out-of-scope set is
+also blunt - questions the site plainly does not cover. Subtle near-misses, where the
+corpus half answers, are the harder untested case.
