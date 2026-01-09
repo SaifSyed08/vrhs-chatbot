@@ -171,6 +171,12 @@ to accept paraphrase moved precision to 0.636 but cost recall, for a slightly
 worse F1 of 0.700. It stays in `eval/detectors.py` as a measured alternative
 rather than shipping because it sounds rigorous.
 
+Its score also moves between runs more than anything else in the table —
+precision has come out at 0.615, 0.667 and 0.692 on the same 20 cases, because
+two chained model calls compound their own variance. The row above is one
+snapshot, and `eval/results/detection_ablation.txt` holds the most recent. Its
+ranking has never changed, which is the part the decision rests on.
+
 **Lexical overlap is a strong baseline.** F1 0.889 for nothing. Any argument
 that a model call is necessary has to beat this first.
 
@@ -190,6 +196,95 @@ becomes the correct choice at roughly 100 times this traffic.
 The two threshold-based detectors are reported at their best achievable F1, with
 the threshold chosen on the same 20 cases that score them. That flatters them,
 and the judge still wins.
+
+## How often does it actually hallucinate?
+
+Everything above measures the detector. Twenty labelled cases with false claims
+injected by hand say how good the judge is *once a hallucination exists*, and
+nothing at all about how often one exists, because none of those answers were
+written by this bot.
+
+`eval/hallucination_rate.py` asks the other question. It imports `main.py` and
+calls the same `get_relevant_context` and the same `dated_prompt` the Flask
+route calls, at the same model and the same default temperature, then runs the
+same `verify_answer` over the result. Every question runs twice, because
+temperature 1.0 means one sample is an anecdote.
+
+Fifty trials, 30 on questions the corpus covers and 20 on questions it does
+not.
+
+| Rate | Result | |
+| --- | --- | --- |
+| Fabricated link | 0 of 50 | **0.0%** |
+| Unsupported claim | 12 of 50 | 24.0% |
+| Answered a question the site does not cover | 0 of 20 | **0.0%** |
+| Refused a question the site does cover | 7 of 30 | 23.3% |
+
+And the number that matters more than any of those:
+
+| What the reader sees | Result | |
+| --- | --- | --- |
+| Trials with any fault | 12 of 50 | 24.0% |
+| Of those, flagged to the reader | 12 of 12 | **100%** |
+| Of those, reached the reader unflagged | 0 of 12 | **0.0%** |
+| Answerable, no fault, warned anyway | 0 of 30 | **0.0%** |
+
+Nothing got through unflagged, and nothing clean got warned. The two failures
+the layer exists to prevent, a silent hallucination and a caution the reader
+learns to ignore, both came in at zero on this set.
+
+### The grader was flagging the bot for refusing
+
+The first run of this harness reported a 66% unsupported-claim rate, which was
+wrong in an instructive way. On out-of-scope questions, where the bot correctly
+refuses, **18 of 20 refusals were flagged as containing an unsupported claim**.
+The flagged text was the refusal:
+
+> "I don't have the information about the plot of Hamlet."
+> "I'm here to help with inquiries related to Vista Ridge High School."
+> "contact the front office for assistance."
+
+The grader was right that the context does not state those things. It was asked
+the wrong question. A sentence about what the assistant knows is not a claim
+about the world, and grading it against a scrape of the school website is a
+category error. The prompt already said to ignore "hedged suggestions to
+contact the school" and the grader ignored it anyway, because a one-line
+exclusion phrased as a category does not survive contact with a concrete
+sentence.
+
+The cost was not academic. Every one of those refusals shipped with *"Some
+details are not confirmed by the pages I read"* attached, so the caution panel
+fired hardest on the answers behaving best — training readers to dismiss the
+panel exactly where the real warnings live.
+
+Naming the exclusions concretely, and leading with the distinction that carries
+the weight — claims about the school, not claims about the assistant — took the
+rate from **66% to 24%**, with the judge still scoring precision 1.00 and
+recall 1.00 on the 20 labelled cases. The looser prompt cost no recall.
+
+### What is left is over-refusal, not invention
+
+The remaining problem is the opposite of the one the layer was built for. The
+bot refuses **23%** of questions the corpus can answer, and it does so on
+questions where retrieval had already succeeded:
+
+| Refused question | Top cosine | Gate |
+| --- | --- | --- |
+| Where do I drop off my student in the morning? | 0.839 | solid |
+| Where do I report an absence? | 0.828 | solid |
+| What do seniors need to do before graduation? | 0.802 | solid |
+| How do I find a teacher's email? | 0.795 | solid |
+
+Retrieval is not the fault here — the gate says solid every time, and the right
+page is in the context. The model is reading a context that contains a relevant
+link and some surrounding prose, and deciding that is not enough to answer
+with. That points at the prompt rather than the index: the instruction not to
+infer beyond the context is doing more work than intended, and a link chunk
+whose prose says little may not read as permission to answer.
+
+That is the next thing to fix, and it is worth saying that it was invisible
+until this harness existed. Every metric in this repo before it measured
+whether the bot says false things. None measured whether it says anything.
 
 ## Feedback loop
 
@@ -218,6 +313,9 @@ retrieval score attached it says why, and the two failures need different fixes:
 | Corpus hygiene before embedding | index **263 to 218 chunks**, words **11,710 to 4,203**, top-3 up 6.7 points |
 | LLM judge over the alternatives | F1 **0.727 to 1.000** against CoVe, for less cost |
 | Verify after the last token, not before the first | perceived wait unchanged at **757 ms** |
+| Warmed the index and the API connection at boot | **0.8 to 1.3 s** off the first question after a cold start |
+| Cached query embeddings on the normalised question | repeat questions skip a **218 ms** round trip |
+| Told the grader that refusals are not claims | unsupported-claim rate **66% to 24%**, judge F1 unchanged at 1.00 |
 | Index cached in memory instead of re-read per question | one file read and parse per process, not per question |
 | Feedback wired to storage | ratings became data instead of a UI state change |
 
@@ -300,6 +398,70 @@ Retrieval being under a millisecond is worth noting: essentially all
 user-visible latency is network round trips to OpenAI, so optimising the search
 would buy nothing.
 
+### The table above measures a warm process, and users do not get one
+
+That is the right way to read steady-state cost and the wrong way to understand
+why the deployed bot feels slow. The deployment target is Cloud Run, which
+scales to zero. The first question after a quiet period lands on a container
+that has parsed no index and opened no connection to the API, and none of that
+work appears anywhere in the stage table, because the harness did it before
+starting the clock.
+
+Measured separately, from a genuinely cold process:
+
+| Cost paid once per container | Measured |
+| --- | --- |
+| Parse the 9.7 MB index and normalise it | 118 to 137 ms |
+| DNS and TLS handshake on the first API call | 629 to 1,154 ms |
+| Importing `requests` and `bs4`, which only the scraper needs | ~50 ms |
+
+The handshake is the one that hurts, and it was landing entirely on whoever
+asked first. `warm_start()` now does all three at boot on a daemon thread, so
+the port opens immediately — which is what Cloud Run watches to decide the
+container is ready — and the work finishes while nobody is waiting. Between
+**0.8 and 1.3 seconds** comes off the first question, depending on how the
+handshake goes.
+
+The import saving deserves a footnote, because the first figure was wrong.
+Timed in isolation `requests` and `bs4` cost 525 ms, which is what made moving
+them look worthwhile. Timed as a marginal change to this app they cost about
+50 ms, because `openai` and `flask` already pull most of their dependency tree
+in. The change stayed anyway — it is free and importing a scraper to answer a
+question was wrong regardless — but the honest number is 50, not 525.
+
+### Not making the call beats making a faster one
+
+The query embedding is 218 ms sitting directly in front of the answer. Nothing
+overlaps it: retrieval cannot start until the vector exists, and the chat call
+cannot start until retrieval finishes.
+
+The obvious move is a faster model, and it does not work:
+
+| | Median |
+| --- | --- |
+| `text-embedding-ada-002` | 218 ms |
+| `text-embedding-3-small` | 211 ms |
+
+Seven milliseconds, inside the noise, because the cost is the round trip rather
+than the model. The same holds one layer up — `gpt-4o-mini` reaches its first
+token in 859 ms against `gpt-4o`'s 882 ms, so trading the answering model down
+would buy nothing a reader could perceive. Both are worth recording as measured
+dead ends, since both are the first thing anyone suggests.
+
+What does work is not making the call. A school chatbot is asked the same
+handful of things over and over, so query embeddings are cached on the
+normalised question, bounded at 512 entries:
+
+| | Median |
+| --- | --- |
+| Cache miss, round trip | 183 to 258 ms |
+| Cache hit, dict lookup | under 0.01 ms |
+
+A repeat question skips the hop entirely and produces byte-identical context
+and statistics. `/health` reports hits and misses, because the hit rate in
+production is the only thing that says whether this is buying anything real as
+opposed to anything on a benchmark that asks the same question twice.
+
 ## Limits
 
 * **Both labeled sets are small**: 20 grounding cases, 25 retrieval questions. A
@@ -322,10 +484,21 @@ would buy nothing.
   faces two more checks while a spurious one teaches readers to ignore the
   panel.
 
-Ranked next steps: hybrid retrieval (BM25 plus dense, since the remaining misses
-are lexical), semantic chunking on headings instead of a fixed 150-word window,
-a larger grounding set with subtler hallucinations, and scheduled re-scraping so
-a year rollover cannot silently empty a page again.
+* **The hallucination rates are 50 samples at temperature 1.0.** Reruns move
+  every figure by several points — the unsupported-claim rate came out at 24%,
+  28% and 24% on three consecutive runs of the same harness. Treat them as a
+  range, not a measurement. The zeros are the sturdiest numbers there, since a
+  zero over 50 trials still bounds the rate loosely rather than proving it.
+* **The out-of-scope set is blunt.** Questions like the capital of France are
+  plainly uncovered, and the gate separates them easily. The untested case is
+  the near-miss, where the site half answers and the honest reply is partial.
+
+Ranked next steps: **fix the 23% over-refusal**, which is now the largest
+measured defect and is a prompt problem rather than a retrieval one; hybrid
+retrieval (BM25 plus dense, since the remaining misses are lexical); semantic
+chunking on headings instead of a fixed 150-word window; a larger grounding set
+with subtler hallucinations; and scheduled re-scraping so a year rollover cannot
+silently empty a page again.
 
 ## Reproducing the numbers
 
@@ -337,7 +510,10 @@ python eval/corpus_stats.py           # corpus and threshold analysis, no API ke
 python eval/link_grounding_eval.py    # link check precision and recall, no API key
 python eval/retrieval_eval.py         # retrieval accuracy and gate calibration
 python eval/detection_ablation.py     # all five detector architectures
-python eval/latency.py                # per-stage timings
+python eval/latency.py                # cold start, cache, per-stage timings
+python eval/hallucination_rate.py     # end-to-end hallucination rate, 50 trials
+
+VRHS_REPEATS=3 python eval/hallucination_rate.py   # more samples per question
 
 # point the corpus evals at either index
 VRHS_EMBEDDINGS=data/vrhs_embeddings_baseline.json python eval/retrieval_eval.py
@@ -351,6 +527,7 @@ VRHS_EMBEDDINGS=data/vrhs_embeddings_baseline.json python eval/retrieval_eval.py
 | `hallucination.py` | The three checks and the note they produce |
 | `corpus.py` | Boilerplate stripping and dedupe, run before embedding |
 | `eval/detectors.py` | All five detection architectures, including the unshipped ones |
+| `eval/hallucination_rate.py` | End-to-end rate through the real answer path |
 | `eval/` | Harness, labeled fixtures, committed raw results |
 | `data/vrhs_embeddings.json` | Production index, 218 chunks |
 | `data/vrhs_embeddings_baseline.json` | Same scrape without hygiene, 263 chunks |
