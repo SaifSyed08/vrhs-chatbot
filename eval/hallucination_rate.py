@@ -50,6 +50,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # noise here.
 os.environ.setdefault("VRHS_NO_WARM", "1")
 
+import config  # noqa: E402
 import hallucination  # noqa: E402
 import main  # noqa: E402
 
@@ -119,7 +120,7 @@ def answer_once(question):
     context, stats, sources = main.get_relevant_context(question)
 
     response = main.client.chat.completions.create(
-        model="gpt-4o",
+        model=config.CHAT_MODEL,
         messages=[{
             "role": "system",
             "content": main.dated_prompt()
@@ -188,8 +189,9 @@ def report(trials, out):
     uncovered = [t for t in trials if t["scope"] == "out_of_scope"]
 
     emit("trials: %d (%d answerable, %d out of scope), %d run(s) per "
-         "question, gpt-4o at production temperature"
-         % (len(trials), len(answerable), len(uncovered), REPEATS))
+         "question, %s at production temperature"
+         % (len(trials), len(answerable), len(uncovered), REPEATS,
+            config.CHAT_MODEL))
     emit()
 
     emit("%-44s%10s%8s%10s" % ("rate", "count", "of", ""))

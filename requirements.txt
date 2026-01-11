@@ -1,6 +1,11 @@
-flask
-openai
-numpy
-requests
-beautifulsoup4
-tiktoken
+# Pinned. These were unpinned name-only entries, which meant a redeploy months
+# from now could install a new major of any of them and fail in a way that had
+# nothing to do with the commit that triggered it. Versions below are what the
+# measured numbers in the README were produced against.
+flask==3.1.2
+gunicorn==23.0.0
+openai==2.29.0
+httpx==0.28.1
+numpy==2.5.1
+requests==2.34.2
+beautifulsoup4==4.15.0

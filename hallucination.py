@@ -22,6 +22,8 @@ it so the reader knows which parts to verify.
 import json
 import re
 
+import config
+
 # Retrieval gating thresholds, calibrated in eval/retrieval_eval.py over 25
 # real questions (15 the corpus covers, 10 it does not).
 #
@@ -48,8 +50,8 @@ import re
 # populations treated as weak. The margin is still computed and logged as a
 # diagnostic. Caveat: 25 questions is a small calibration set, and these
 # thresholds are specific to text-embedding-ada-002 on this corpus.
-SIMILARITY_SOLID = 0.79
-SIMILARITY_WEAK = 0.78
+SIMILARITY_SOLID = config.SIMILARITY_SOLID
+SIMILARITY_WEAK = config.SIMILARITY_WEAK
 
 # Recalibrated after the corpus grew to a full crawl. The populations now
 # separate completely on the question set: answerable questions bottom out at
@@ -62,7 +64,7 @@ SIMILARITY_WEAK = 0.78
 
 # Model used for the grounding pass. Deliberately not the answering model - a
 # grader that shares the generator's mistakes will happily ratify them.
-GRADER_MODEL = "gpt-4o-mini"
+GRADER_MODEL = config.GRADER_MODEL
 
 MARKDOWN_LINK = re.compile(r"\[([^\]]*)\]\((https?://[^)\s]+)\)")
 # Bare URLs count too. Measured on eval/fixtures/link_cases.json: checking

@@ -19,6 +19,7 @@ import numpy as np
 from openai import OpenAI
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import config  # noqa: E402
 import hallucination  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -57,13 +58,13 @@ def cold_start():
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     t0 = time.perf_counter()
-    client.embeddings.create(model="text-embedding-ada-002", input="cold")
+    client.embeddings.create(model=config.EMBED_MODEL, input="cold")
     t_first = (time.perf_counter() - t0) * 1000
 
     pooled = []
     for _ in range(4):
         t0 = time.perf_counter()
-        client.embeddings.create(model="text-embedding-ada-002", input="warm")
+        client.embeddings.create(model=config.EMBED_MODEL, input="warm")
         pooled.append((time.perf_counter() - t0) * 1000)
     t_pooled = statistics.median(pooled)
 
@@ -94,7 +95,7 @@ def cache_effect(client, docs, matrix):
     q = QUESTIONS[0]
 
     t0 = time.perf_counter()
-    v = client.embeddings.create(model="text-embedding-ada-002",
+    v = client.embeddings.create(model=config.EMBED_MODEL,
                                  input=q).data[0].embedding
     miss = (time.perf_counter() - t0) * 1000
 
@@ -123,7 +124,7 @@ def run():
 
         t0 = time.perf_counter()
         q = np.array(client.embeddings.create(
-            model="text-embedding-ada-002",
+            model=config.EMBED_MODEL,
             input=question).data[0].embedding, dtype=np.float64)
         q /= np.linalg.norm(q)
         stages["embed"].append((time.perf_counter() - t0) * 1000)
@@ -138,7 +139,7 @@ def run():
 
         t0 = time.perf_counter()
         stream = client.chat.completions.create(
-            model="gpt-4o", stream=True,
+            model=config.CHAT_MODEL, stream=True,
             messages=[{"role": "system", "content": SYSTEM},
                       {"role": "user",
                        "content": f"Context:\n{context}\n\nQuestion: {question}"}])
@@ -162,9 +163,9 @@ def run():
     print(f"\n{'stage':28}{'median ms':>11}{'min':>9}{'max':>9}")
     print("-" * 57)
     labels = {
-        "embed": "embed query (ada-002)",
+        "embed": "embed query (" + config.EMBED_MODEL + ")",
         "retrieve": "retrieve (cosine, in-process)",
-        "ttft": "time to first token (gpt-4o)",
+        "ttft": "time to first token (" + config.CHAT_MODEL + ")",
         "stream": "full answer stream",
         "verify": "grounding check (post-stream)",
         "total": "end to end",
