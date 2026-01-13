@@ -15,7 +15,7 @@ repository sidebar.
 * Answers from 279 chunks covering all 23 pages of the school site, not from
   model memory. Pages are found by crawling, so a year rollover does not break
   it and nothing has to be added to a list by hand.
-* Streams tokens, so text appears after about 750 ms.
+* Streams tokens, so text appears after about 660 ms.
 * Attaches **source pills** linking to the pages behind the answer.
 * Runs three grounding checks and posts a short caution when one fails.
 * Records thumbs ratings against retrieval scores, so gaps become visible.
@@ -131,7 +131,7 @@ answer exists as a whole, and by then the tokens are on screen. Deleting text
 someone just read is worse than flagging it.
 
 **The grader is not the generator.** Claim grounding runs on `gpt-4o-mini`
-while answers come from `gpt-4o`. A grader that shares the generator's blind
+while answers come from `gpt-4.1`. A grader that shares the generator's blind
 spots will approve its mistakes.
 
 When a check fails, the answer keeps its text and picks up a short note. The
@@ -210,28 +210,61 @@ route calls, at the same model and the same default temperature, then runs the
 same `verify_answer` over the result. Every question runs twice, because
 temperature 1.0 means one sample is an anecdote.
 
-Fifty trials, 30 on questions the corpus covers and 20 on questions it does
-not.
+Seventy-five trials on `gpt-4.1`, 45 on questions the corpus covers and 30 on
+questions it does not.
 
 | Rate | Result | |
 | --- | --- | --- |
-| Fabricated link | 0 of 50 | **0.0%** |
-| Unsupported claim | 12 of 50 | 24.0% |
-| Answered a question the site does not cover | 0 of 20 | **0.0%** |
-| Refused a question the site does cover | 7 of 30 | 23.3% |
+| Fabricated link | 0 of 75 | **0.0%** |
+| Unsupported claim | 29 of 75 | 38.7% |
+| Answered a question the site does not cover | 0 of 30 | **0.0%** |
+| Refused a question the site does cover | 7 of 45 | 15.6% |
 
 And the number that matters more than any of those:
 
 | What the reader sees | Result | |
 | --- | --- | --- |
-| Trials with any fault | 12 of 50 | 24.0% |
-| Of those, flagged to the reader | 12 of 12 | **100%** |
-| Of those, reached the reader unflagged | 0 of 12 | **0.0%** |
-| Answerable, no fault, warned anyway | 0 of 30 | **0.0%** |
+| Trials with any fault | 29 of 75 | 38.7% |
+| Of those, flagged to the reader | 29 of 29 | **100%** |
+| Of those, reached the reader unflagged | 0 of 29 | **0.0%** |
+| Answerable, no fault, warned anyway | 0 of 45 | **0.0%** |
 
 Nothing got through unflagged, and nothing clean got warned. The two failures
 the layer exists to prevent, a silent hallucination and a caution the reader
 learns to ignore, both came in at zero on this set.
+
+### The model swap was not free, and this is where it was paid
+
+Moving from `gpt-4o` to `gpt-4.1` for the 211 ms above was measured on the same
+harness before it shipped. It is not a clean win:
+
+| | `gpt-4o` | `gpt-4.1` |
+| --- | --- | --- |
+| Fabricated link | 0.0% | **0.0%** |
+| Answered an uncovered question | 0.0% | **0.0%** |
+| Reached the reader unflagged | 0.0% | **0.0%** |
+| Refused a question the corpus covers | 23.3% | **15.6%** |
+| Unsupported claim | 24 to 28% | **38.7%** |
+
+The first check was whether 34% on the first 50-trial run was noise, since
+`gpt-4o` had itself ranged 24 to 28% across three runs. It was not: at 75
+trials it went to 38.7%, further from `gpt-4o`, not closer.
+
+The mechanism is coherent rather than mysterious. `gpt-4.1` is less
+conservative, so it refuses a third fewer of the questions the corpus can
+answer *and* makes more claims the grader will not certify. Those are the same
+disposition seen from two ends. Part of the rise is genuinely more unverified
+content and part is simply more content to grade, and this harness cannot
+separate them — a bot that says less has less to be wrong about.
+
+What decided it is that the three failures a reader cannot defend against all
+held at zero. No invented links, nothing answered from pretraining, nothing
+slipping past unflagged. What rose is the rate of answers carrying a visible
+caution, which is the layer doing its job in public. Trading silent risk for
+visible hedging is the right direction for a tool students are told to trust.
+
+`VRHS_CHAT_MODEL` sets this, so reverting is an environment variable rather
+than a deploy.
 
 ### The grader was flagging the bot for refusing
 
@@ -316,6 +349,11 @@ retrieval score attached it says why, and the two failures need different fixes:
 | Warmed the index and the API connection at boot | **0.8 to 1.3 s** off the first question after a cold start |
 | Cached query embeddings on the normalised question | repeat questions skip a **218 ms** round trip |
 | Told the grader that refusals are not claims | unsupported-claim rate **66% to 24%**, judge F1 unchanged at 1.00 |
+| Moved the answering model to `gpt-4.1`, measured interleaved | TTFT **-211 ms**, over-refusal **23.3% to 15.6%**, claims 24% to 38.7% |
+| Held the API connection open past httpx's 5 s default | **-78 ms** on a bot asked a question every few minutes |
+| Replaced the Flask dev server with gunicorn | a production WSGI server, worker supervision, streaming-safe timeouts |
+| Moved every literal into `config.py`, read from the environment | model and thresholds change without a redeploy |
+| Pinned every dependency | a redeploy installs what the measurements were taken against |
 | Index cached in memory instead of re-read per question | one file read and parse per process, not per question |
 | Feedback wired to storage | ratings became data instead of a UI state change |
 
@@ -443,10 +481,48 @@ The obvious move is a faster model, and it does not work:
 | `text-embedding-3-small` | 211 ms |
 
 Seven milliseconds, inside the noise, because the cost is the round trip rather
-than the model. The same holds one layer up — `gpt-4o-mini` reaches its first
-token in 859 ms against `gpt-4o`'s 882 ms, so trading the answering model down
-would buy nothing a reader could perceive. Both are worth recording as measured
-dead ends, since both are the first thing anyone suggests.
+than the model.
+
+### Trading the model *down* buys nothing. Trading it *across* does
+
+The first pass at this concluded that the answering model did not matter
+either, on the grounds that `gpt-4o-mini` reached its first token in 859 ms
+against `gpt-4o`'s 882 ms. That conclusion was wrong, and the reason it was
+wrong is worth more than the conclusion.
+
+Models were measured one after another, so each one saw whatever the network
+was doing when its turn came. On a home connection that varies by more than the
+effect being measured — the same embedding call has come back at 167 ms and at
+508 ms within the hour. Sequential measurement of a small effect through a
+noisy channel does not produce a weak result, it produces a confident wrong
+one.
+
+Re-measured with the models **interleaved in randomised order**, so every model
+sees the same conditions:
+
+| Model | Median TTFT | Range |
+| --- | --- | --- |
+| `gpt-4o` | 660 ms | 490 to 2,594 |
+| `gpt-4.1-mini` | 566 ms | 528 to 1,301 |
+| **`gpt-4.1`** | **448 ms** | **395 to 676** |
+| `gpt-4.1-nano` | 421 ms | 357 to 453 |
+
+`gpt-4.1` is **211 ms faster than `gpt-4o`**, and the tail matters as much as
+the median: `gpt-4o`'s worst trial was four times its best, while `gpt-4.1`
+stayed inside a 280 ms band. The median case never felt broken; the tail is
+what a reader notices.
+
+The reasoning models are not candidates and it is not close. `gpt-5-mini`
+reaches its first token in 4.3 s and `gpt-5-nano` in 7.8 s, because they think
+before they emit. For a streamed answer that is the entire budget.
+
+`gpt-4.1-nano` was faster again by 27 ms, and was not taken. Testing a much
+smaller model against the grounding set to save 27 ms is not a trade worth the
+evaluation time.
+
+**Read absolute latency here with suspicion, and deltas with confidence.** Every
+paired comparison in this section was interleaved. Every unpaired number is one
+snapshot of a home connection and moves by a factor of three.
 
 What does work is not making the call. A school chatbot is asked the same
 handful of things over and over, so query embeddings are cached on the
@@ -461,6 +537,55 @@ A repeat question skips the hop entirely and produces byte-identical context
 and statistics. `/health` reports hits and misses, because the hit rate in
 production is the only thing that says whether this is buying anything real as
 opposed to anything on a benchmark that asks the same question twice.
+
+## Running it in production
+
+It was being served by `python3 main.py`. Werkzeug prints a warning telling you
+not to do that, and the warning is right: one process, no worker supervision,
+no request limits, and no way to recover a wedged worker. It answers one
+question correctly and has nothing to say about a class of thirty arriving at
+once.
+
+| | Before | Now |
+| --- | --- | --- |
+| Server | Flask dev server | `gunicorn`, 1 worker × 8 threads, `gthread` |
+| Port | hardcoded `8080` | `$PORT`, which is what Render actually supplies |
+| Settings | literals in two files | `config.py`, read from the environment |
+| Dependencies | unpinned names | pinned to the versions the numbers came from |
+| Output | `print(..., flush=True)` | `logging`, with levels |
+| Deploy config | `.replit` claiming Cloud Run | `render.yaml` and `Procfile` |
+
+One worker and eight threads, not the reverse. Each worker holds its own copy
+of the index, and memory is the scarce resource on a free instance; threads
+cost almost nothing because a request spends effectively all of its time
+blocked on the API and releases the GIL while it waits.
+
+`preload_app` is off deliberately, and this is the kind of thing that fails
+silently. Preloading imports the app in the master and forks workers, which is
+normally the right trade. But `warm_start()` does its work on a background
+thread, and **a thread does not survive `fork`** — it would start in the master
+and vanish from the worker actually serving requests, leaving the warm-up
+working only when it happened to win a race. Without preload each worker warms
+itself. Boot is marginally slower and correct.
+
+### On the free tier, none of this is your biggest latency problem
+
+Everything above is worth having and none of it is the main event. Render's
+free tier spins a service down after 15 minutes idle, and a spun-down service
+has to boot a container from cold before it sees the request. That is tens of
+seconds, against which the 0.8 to 1.3 s `warm_start()` saves is rounding.
+
+A school chatbot is idle most of the day and then used in bursts, which is
+precisely the traffic shape that pays this cost on almost every burst. **The
+single highest-impact change available is an external uptime pinger** hitting
+`/health` every 10 minutes so the service never spins down. It is free, it is
+not code, and it is worth more than every optimisation in this README combined.
+
+Two things to know before doing it. The free tier allows 750 instance-hours a
+month and a month is about 730 hours, so one always-on service fits and a
+second one does not. And `/health` is the right target because it is cheap —
+it reports on the loaded index and makes no API call. `/health?deep=1` spends
+an embedding call and is for debugging a broken deploy, not for a pinger.
 
 ## Limits
 
@@ -524,8 +649,11 @@ VRHS_EMBEDDINGS=data/vrhs_embeddings_baseline.json python eval/retrieval_eval.py
 | Path | Purpose |
 | --- | --- |
 | `main.py` | Flask app: scraping, embedding, retrieval, streaming `/ask` |
+| `config.py` | Every setting, read from the environment |
 | `hallucination.py` | The three checks and the note they produce |
 | `corpus.py` | Boilerplate stripping and dedupe, run before embedding |
+| `gunicorn.conf.py` | Production server config, and why `preload_app` is off |
+| `render.yaml`, `Procfile` | Deployment |
 | `eval/detectors.py` | All five detection architectures, including the unshipped ones |
 | `eval/hallucination_rate.py` | End-to-end rate through the real answer path |
 | `eval/` | Harness, labeled fixtures, committed raw results |
