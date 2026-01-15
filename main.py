@@ -540,6 +540,111 @@ def load_index():
     return _INDEX["docs"], _INDEX["matrix"]
 
 
+# === Pre-generated answers ===
+#
+# The two API calls in front of an answer have a floor that no amount of tuning
+# reaches: 208 ms to embed the question and 451 ms before gpt-4.1 emits a
+# token, both of them round trips whose cost lives on OpenAI's side. Measured
+# from a browser that is about 120 ms from Render, a novel question cannot
+# realistically be answered in much under 700 ms.
+#
+# The way under that is to have answered already. A school chatbot is asked the
+# same few dozen things all year - bell schedules, absences, hours owed - so
+# those answers can be generated ahead of time, checked properly while nobody
+# is waiting, and served from memory.
+#
+# This is the one place the grounding checks stop being advisory. Everywhere
+# else they annotate an answer the reader has already seen, because
+# verification cannot finish until the last token exists. A pre-generated
+# answer has no reader yet, so a variant that fails a check is simply not
+# admitted to the cache. prewarm.py does that filtering; nothing that failed
+# ever reaches this file.
+ANSWER_CACHE_PATH = os.getenv("VRHS_ANSWER_CACHE", "data/answer_cache.json")
+
+_ANSWERS = {"fingerprint": None, "entries": {}, "generated_at": None,
+            "model": None}
+_ANSWER_TURN = {}
+_ANSWER_LOCK = threading.Lock()
+_ANSWER_STATS = {"hits": 0, "misses": 0}
+
+
+def index_fingerprint(docs):
+    """Identify the corpus, so a rebuilt index retires answers built on it.
+
+    Hashed over the chunk text rather than the file, because the file carries
+    1536 floats per chunk and the mtime changes on every checkout. What matters
+    is whether the words an answer was grounded in are still the words in the
+    index.
+    """
+    import hashlib
+    h = hashlib.sha256()
+    for d in docs:
+        h.update(d["text"].encode("utf-8"))
+        h.update(b"\x00")
+    return h.hexdigest()[:16]
+
+
+def load_answer_cache():
+    """Load pre-generated answers, or nothing if they do not match the index."""
+    if not os.path.exists(ANSWER_CACHE_PATH):
+        log.info("[answers] no pre-generated cache at %s", ANSWER_CACHE_PATH)
+        return
+
+    try:
+        with open(ANSWER_CACHE_PATH, "r", encoding="utf-8") as f:
+            blob = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        log.warning("[answers] could not read cache: %s", e)
+        return
+
+    docs, _ = load_index()
+    if docs is None:
+        return
+
+    current = index_fingerprint(docs)
+    if blob.get("index_fingerprint") != current:
+        # Refusing to serve is the whole point. An answer generated against an
+        # older corpus may cite a page that has since been removed, and it
+        # carries a verification verdict that was true of text nobody is
+        # retrieving any more.
+        log.warning("[answers] cache built for index %s but index is %s - "
+                    "ignoring it, re-run prewarm.py",
+                    blob.get("index_fingerprint"), current)
+        return
+
+    with _ANSWER_LOCK:
+        _ANSWERS.update({
+            "fingerprint": current,
+            "entries": blob.get("entries", {}),
+            "generated_at": blob.get("generated_at"),
+            "model": blob.get("model"),
+        })
+    total = sum(len(e.get("variants", []))
+                for e in _ANSWERS["entries"].values())
+    log.info("[answers] %d questions, %d verified variants, from %s",
+             len(_ANSWERS["entries"]), total, _ANSWERS["generated_at"])
+
+
+def cached_answer(question):
+    """A pre-generated answer for this question, or None.
+
+    Variants rotate rather than repeating one phrasing forever. They are not
+    alternative facts: prewarm.py admits a set only when every variant cites
+    the same pages, so what varies is wording.
+    """
+    key = cache_key(question)
+    with _ANSWER_LOCK:
+        entry = _ANSWERS["entries"].get(key)
+        if not entry or not entry.get("variants"):
+            _ANSWER_STATS["misses"] += 1
+            return None
+        variants = entry["variants"]
+        turn = _ANSWER_TURN.get(key, 0)
+        _ANSWER_TURN[key] = (turn + 1) % len(variants)
+        _ANSWER_STATS["hits"] += 1
+        return variants[turn]
+
+
 def warm_start():
     """Pay the first-question costs at boot instead of at the first question.
 
@@ -565,6 +670,7 @@ def warm_start():
     def run():
         try:
             load_index()
+            load_answer_cache()
         except Exception as e:
             log.warning(f"[warm] index preload failed: {e}")
         try:
@@ -689,6 +795,20 @@ def health():
             "hits": _query_cache_stats["hits"],
             "misses": _query_cache_stats["misses"],
         },
+        # Hit rate here is the number to watch. Pre-generation is only worth
+        # its complexity if real questions actually land on the pre-written
+        # ones, and a hit rate near zero means the question list was guessed
+        # rather than drawn from what students ask.
+        "answer_cache": {
+            "questions": len(_ANSWERS["entries"]),
+            "variants": sum(len(e.get("variants", []))
+                            for e in _ANSWERS["entries"].values()),
+            "fingerprint": _ANSWERS["fingerprint"],
+            "generated_at": _ANSWERS["generated_at"],
+            "model": _ANSWERS["model"],
+            "hits": _ANSWER_STATS["hits"],
+            "misses": _ANSWER_STATS["misses"],
+        },
     }
 
     if request.args.get("deep"):
@@ -742,6 +862,30 @@ def submit_report():
 def ask():
     data = request.get_json()
     question = data.get("query")
+
+    # Checked before retrieval, because a hit skips both round trips - there is
+    # no point embedding a question whose answer is already written and already
+    # verified. This is the only path that answers without calling the API at
+    # all, and it is the only one that can be quick enough to feel instant.
+    hit = cached_answer(question) if question else None
+    if hit:
+        def replay():
+            # Sent as one chunk. The streaming shape exists so a reader is not
+            # staring at nothing while a model writes; there is nothing to wait
+            # for here, and pacing it out artificially would be spending the
+            # latency this whole path exists to avoid.
+            yield hit["answer"]
+            yield META_SENTINEL + json.dumps({
+                "notice": hit.get("notice", []),
+                "sources": hit.get("sources", []),
+                "retrieval": hit.get("retrieval", {}),
+                "cached": True,
+            })
+
+        log.info("[answers] hit  q=%s", question[:60])
+        return Response(stream_with_context(replay()),
+                        content_type="text/plain; charset=utf-8")
+
     context, stats, sources = get_relevant_context(question)
 
     # If no KB yet, just send that and stop.

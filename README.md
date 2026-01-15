@@ -354,6 +354,7 @@ retrieval score attached it says why, and the two failures need different fixes:
 | Replaced the Flask dev server with gunicorn | a production WSGI server, worker supervision, streaming-safe timeouts |
 | Moved every literal into `config.py`, read from the environment | model and thresholds change without a redeploy |
 | Pinned every dependency | a redeploy installs what the measurements were taken against |
+| Pre-generated and pre-verified answers for common questions | **660 ms to 3-6 ms** server-side, and the checks became preventive |
 | Index cached in memory instead of re-read per question | one file read and parse per process, not per question |
 | Feedback wired to storage | ratings became data instead of a UI state change |
 
@@ -538,6 +539,55 @@ and statistics. `/health` reports hits and misses, because the hit rate in
 production is the only thing that says whether this is buying anything real as
 opposed to anything on a benchmark that asks the same question twice.
 
+### Answering before the question arrives
+
+Caching the embedding removes one of the two round trips. The other is the
+model, and it cannot be removed — only avoided by having answered already.
+
+`prewarm.py` generates answers for the questions a school gets all year,
+checks them properly while nobody is waiting, and writes
+`data/answer_cache.json`. `main.py` consults it before retrieval, since there
+is no point embedding a question whose answer is written.
+
+Measured against the live path:
+
+| | Server-side | With ~120 ms from a browser to Render |
+| --- | --- | --- |
+| Novel question | 660 ms | ~780 ms |
+| Query-cache hit | ~450 ms | ~570 ms |
+| **Pre-generated answer** | **3 to 6 ms** | **~125 ms** |
+
+**This is the one place the checks stop being advisory.** Everywhere else they
+annotate an answer the reader has already seen, because an answer is only
+checkable once whole and by then the tokens are on screen — the README says as
+much under *Checks annotate, they never retract*. A pre-generated answer has no
+reader yet, so a variant that fails is discarded rather than shipped with a
+caution. The bar is deliberately higher than the live path's: any fabricated
+link, any unsupported claim, or a retrieval level below `solid` and the variant
+is dropped. If none survive, the question is left to the live path, which is a
+perfectly good outcome.
+
+**Variants vary wording, not facts.** Several answers are generated per
+question and rotated so the bot does not repeat one phrasing all year. That is
+only safe if they agree, and "each passed the grounding check" does not
+establish it — two answers can both be supported by the context and still send
+a student to different places. A set is admitted only when **every variant
+cites the same pages**; divergent link sets mean the answers differ in what
+they tell someone to do, and the whole set is rejected.
+
+**A rebuilt index retires the cache automatically.** The file carries a
+fingerprint hashed over the chunk text — not the file, whose mtime changes on
+every checkout and which carries 1536 floats per chunk that have no bearing on
+whether an answer is still true. On a mismatch `main.py` logs a warning and
+ignores the cache entirely rather than serving answers grounded in text nobody
+retrieves any more. Verified by pointing a deliberately stale fingerprint at a
+live index: 0 variants loaded, warning logged, live path unaffected.
+
+Question sources are the eval fixtures and, when present, `data/feedback.json`
+— the questions students actually asked. The second is the better source, and
+it is why `/health` reports the hit rate: a list guessed by the authors will
+not be hit, and a hit rate near zero means the guessing was the problem.
+
 ## Running it in production
 
 It was being served by `python3 main.py`. Werkzeug prints a warning telling you
@@ -637,6 +687,7 @@ python eval/retrieval_eval.py         # retrieval accuracy and gate calibration
 python eval/detection_ablation.py     # all five detector architectures
 python eval/latency.py                # cold start, cache, per-stage timings
 python eval/hallucination_rate.py     # end-to-end hallucination rate, 50 trials
+python prewarm.py                     # build the pre-verified answer cache
 
 VRHS_REPEATS=3 python eval/hallucination_rate.py   # more samples per question
 
@@ -652,6 +703,7 @@ VRHS_EMBEDDINGS=data/vrhs_embeddings_baseline.json python eval/retrieval_eval.py
 | `config.py` | Every setting, read from the environment |
 | `hallucination.py` | The three checks and the note they produce |
 | `corpus.py` | Boilerplate stripping and dedupe, run before embedding |
+| `prewarm.py` | Generates and verifies answers ahead of time |
 | `gunicorn.conf.py` | Production server config, and why `preload_app` is off |
 | `render.yaml`, `Procfile` | Deployment |
 | `eval/detectors.py` | All five detection architectures, including the unshipped ones |
