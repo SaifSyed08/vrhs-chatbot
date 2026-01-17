@@ -622,8 +622,26 @@ itself. Boot is marginally slower and correct.
 
 Everything above is worth having and none of it is the main event. Render's
 free tier spins a service down after 15 minutes idle, and a spun-down service
-has to boot a container from cold before it sees the request. That is tens of
-seconds, against which the 0.8 to 1.3 s `warm_start()` saves is rounding.
+has to boot a container from cold before it sees the request.
+
+Measured against the live deployment, first request after a long idle versus
+the same endpoint warm:
+
+| Live `/ask` | Total |
+| --- | --- |
+| First request after idle | 12,349 ms |
+| Warm | 3,879 to 5,245 ms |
+| **Spin-up** | **~7 to 8 s** |
+
+Against that, the 0.8 to 1.3 s `warm_start()` saves is rounding.
+
+An earlier attempt to measure this hit 183 ms and concluded the service was not
+spinning down at all. That measurement was wrong: it idled 17 minutes and then
+timed `/health`, but something kept the service alive during the window, so it
+timed a warm process and reported the result as if it were cold. Worth stating
+because the failure mode is not obvious — a cold-start measurement that comes
+back fast has not proved the service stays warm, it has failed to catch it
+asleep, and those two look identical from outside.
 
 A school chatbot is idle most of the day and then used in bursts, which is
 precisely the traffic shape that pays this cost on almost every burst. **The

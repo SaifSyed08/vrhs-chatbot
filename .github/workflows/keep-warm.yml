@@ -1,0 +1,60 @@
+# Keeps the Render free-tier service from spinning down.
+#
+# Render suspends a free service after 15 minutes without inbound traffic, and
+# waking it means booting a container from cold before it can even look at the
+# request. A school chatbot is idle for most of the day and then used in
+# bursts, which is exactly the traffic shape that pays that cost on almost
+# every burst - the first student in a group waits for the container, and the
+# rest do not.
+#
+# This is deliberately not an external monitoring service. GitHub Actions is
+# already here, is free on a public repository, and needs no new account.
+#
+# Two limitations worth knowing:
+#
+#   * Scheduled workflows are best-effort. GitHub queues cron events and they
+#     can fire late under load, sometimes well past the requested interval.
+#     10 minutes against a 15 minute window leaves some headroom, but a badly
+#     delayed run will still let the service sleep occasionally. If you want it
+#     never to happen, an external uptime monitor is more punctual.
+#   * GitHub disables scheduled workflows on a repository with no activity for
+#     60 days. If the bot seems slow again after a quiet summer, check whether
+#     this is still enabled before looking anywhere else.
+#
+# It also costs instance hours. The free tier allows 750 a month and a month is
+# about 730, so keeping ONE service always on fits and a second one does not.
+name: keep-warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+# A slow run must not stack up behind the previous one.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /health
+        env:
+          # Overridable without editing the workflow: set a repository variable
+          # named HEALTH_URL if the service ever moves.
+          HEALTH_URL: ${{ vars.HEALTH_URL || 'https://vrhs-chatbot.onrender.com/health' }}
+        run: |
+          # /health is the right target because it is cheap: it reports on the
+          # already-loaded index and makes no API call. /health?deep=1 spends an
+          # embedding call and is for debugging a broken deploy, not for a
+          # pinger that runs about 4,300 times a month.
+          start=$(date +%s%3N)
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 240 "$HEALTH_URL")
+          end=$(date +%s%3N)
+          echo "HTTP $code in $((end - start)) ms"
+          test "$code" = "200"
