@@ -698,6 +698,20 @@ silently empty a page again.
 Every figure above comes from a script in `eval/`, with raw output committed in
 `eval/results/`.
 
+First, a key. Copy `.env.example` to `.env` and put the same key the deployment
+uses in it, so what you measure locally is what students actually get.
+
+A `.env` here **overrides** the machine's environment, which is deliberate.
+`OPENAI_API_KEY` is commonly already set globally for some other project, and
+the wrong key fails in a way that wastes an afternoon: it authenticates, lists
+models happily, and then reports `credit_balance_exhausted` on the first
+billable call. That reads like a billing problem and is actually the wrong
+account. Keys belong to projects, not machines.
+
+`.env` is gitignored and must stay so. It never reaches Render, where the
+dashboard's environment variables are the only source, so there is nothing for
+the override to collide with in deployment.
+
 ```bash
 python eval/corpus_stats.py           # corpus and threshold analysis, no API key
 python eval/link_grounding_eval.py    # link check precision and recall, no API key

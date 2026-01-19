@@ -13,6 +13,23 @@ see the note on it.
 
 import os
 
+from dotenv import load_dotenv
+
+# A .env in the project root wins over the machine's environment.
+#
+# override=True is the unusual part and it is the entire point. The default is
+# False, which would make this useless here: OPENAI_API_KEY is already set at
+# Windows user scope for a different project, so a project-local .env would be
+# read and then ignored in favour of the global value. Keys belong to projects,
+# not to machines, and the wrong one fails in a confusing way - it authenticates
+# perfectly and then reports no credits, which reads like a billing problem
+# rather than the wrong key.
+#
+# Safe in deployment because .env is gitignored and therefore never reaches
+# Render, where the environment variables set in the dashboard are the only
+# source. There is nothing there for this to override.
+load_dotenv(override=True)
+
 
 def _int(name, default):
     try:
