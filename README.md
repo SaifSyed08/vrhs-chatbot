@@ -257,6 +257,12 @@ The first check was whether 34% on the first 50-trial run was noise, since
 `gpt-4o` had itself ranged 24 to 28% across three runs. It was not: at 75
 trials it went to 38.7%, further from `gpt-4o`, not closer.
 
+Both columns were measured with the single-call grader, before it was split
+into a detector and a filter. That change later took `gpt-4.1` from 38.7% to
+24.0%, so the gap above is real but the absolute numbers are historical.
+`gpt-4o` has not been re-measured under the new grader, and the comparison is
+kept as it was taken rather than half-updated.
+
 The mechanism is coherent rather than mysterious. `gpt-4.1` is less
 conservative, so it refuses a third fewer of the questions the corpus can
 answer *and* makes more claims the grader will not certify. Those are the same
@@ -366,7 +372,7 @@ filter.
 ### What is left is over-refusal, not invention
 
 The remaining problem is the opposite of the one the layer was built for. The
-bot refuses **23%** of questions the corpus can answer, and it does so on
+bot refuses **13.3%** of questions the corpus can answer, and it does so on
 questions where retrieval had already succeeded:
 
 | Refused question | Top cosine | Gate |
