@@ -122,7 +122,7 @@ Three checks run on every answer, cheapest first.
 | --- | --- | --- | --- |
 | Retrieval gate | Does the corpus cover this at all? | free | 100% separation, answerable vs out of scope |
 | Link grounding | Does every URL appear verbatim in the context? | free | precision 1.00, recall 1.00 |
-| Claim grounding | Does the context support each claim? | $0.00007 | precision 1.00, recall 1.00 |
+| Claim grounding | Does the context support each claim? | $0.00008 | precision 0.80, recall 0.89 |
 
 Two decisions worth stating.
 
@@ -152,11 +152,18 @@ injected false claims and 11 grounded, drawn from real chunks in the corpus.
 
 | Architecture | Precision | Recall | F1 | p50 latency | $/check |
 | --- | --- | --- | --- | --- | --- |
-| Lexical overlap | 0.889 | 0.889 | 0.889 | 0 ms | $0 |
-| Embedding similarity | 0.800 | 0.889 | 0.842 | 303 ms | $0.000014 |
-| Chain-of-Verification | 0.615 | 0.889 | 0.727 | 1,383 ms | $0.000150 |
-| Cascade, lexical then LLM | 1.000 | 0.889 | 0.941 | 0 ms | $0.000025 |
-| **LLM judge (`gpt-4o-mini`)** | **1.000** | **1.000** | **1.000** | 529 ms | $0.000072 |
+| Lexical overlap | 0.364 | 0.889 | 0.516 | 0 ms | $0 |
+| Embedding similarity | 0.348 | 0.889 | 0.500 | 339 ms | $0.000022 |
+| Cascade, lexical then LLM | 0.364 | 0.889 | 0.516 | 0 ms | $0.000018 |
+| Chain-of-Verification | 0.667 | 0.889 | 0.762 | 1,376 ms | $0.000162 |
+| **LLM judge (`gpt-4o-mini`)** | **0.800** | **0.889** | **0.842** | 890 ms | $0.000084 |
+
+These are the 33-case set. On the original 20 the top three scored 0.889, 0.941
+and 1.000, and those numbers were flattering everything: the fixture contained
+only substantive claims, so a detector was never asked to leave a refusal
+alone. Adding 13 real declining replies took lexical overlap from 0.889 to
+0.364. It had not got worse; it had always done this, and nothing had been
+looking.
 
 What the numbers say:
 
@@ -210,24 +217,24 @@ route calls, at the same model and the same default temperature, then runs the
 same `verify_answer` over the result. Every question runs twice, because
 temperature 1.0 means one sample is an anecdote.
 
-Seventy-five trials on `gpt-4.1`, 45 on questions the corpus covers and 30 on
+Fifty trials on `gpt-4.1`, 30 on questions the corpus covers and 20 on
 questions it does not.
 
 | Rate | Result | |
 | --- | --- | --- |
-| Fabricated link | 0 of 75 | **0.0%** |
-| Unsupported claim | 29 of 75 | 38.7% |
-| Answered a question the site does not cover | 0 of 30 | **0.0%** |
-| Refused a question the site does cover | 7 of 45 | 15.6% |
+| Fabricated link | 0 of 50 | **0.0%** |
+| Unsupported claim | 12 of 50 | 24.0% |
+| Answered a question the site does not cover | 0 of 20 | **0.0%** |
+| Refused a question the site does cover | 4 of 30 | 13.3% |
 
 And the number that matters more than any of those:
 
 | What the reader sees | Result | |
 | --- | --- | --- |
-| Trials with any fault | 29 of 75 | 38.7% |
-| Of those, flagged to the reader | 29 of 29 | **100%** |
-| Of those, reached the reader unflagged | 0 of 29 | **0.0%** |
-| Answerable, no fault, warned anyway | 0 of 45 | **0.0%** |
+| Trials with any fault | 12 of 50 | 24.0% |
+| Of those, flagged to the reader | 12 of 12 | **100%** |
+| Of those, reached the reader unflagged | 0 of 12 | **0.0%** |
+| Answerable, no fault, warned anyway | 0 of 30 | **0.0%** |
 
 Nothing got through unflagged, and nothing clean got warned. The two failures
 the layer exists to prevent, a silent hallucination and a caution the reader
@@ -295,6 +302,67 @@ the weight — claims about the school, not claims about the assistant — took 
 rate from **66% to 24%**, with the judge still scoring precision 1.00 and
 recall 1.00 on the 20 labelled cases. The looser prompt cost no recall.
 
+### The benchmark could not see the bug, so four fixes went unscored
+
+A report from real use: the caution *"Some details are not confirmed by the
+pages I read"* was appearing far too often. Auditing the 62 flagged claims in
+`eval/results/hallucination_rate_trials.json` said the complaint was right and
+worse than it looked — **54 of 62 were not claims at all**:
+
+| What was flagged | Count | |
+| --- | --- | --- |
+| Referrals — *"contact the front office"* | 23 | 37% |
+| Bare noun phrases naming what was **missing** — *"senior checklists"* | ~14 | 23% |
+| Refusals — *"the context does not list..."* | 8 | 13% |
+| Sign-offs — *"Have a great September!"* | 5 | 8% |
+| **Actual claims about the school** | **~6** | **10%** |
+
+The grader was answering a different question: what does the answer *discuss*
+that the source does not cover, rather than what does the answer *assert* that
+the source does not support.
+
+Three fixes by instruction failed. Naming the exclusions, naming them again
+with examples, then demanding verbatim quotes with worked cases, moved the flag
+rate 38.7% → 34.7%. The grader kept reporting the same sentences and merely
+quoted them more accurately.
+
+Restructuring it as *label every sentence, then report only what you called a
+fact* fixed precision outright — 38.7% → **5.3%** — and dropped recall from
+1.000 to **0.556**. That is the worse error by a distance, and it exposed the
+real problem:
+
+**The 20-case fixture could not score any of this.** Every case in it was a
+substantive claim. It contained no refusals, no referrals, no sign-offs — so a
+change that filters out non-claims could only ever look worse on it. The cost
+landed on recall; the benefit was invisible. Four attempts had been tuned
+against an instrument blind to the thing being fixed.
+
+So the fixture was extended with 13 real declining replies from the trials,
+labelled *must not be flagged*. The correct label needs no judgement: a reply
+that declines asserts nothing about the school. On that 33-case set:
+
+| Grader | Precision | Recall | F1 | Refusals wrongly flagged |
+| --- | --- | --- | --- | --- |
+| Original, one call | 0.600 | **1.000** | 0.750 | 3 of 13 |
+| **Detector + filter** | **0.800** | 0.889 | **0.842** | **0 of 13** |
+
+Two calls, because one model asked to do both jobs did each of them worse. The
+detector runs unchanged and stays suspicious; a second pass decides which of
+its findings were claims at all, sees only the sentences and never the source,
+and runs only when the detector found something — so a clean answer still costs
+one call, and both are post-stream where latency never reaches the reader.
+
+It costs one missed hallucination in nine. It buys the elimination of the
+false cautions on this set and takes the production rate 38.7% → **24.0%**.
+
+One more attempt is recorded in the code and was reverted: a regex keeping any
+claim carrying a name, email, time or date regardless of the filter's label,
+written for *"emailed directly to the principal, Dr. Keith Morgan"* — a
+referral in form, a fabrication in substance. Precision fell 0.800 → 0.727 and
+recall did not move, so it readmitted false positives without recovering the
+case it was built for, which means that case is lost somewhere other than the
+filter.
+
 ### What is left is over-refusal, not invention
 
 The remaining problem is the opposite of the one the layer was built for. The
@@ -355,6 +423,8 @@ retrieval score attached it says why, and the two failures need different fixes:
 | Moved every literal into `config.py`, read from the environment | model and thresholds change without a redeploy |
 | Pinned every dependency | a redeploy installs what the measurements were taken against |
 | Pre-generated and pre-verified answers for common questions | **660 ms to 3-6 ms** server-side, and the checks became preventive |
+| Split the grader into a detector and a claim filter | caution rate **38.7% to 24.0%**, refusals wrongly flagged **3 of 13 to 0** |
+| Extended the grounding fixture with 13 real refusals | the benchmark can finally score the failure that shows up in use |
 | Index cached in memory instead of re-read per question | one file read and parse per process, not per question |
 | Feedback wired to storage | ratings became data instead of a UI state change |
 
@@ -686,7 +756,7 @@ an embedding call and is for debugging a broken deploy, not for a pinger.
   plainly uncovered, and the gate separates them easily. The untested case is
   the near-miss, where the site half answers and the honest reply is partial.
 
-Ranked next steps: **fix the 23% over-refusal**, which is now the largest
+Ranked next steps: **fix the 13.3% over-refusal**, which is now the largest
 measured defect and is a prompt problem rather than a retrieval one; hybrid
 retrieval (BM25 plus dense, since the remaining misses are lexical); semantic
 chunking on headings instead of a fixed 150-word window; a larger grounding set

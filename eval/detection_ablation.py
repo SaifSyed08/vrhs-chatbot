@@ -51,13 +51,42 @@ def sweep(scores, labels, lower_is_hallucinated=True):
     return best
 
 
+def refusal_fp(flags, cases):
+    """How many declining replies a detector wrongly flags.
+
+    Reported separately because it is invisible in the headline precision: the
+    refusal cases are all negatives, so wrongly flagging them moves precision a
+    little and hides which failure mode a detector actually has.
+    """
+    bad = sum(1 for f, c in zip(flags, cases)
+              if f and c.get("kind") == "refusal")
+    total = sum(1 for c in cases if c.get("kind") == "refusal")
+    return bad, total
+
+
 def run():
     cases = json.load(open(FIXTURE, encoding="utf-8"))
     labels = [c["hallucinated"] for c in cases]
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+    kinds = [c.get("kind", "injected") for c in cases]
+    n_inj = sum(1 for k in kinds if k == "injected")
+    n_ref = sum(1 for k in kinds if k == "refusal")
     print(f"cases {len(cases)} | hallucinated {sum(labels)} | "
-          f"grounded {len(labels) - sum(labels)}\n")
+          f"grounded {len(labels) - sum(labels)}")
+    print(f"  injected {n_inj}  false claims planted by hand")
+    print(f"  refusal  {n_ref}  real replies that declined, must not be flagged")
+    print()
+    print("The refusal cases were added because the original 20 could not "
+          "score the failure")
+    print("that actually shows up in use. Every one of them contained a "
+          "substantive claim,")
+    print("so a detector that filters out non-claims looked strictly worse on "
+          "them: the cost")
+    print("landed on recall and the benefit was invisible. Numbers here are "
+          "NOT comparable")
+    print("to runs against the 20-case set.")
+    print()
     rows = []
 
     # 1. lexical overlap - no API call

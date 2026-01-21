@@ -1,30 +1,24 @@
-trials: 75 (45 answerable, 30 out of scope), 3 run(s) per question, gpt-4.1 at production temperature
+trials: 50 (30 answerable, 20 out of scope), 2 run(s) per question, gpt-4.1 at production temperature
 
 rate                                             count      of          
 ------------------------------------------------------------------------
-fabricated link                                      0      75      0.0%
-unsupported claim                                   29      75     38.7%
-answered an uncovered question                       0      30      0.0%
-declined a question the corpus covers                7      45     15.6%
+fabricated link                                      0      50      0.0%
+unsupported claim                                   12      50     24.0%
+answered an uncovered question                       0      20      0.0%
+declined a question the corpus covers                4      30     13.3%
 
 what the reader sees                             count      of          
 ------------------------------------------------------------------------
-trials with any fault                               29      75     38.7%
-  of those, flagged to the reader                   29      29    100.0%
-  of those, reached reader unflagged                 0      29      0.0%
-answerable, no fault, warned anyway                  0      45      0.0%
+trials with any fault                               12      50     24.0%
+  of those, flagged to the reader                   12      12    100.0%
+  of those, reached reader unflagged                 0      12      0.0%
+answerable, no fault, warned anyway                  0      30      0.0%
 
 refused a question the corpus covers (the opposite failure):
-  Who do I contact about my schedule?
-      retrieval=solid top=0.8020251853194134
   What do seniors need to do before graduation?
       retrieval=solid top=0.8023228097217172
   What do seniors need to do before graduation?
       retrieval=solid top=0.8023228097217172
-  What do seniors need to do before graduation?
-      retrieval=solid top=0.8023228097217172
-  Where do I drop off my student in the morning?
-      retrieval=solid top=0.8386402808832989
   Where do I drop off my student in the morning?
       retrieval=solid top=0.8386402808832989
   Where do I drop off my student in the morning?

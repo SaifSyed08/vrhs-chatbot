@@ -1,12 +1,20 @@
-cases 20 | hallucinated 9 | grounded 11
+cases 33 | hallucinated 9 | grounded 24
+  injected 20  false claims planted by hand
+  refusal  13  real replies that declined, must not be flagged
+
+The refusal cases were added because the original 20 could not score the failure
+that actually shows up in use. Every one of them contained a substantive claim,
+so a detector that filters out non-claims looked strictly worse on them: the cost
+landed on recall and the benefit was invisible. Numbers here are NOT comparable
+to runs against the 20-case set.
 
 architecture                 prec    rec     F1   p50 ms    $/check  notes
 --------------------------------------------------------------------------
-lexical overlap             0.889  0.889  0.889        0   0.000000  threshold 0.71
-embedding similarity        0.800  0.889  0.842      318   0.000014  threshold 0.904
-llm judge (gpt-4o-mini)     1.000  1.000  1.000      766   0.000072  no threshold
-cascade (lexical -> llm)    1.000  0.889  0.941        0   0.000025  7/20 escalated
-chain-of-verification       0.667  0.889  0.762     1403   0.000150  2 calls per check
+lexical overlap             0.364  0.889  0.516        0   0.000000  threshold 0.71
+embedding similarity        0.348  0.889  0.500      339   0.000022  threshold 0.904
+llm judge (gpt-4o-mini)     0.800  0.889  0.842      890   0.000084  no threshold
+cascade (lexical -> llm)    0.364  0.889  0.516        0   0.000018  7/33 escalated
+chain-of-verification       0.667  0.889  0.762     1376   0.000162  2 calls per check
 
 threshold detectors are shown at their best achievable F1, which overstates them:
 that threshold was chosen on this same 20-case set.

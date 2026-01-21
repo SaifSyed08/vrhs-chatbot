@@ -206,12 +206,82 @@ def find_ungrounded_links(answer, context):
 # Naming the exclusions concretely rather than by category fixed it, and the
 # distinction the prompt now leads with - claims about the school, not claims
 # about the assistant - is what carries the weight.
-GRADER_PROMPT = """You are checking whether an answer is supported by source text.
+# Two calls, because the two questions need different framing and asking one
+# model to answer both made it worse at each.
+#
+# DETECTOR_PROMPT below is the original, and it is kept verbatim because it
+# measures precision 1.00 and recall 1.00 on the 20 labelled cases. Its problem
+# was never detection. It was that in production it also reported refusals,
+# referrals and sign-offs as unsupported claims - 54 of 62 flagged items in an
+# audit of eval/results/hallucination_rate_trials.json were of that kind.
+#
+# Three attempts to fix that by instruction failed. Naming the exclusions,
+# naming them again with examples, then adding a verbatim-quoting requirement
+# and worked cases, moved the flag rate 38.7% to 34.7%; the grader kept
+# reporting the same sentences and merely quoted them more accurately.
+#
+# Restructuring the task as "label every sentence, then report only the ones
+# you called a fact" fixed precision outright, 38.7% to 5.3%. It also dropped
+# recall from 1.000 to 0.556, which is a far worse trade: a missed
+# hallucination reaches a reader silently, an over-warning only annoys one.
+# Two things broke. "Completed forms should be emailed directly to the
+# principal, Dr. Keith Morgan" was labelled a referral, because it is one in
+# form while fabricating a name and a procedure in substance. And having
+# sorted sentences into kinds first, the model became noticeably more willing
+# to call the remaining ones supported.
+#
+# So the jobs are separated rather than merged. The detector runs unchanged and
+# stays suspicious, and a second pass decides which of the things it found were
+# claims at all. The filter only runs when the detector found something, so the
+# common case is still one call, and both are post-stream where latency does
+# not reach the reader.
+# Filter. Sees only what the detector flagged, and decides what kind of
+# sentence each one is. Deliberately knows nothing about SOURCE: whether a
+# sentence is a claim is a question about the sentence, and giving this pass
+# the source text would invite it to re-litigate support and reintroduce the
+# laziness that cost recall.
+CLAIM_FILTER_PROMPT = """Each ITEM below is a sentence taken from a chatbot
+answer for a high school. Label what kind of sentence each one is.
+
+  "school_fact" - asserts something checkable about the school: a time, date,
+                  place, cost, person's name, requirement, or procedure.
+                  A sentence that directs the reader somewhere is STILL a
+                  school_fact when it carries specific detail - a named person,
+                  an address, an email, a room, a deadline.
+  "no_info"     - says the assistant lacks information or that its source does
+                  not cover something.
+  "referral"    - sends the reader onward with no specific detail: "contact the
+                  front office", "check the staff directory".
+  "social"      - greeting, offer of further help, sign-off.
+
+When a sentence could be a referral or a school_fact, choose school_fact. The
+cost of the two mistakes is not equal: a fabricated name or deadline waved
+through as a referral reaches a reader unchallenged.
+
+Reply with JSON only, same order as the input:
+{"labels": ["school_fact", "referral", ...]}
+
+Examples:
+  "Please contact the front office."                          -> referral
+  "Email the form to principal Dr. Keith Morgan."             -> school_fact
+  "I don't have the graduation checklist."                    -> no_info
+  "Lunch begins at 12:30 PM."                                 -> school_fact
+  "Have a great day!"                                         -> social
+  "You can find bell schedules on the calendar page."         -> school_fact"""
+
+
+
+DETECTOR_PROMPT = """You are checking whether an answer is supported by source text.
 
 You will be given SOURCE (text scraped from a high school's website) and ANSWER.
 List every factual claim in ANSWER that SOURCE does not support. A claim counts
 as unsupported if SOURCE does not state it, even if you personally believe it is
 true - you are grading against SOURCE only, never against your own knowledge.
+
+A claim is something ANSWER asserts. It is not a topic ANSWER mentions, and it
+is not something ANSWER says it could not find. Every item you list must be a
+sentence or clause copied WORD FOR WORD from ANSWER. If you cannot copy it
+verbatim, it is not a claim and does not belong in the list.
 
 Grade ONLY assertions about the school itself: its schedules, policies, dates,
 fees, staff, rooms, events, requirements, or where something can be found.
@@ -236,21 +306,52 @@ source text could support them:
 A hedged statement is still a claim if it asserts something about the school:
 "I believe lunch is at 12:30" is a claim about lunch and must be graded.
 
+Here are real answers and the correct output for each.
+
+ANSWER: "I don't have the specific requirements seniors need before
+graduation. I recommend checking with the front office. Have a great day!"
+CORRECT: {"unsupported": []}
+Why: it asserts nothing about the school. "Senior checklists" and "graduation
+requirements" are topics it says it lacks, not claims it makes. Listing them
+is the most common way to get this wrong.
+
+ANSWER: "The bell schedules for 2026-2027 are available at the following
+links: [Regular Day](https://example.com/a). Let me know if you need more!"
+CORRECT: {"unsupported": []}
+Why: naming the year the source shows, pointing at a link, and offering help
+are not factual assertions to check.
+
+ANSWER: "On early release days (12/19/25 and 5/29/26), the check-out cutoff
+is 11:45 AM. Parents must complete the Club Permission Form."
+CORRECT: {"unsupported": ["On early release days (12/19/25 and 5/29/26), the
+check-out cutoff is 11:45 AM.", "Parents must complete the Club Permission
+Form."]}
+Why: both state a specific fact about the school - a time and a requirement -
+and both can be checked against SOURCE. List them only if SOURCE does not
+support them.
+
 Reply with JSON only, in this shape:
-{"unsupported": ["claim one", "claim two"]}
+{"unsupported": ["exact sentence from ANSWER", "another exact sentence"]}
 
-Use an empty list when every claim is supported."""
+Use an empty list when every claim is supported. An empty list is the common
+and correct answer for a reply that declines, points at a link, or is mostly
+pleasantries."""
 
 
-def check_claim_grounding(client, answer, context):
-    """Ask a second model which claims the context fails to support."""
+def detect_unsupported(client, answer, context):
+    """Everything the detector thinks the context does not support.
+
+    Kept suspicious on purpose. This pass is measured at recall 1.000 on the 20
+    labelled cases and its output is filtered afterwards, so a false positive
+    here is cheap and a miss is not recoverable.
+    """
     response = client.chat.completions.create(
         model=GRADER_MODEL,
         temperature=0,
         response_format={"type": "json_object"},
         messages=[{
             "role": "system",
-            "content": GRADER_PROMPT
+            "content": DETECTOR_PROMPT
         }, {
             "role": "user",
             "content": "SOURCE:\n" + context + "\n\nANSWER:\n" + answer
@@ -258,9 +359,101 @@ def check_claim_grounding(client, answer, context):
 
     parsed = json.loads(response.choices[0].message.content)
     claims = parsed.get("unsupported", [])
+    return [str(c).strip() for c in claims if str(c).strip()][:8]
 
-    # Guard against the grader returning a bare string or nested junk.
-    return [str(c).strip() for c in claims if str(c).strip()][:5]
+
+def keep_real_claims(client, claims):
+    """Drop the flagged items that were never claims about the school.
+
+    Sees the sentences and not the source. Whether something is a claim is a
+    property of the sentence, and handing this pass the context invited it to
+    second-guess support instead, which is what cost recall when the two jobs
+    were one call.
+    """
+    if not claims:
+        return []
+
+    listing = "\n".join("%d. %s" % (i + 1, c) for i, c in enumerate(claims))
+    response = client.chat.completions.create(
+        model=GRADER_MODEL,
+        temperature=0,
+        response_format={"type": "json_object"},
+        messages=[{
+            "role": "system",
+            "content": CLAIM_FILTER_PROMPT
+        }, {
+            "role": "user",
+            "content": "ITEMS:\n" + listing
+        }])
+
+    labels = json.loads(response.choices[0].message.content).get("labels", [])
+
+    # A short or malformed reply must not silently discard findings, so
+    # anything the filter did not label is kept.
+    kept = []
+    for i, claim in enumerate(claims):
+        label = labels[i] if i < len(labels) else "school_fact"
+        if str(label).strip() == "school_fact":
+            kept.append(claim)
+    return kept
+
+
+# Tried and removed: a regex escape hatch that kept any claim carrying a
+# titled personal name, an email, a clock time, a date or a sum of money,
+# whatever the filter called it. The reasoning was that "emailed directly to
+# the principal, Dr. Keith Morgan" is a referral in form and a fabrication in
+# substance, and that one case was the difference between recall 1.000 and
+# 0.889.
+#
+# It did not work. Precision fell 0.800 to 0.727 and recall did not move, so
+# it readmitted false positives without recovering the case it was written
+# for - meaning that case is lost somewhere other than the filter, and the
+# escape hatch was solving a problem it had misidentified. Recorded rather
+# than retried.
+
+
+def check_claim_grounding(client, answer, context):
+    """Which claims about the school the context fails to support.
+
+    Two passes. The first finds anything unsupported and the second decides
+    which of those were claims at all, because one call asked to do both did
+    each of them worse - see the note above DETECTOR_PROMPT.
+
+    The filter only runs when the detector found something, so an answer with
+    nothing wrong still costs a single call.
+    """
+    claims = detect_unsupported(client, answer, context)
+    if not claims:
+        return []
+
+    claims = keep_real_claims(client, claims)
+
+    # Last, drop anything the answer does not actually say. The detector
+    # sometimes reports a noun phrase describing what was missing - "senior
+    # checklists", "exact drop-off locations" - rather than a sentence the
+    # answer asserts. Those are not spans of the answer, so requiring the
+    # match removes them without another model call.
+    return [c for c in claims if quoted_from(c, answer)][:5]
+
+
+def normalise_for_match(text):
+    """Lowercase, collapse whitespace, drop punctuation that varies in quoting."""
+    return re.sub(r"[^a-z0-9 ]", "", text.lower()).strip()
+
+
+def quoted_from(claim, answer):
+    """Whether the claim is really a span of the answer.
+
+    Exact substring matching is too brittle: the grader reflows line breaks and
+    normalises curly quotes, so a genuine quote can fail on punctuation alone.
+    Matching on normalised text keeps those, and a short claim is additionally
+    required to carry enough words to be a real assertion - a two-word
+    fragment matching somewhere in the answer says nothing.
+    """
+    c = normalise_for_match(claim)
+    if len(c.split()) < 4:
+        return False
+    return c in normalise_for_match(answer)
 
 
 def verify_answer(client, answer, context, stats):
