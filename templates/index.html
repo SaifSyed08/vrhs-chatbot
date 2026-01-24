@@ -770,12 +770,6 @@
     
     <div class="chat-messages" id="messages"></div>
     <div class="quick-prompts">
-      <!-- "Is tomorrow an A day or B day?" was here and was removed. The site
-           does not carry the answer: which days are A and which are B lives
-           inside a linked Google Doc that the scraper cannot read, so the best
-           the bot could ever do was hand back the calendar page with a caution
-           attached. A suggestion chip is a promise that the question works, and
-           this one promised a question the corpus cannot answer. -->
       <button onclick="quickAsk('Where do I find the calendar?')">Where do I find the calendar?</button>
       <button onclick="quickAsk('Where are the bell schedules?')">Where are the bell schedules?</button>
       <button onclick="quickAsk('Where can I find bus information?')">Where can I find bus information?</button>
@@ -786,6 +780,13 @@
       <button onclick="quickAsk('How can I make up hours?')">How can I make up hours?</button>
       <button onclick="quickAsk('Where is the attendance website?')">Where is the attendance website?</button>
       <button onclick="quickAsk('Where is the library website?')">Where is the library website?</button>
+
+      <!-- Last on purpose. The site does not carry which days are A and which
+           are B - that lives inside a linked Google Doc the scraper cannot
+           read - so the honest reply is that it does not know, plus the
+           calendar page. That is a fine answer and not one to lead with, so
+           the chip stays and sits at the end rather than second. -->
+      <button onclick="quickAsk('Is tomorrow an A day or B day?')">Is tomorrow an A day or B day?</button>
     </div>
     <div class="chat-input">
       <div class="input-pill">

@@ -83,11 +83,18 @@ class Verdict:
         self.bad_links = []
         self.unsupported = []
         self.grader_failed = False
+        # Set only when the reply gave up rather than answered. Suppresses the
+        # retrieval-level caution, which exists to flag misplaced confidence
+        # and has nothing to say about an answer that claimed nothing.
+        self.declined = False
 
     @property
     def grounded(self):
-        return (self.retrieval_level == "solid" and not self.bad_links
-                and not self.unsupported)
+        if self.bad_links or self.unsupported:
+            return False
+        # A reply that declined is treated as clean whatever retrieval scored.
+        # Nothing was asserted, so there is nothing for a reader to verify.
+        return self.retrieval_level == "solid" or self.declined
 
     def notice_points(self):
         """At most two short points, or [] when every check passed.
@@ -109,11 +116,12 @@ class Verdict:
             tail = f" and {extra} other" + ("s" if extra > 1 else "") if extra else ""
             points.append(f"This link may not exist: {first}{tail}")
 
-        if self.retrieval_level == "none":
-            points.append("Nothing on the VRHS site covers this, so the answer "
-                          "above is not based on school pages.")
-        elif self.retrieval_level == "weak":
-            points.append("Only a loose match on the school pages.")
+        if not self.declined:
+            if self.retrieval_level == "none":
+                points.append("Nothing on the VRHS site covers this, so the "
+                              "answer above is not based on school pages.")
+            elif self.retrieval_level == "weak":
+                points.append("Only a loose match on the school pages.")
 
         if len(points) < 2:
             if self.unsupported:
@@ -456,7 +464,43 @@ def quoted_from(claim, answer):
     return c in normalise_for_match(answer)
 
 
-def verify_answer(client, answer, context, stats):
+DECLINE_PROMPT = """Does this reply actually answer the question, or does it
+decline because it does not have the information?
+
+Answer "declined" when the substance of the reply is that it does not know, or
+that the topic is not covered, and it states no facts that answer the question.
+A reply that only points the reader at a page or the front office has declined.
+
+Answer "answered" when it states facts that answer the question, even partly,
+and even if it also suggests contacting the school.
+
+Reply with JSON only: {"verdict": "answered"} or {"verdict": "declined"}"""
+
+
+def answer_declined(client, question, answer):
+    """Whether the reply gave up rather than answered.
+
+    Not a keyword test. "I don't have the exact time" inside an otherwise
+    complete answer is not a refusal, and "that isn't something the school
+    pages cover" is one with none of the obvious markers, so a phrase list gets
+    it wrong in both directions.
+    """
+    response = client.chat.completions.create(
+        model=GRADER_MODEL,
+        temperature=0,
+        response_format={"type": "json_object"},
+        messages=[{
+            "role": "system",
+            "content": DECLINE_PROMPT
+        }, {
+            "role": "user",
+            "content": "QUESTION:\n" + (question or "") + "\n\nREPLY:\n" + answer
+        }])
+    parsed = json.loads(response.choices[0].message.content)
+    return parsed.get("verdict") == "declined"
+
+
+def verify_answer(client, answer, context, stats, question=None):
     """Run every check over one answer and return a Verdict."""
     verdict = Verdict()
     verdict.retrieval_top, verdict.retrieval_level = score_retrieval(stats)
@@ -472,5 +516,31 @@ def verify_answer(client, answer, context, stats):
     except Exception as e:
         print("Grounding check failed: " + str(e))
         verdict.grader_failed = True
+
+    # A caution is for an answer that is confidently wrong. An answer that has
+    # already told the reader it does not know is not confident, and stapling
+    # "Only a loose match on the school pages" underneath it says the same
+    # thing twice in a more doubtful voice - it reads as the bot being unsure
+    # of its own honesty.
+    #
+    # So the retrieval-level warning is dropped when the reply declined, and
+    # only then. If the model asserted something on a weak match, the warning
+    # is exactly what it was built for and it stays.
+    #
+    # Checked last and only when it can change the outcome: retrieval must be
+    # short of solid, and the two checks that find concrete problems must both
+    # have come back clean. A reply with a fabricated link or an unsupported
+    # claim keeps its notice whatever its tone.
+    if (verdict.retrieval_level in ("weak", "none")
+            and not verdict.bad_links
+            and not verdict.unsupported):
+        try:
+            verdict.declined = answer_declined(client, question, answer)
+        except Exception as e:
+            # Staying quiet here would suppress a warning on the strength of a
+            # call that did not happen. Failing back to showing it is the safe
+            # direction.
+            print("Decline check failed: " + str(e))
+            verdict.declined = False
 
     return verdict

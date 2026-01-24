@@ -130,6 +130,29 @@ Two decisions worth stating.
 answer exists as a whole, and by then the tokens are on screen. Deleting text
 someone just read is worse than flagging it.
 
+**A caution is for confident, not for wrong.** The retrieval warning used to
+fire on any weak match, including on replies that had already said they did not
+know. Asked whether tomorrow is an A day, the bot would answer that it could
+not tell and point at the calendar, and *Worth double-checking — only a loose
+match on the school pages* would appear underneath. That says the same thing
+twice in a more doubtful voice, and it reads as the bot being unsure of its own
+honesty.
+
+The warning exists to catch misplaced confidence. A reply that declined has
+none to misplace, so the retrieval notice is now suppressed when the answer
+gave up — and only then. If the model asserted something on a weak match, the
+warning is exactly what it was built for and it stays. A fabricated link or an
+unsupported claim keeps its notice whatever the tone, because those are
+concrete problems rather than questions of confidence.
+
+Whether a reply declined is decided by a model rather than a phrase list, for
+the same reason as everywhere else here: *"I don't have the exact time"* inside
+an otherwise complete answer is not a refusal, and *"that isn't something the
+school pages cover"* is one with none of the obvious markers. The check runs
+only when it could change the outcome — retrieval short of solid, and both
+concrete checks already clean — so most answers never pay for it. It measured
+the caution rate 24.0% → **16.0%** with nothing reaching the reader unflagged.
+
 **The grader is not the generator.** Claim grounding runs on `gpt-4o-mini`
 while answers come from `gpt-4.1`. A grader that shares the generator's blind
 spots will approve its mistakes.
@@ -223,17 +246,17 @@ questions it does not.
 | Rate | Result | |
 | --- | --- | --- |
 | Fabricated link | 0 of 50 | **0.0%** |
-| Unsupported claim | 12 of 50 | 24.0% |
+| Unsupported claim | 8 of 50 | 16.0% |
 | Answered a question the site does not cover | 0 of 20 | **0.0%** |
-| Refused a question the site does cover | 4 of 30 | 13.3% |
+| Refused a question the site does cover | 3 of 30 | 10.0% |
 
 And the number that matters more than any of those:
 
 | What the reader sees | Result | |
 | --- | --- | --- |
-| Trials with any fault | 12 of 50 | 24.0% |
-| Of those, flagged to the reader | 12 of 12 | **100%** |
-| Of those, reached the reader unflagged | 0 of 12 | **0.0%** |
+| Trials with any fault | 8 of 50 | 16.0% |
+| Of those, flagged to the reader | 8 of 8 | **100%** |
+| Of those, reached the reader unflagged | 0 of 8 | **0.0%** |
 | Answerable, no fault, warned anyway | 0 of 30 | **0.0%** |
 
 Nothing got through unflagged, and nothing clean got warned. The two failures
@@ -372,7 +395,7 @@ filter.
 ### What is left is over-refusal, not invention
 
 The remaining problem is the opposite of the one the layer was built for. The
-bot refuses **13.3%** of questions the corpus can answer, and it does so on
+bot refuses **10.0%** of questions the corpus can answer, and it does so on
 questions where retrieval had already succeeded:
 
 | Refused question | Top cosine | Gate |
@@ -430,6 +453,7 @@ retrieval score attached it says why, and the two failures need different fixes:
 | Pinned every dependency | a redeploy installs what the measurements were taken against |
 | Pre-generated and pre-verified answers for common questions | **660 ms to 3-6 ms** server-side, and the checks became preventive |
 | Split the grader into a detector and a claim filter | caution rate **38.7% to 24.0%**, refusals wrongly flagged **3 of 13 to 0** |
+| Stopped cautioning an answer that had already declined | caution rate **24.0% to 16.0%**, nothing reaching the reader unflagged |
 | Extended the grounding fixture with 13 real refusals | the benchmark can finally score the failure that shows up in use |
 | Index cached in memory instead of re-read per question | one file read and parse per process, not per question |
 | Feedback wired to storage | ratings became data instead of a UI state change |
@@ -762,7 +786,7 @@ an embedding call and is for debugging a broken deploy, not for a pinger.
   plainly uncovered, and the gate separates them easily. The untested case is
   the near-miss, where the site half answers and the honest reply is partial.
 
-Ranked next steps: **fix the 13.3% over-refusal**, which is now the largest
+Ranked next steps: **fix the 10.0% over-refusal**, which is now the largest
 measured defect and is a prompt problem rather than a retrieval one; hybrid
 retrieval (BM25 plus dense, since the remaining misses are lexical); semantic
 chunking on headings instead of a fixed 150-word window; a larger grounding set

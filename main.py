@@ -922,7 +922,7 @@ def ask():
         # the last token. A failed check appends a warning rather than
         # retracting what the user has already read.
         verdict = hallucination.verify_answer(client, "".join(answer), context,
-                                              stats)
+                                              stats, question)
         log.info(f"[grounding] z={verdict.retrieval_z} "
               f"top_sim={verdict.retrieval_top} "
               f"level={verdict.retrieval_level} "

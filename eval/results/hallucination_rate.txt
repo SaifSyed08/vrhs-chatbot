@@ -3,20 +3,18 @@ trials: 50 (30 answerable, 20 out of scope), 2 run(s) per question, gpt-4.1 at p
 rate                                             count      of          
 ------------------------------------------------------------------------
 fabricated link                                      0      50      0.0%
-unsupported claim                                   12      50     24.0%
+unsupported claim                                    8      50     16.0%
 answered an uncovered question                       0      20      0.0%
-declined a question the corpus covers                4      30     13.3%
+declined a question the corpus covers                3      30     10.0%
 
 what the reader sees                             count      of          
 ------------------------------------------------------------------------
-trials with any fault                               12      50     24.0%
-  of those, flagged to the reader                   12      12    100.0%
-  of those, reached reader unflagged                 0      12      0.0%
+trials with any fault                                8      50     16.0%
+  of those, flagged to the reader                    8       8    100.0%
+  of those, reached reader unflagged                 0       8      0.0%
 answerable, no fault, warned anyway                  0      30      0.0%
 
 refused a question the corpus covers (the opposite failure):
-  What do seniors need to do before graduation?
-      retrieval=solid top=0.8023228097217172
   What do seniors need to do before graduation?
       retrieval=solid top=0.8023228097217172
   Where do I drop off my student in the morning?

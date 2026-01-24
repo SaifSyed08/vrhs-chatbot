@@ -130,7 +130,8 @@ def answer_once(question):
         }])
     answer = response.choices[0].message.content or ""
 
-    verdict = hallucination.verify_answer(main.client, answer, context, stats)
+    verdict = hallucination.verify_answer(main.client, answer, context, stats,
+                                          question)
     return answer, context, verdict
 
 
