@@ -773,6 +773,12 @@
       <button onclick="quickAsk('Where do I find the calendar?')">Where do I find the calendar?</button>
       <button onclick="quickAsk('Where are the bell schedules?')">Where are the bell schedules?</button>
       <button onclick="quickAsk('Where can I find bus information?')">Where can I find bus information?</button>
+
+      <!-- Fourth rather than second or last. Ingest now reads the A/B
+           calendar's Drive filename, so the bot can tell 2026-2027 from
+           2025-2026 and answers this properly - but it is still a narrower
+           question than the calendar or bell schedules, so it does not lead. -->
+      <button onclick="quickAsk('Is tomorrow an A day or B day?')">Is tomorrow an A day or B day?</button>
       <button onclick="quickAsk('How can I sign up for ACC classes?')">How can I sign up for ACC classes?</button>
       <button onclick="quickAsk('How can I start a club?')">How can I start a club?</button>
 
@@ -781,12 +787,6 @@
       <button onclick="quickAsk('Where is the attendance website?')">Where is the attendance website?</button>
       <button onclick="quickAsk('Where is the library website?')">Where is the library website?</button>
 
-      <!-- Last on purpose. The site does not carry which days are A and which
-           are B - that lives inside a linked Google Doc the scraper cannot
-           read - so the honest reply is that it does not know, plus the
-           calendar page. That is a fine answer and not one to lead with, so
-           the chip stays and sits at the end rather than second. -->
-      <button onclick="quickAsk('Is tomorrow an A day or B day?')">Is tomorrow an A day or B day?</button>
     </div>
     <div class="chat-input">
       <div class="input-pill">

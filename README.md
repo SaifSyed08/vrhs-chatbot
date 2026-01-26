@@ -12,9 +12,10 @@ repository sidebar.
 
 ## What it does
 
-* Answers from 279 chunks covering all 23 pages of the school site, not from
-  model memory. Pages are found by crawling, so a year rollover does not break
-  it and nothing has to be added to a list by hand.
+* Answers from 384 chunks covering all 23 pages of the school site and the 17
+  linked Google Docs it reads, not from model memory. Pages are found by
+  crawling, so a year rollover does not break it and nothing has to be added to
+  a list by hand.
 * Streams tokens, so text appears after about 660 ms.
 * Attaches **source pills** linking to the pages behind the answer.
 * Runs three grounding checks and posts a short caution when one fails.
@@ -24,8 +25,8 @@ repository sidebar.
 
 ![Question, retrieval, streaming, then three verification checks](docs/architecture.svg)
 
-The index is a JSON file of 279 vectors held in memory. At this size a vector
-database would add operational weight and no speed: brute-force cosine over 279
+The index is a JSON file of 384 vectors held in memory. At this size a vector
+database would add operational weight and no speed: brute-force cosine over 384
 vectors takes under a millisecond, which is three orders of magnitude below the
 network round trip in front of it. The bottleneck is API latency, not search.
 
@@ -85,6 +86,40 @@ went 60.0% to 66.7%, and the retrieval gate went from 96% to **100%**
 separation on the question set. `eval/retrieval_eval.py` selects under the same
 quotas, because measuring a plain top-k while the app runs quotas would report
 numbers describing a system nobody is running.
+
+### The site links what it does not say
+
+The crawl is same-domain and skips binary files, which meant the answers to
+some of the most-asked questions were one hop away and invisible. Bell times
+are not on the website; they are in a Google Doc the website links to.
+
+Two fetches now happen at ingest, and they fix different things.
+
+**Document text.** A public Google Doc exports as plain text from a URL, with
+no API key and no credentials. 17 of the 26 linked documents come back with
+real content and become chunks like any page. Asked what time school starts,
+the bot used to hand over a link; it now answers **8:15 AM, and 10:15 on late
+start days**, because it has read the schedule.
+
+**Drive filenames.** The site links two files both labelled `A/B Calendar`, one
+of them last year's, and nothing in the page text tells them apart — so the
+model chose blind and chose wrong, which is exactly the complaint that started
+this. The filename settles it:
+
+| File | Real filename |
+| --- | --- |
+| `1xX13…` | 2025-2026 District A_B Calendar.pdf |
+| `1n54N…` | **VRHS 2026-2027 Calendar.pdf** |
+
+That arrives in a `Content-Disposition` header, on a request that does not have
+to finish downloading. The label becomes `A/B Calendar (VRHS 2026-2027
+Calendar)`, the existing preference for year-bearing labels does the rest, and
+the bot now links the current calendar.
+
+Worth noting what was *not* needed. The obvious approach was reading the PDFs,
+and the one that would have required OCR — an image-only export with no text
+layer — turned out to be precisely the one whose filename already said what it
+was. The corpus went from 279 chunks over 23 pages to 384 over 41 sources.
 
 ## The hallucination layer
 
@@ -453,6 +488,9 @@ retrieval score attached it says why, and the two failures need different fixes:
 | Pinned every dependency | a redeploy installs what the measurements were taken against |
 | Pre-generated and pre-verified answers for common questions | **660 ms to 3-6 ms** server-side, and the checks became preventive |
 | Split the grader into a detector and a claim filter | caution rate **38.7% to 24.0%**, refusals wrongly flagged **3 of 13 to 0** |
+| Read the Google Docs the site links to | corpus **279 to 384 chunks**, and bell times became answerable at all |
+| Took A/B calendar dates from the Drive filename | stopped linking last year's calendar, without parsing a PDF |
+| Dropped source pills below the retrieval gate | pills name pages that matched, not whatever filled the quota |
 | Stopped cautioning an answer that had already declined | caution rate **24.0% to 16.0%**, nothing reaching the reader unflagged |
 | Extended the grounding fixture with 13 real refusals | the benchmark can finally score the failure that shows up in use |
 | Index cached in memory instead of re-read per question | one file read and parse per process, not per question |
@@ -835,6 +873,7 @@ VRHS_EMBEDDINGS=data/vrhs_embeddings_baseline.json python eval/retrieval_eval.py
 | `config.py` | Every setting, read from the environment |
 | `hallucination.py` | The three checks and the note they produce |
 | `corpus.py` | Boilerplate stripping and dedupe, run before embedding |
+| `gdocs.py` | Reads linked Google Docs, and Drive filenames for dating |
 | `prewarm.py` | Generates and verifies answers ahead of time |
 | `gunicorn.conf.py` | Production server config, and why `preload_app` is off |
 | `render.yaml`, `Procfile` | Deployment |

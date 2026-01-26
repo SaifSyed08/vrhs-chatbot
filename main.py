@@ -15,6 +15,7 @@ import traceback
 from collections import OrderedDict, deque
 from urllib.parse import parse_qs, unquote, urlparse
 import config
+import gdocs
 import hallucination
 import corpus
 
@@ -334,9 +335,40 @@ def scrape_vrhs_pages():
         except Exception as e:
             log.warning(f"Failed to scrape {url}: {e}")
 
+    # Two files on this site are both labelled "A/B Calendar" and one of them
+    # is last year's. Nothing in the page text distinguishes them, so the model
+    # chose between them blind and chose wrong. Their Drive filenames say
+    # exactly which is which - "2025-2026 District A_B Calendar" against "VRHS
+    # 2026-2027 Calendar" - so the label carries the filename from here on and
+    # the existing preference for year-bearing labels sorts the rest out.
+    all_links = gdocs.enrich_labels(all_links)
+
     link_only = link_chunks(all_links)
     log.info(f"added {len(link_only)} link chunks from {len(all_links)} anchors")
     chunks.extend(link_only)
+
+    # Read the Google Docs the site links to, rather than only pointing at
+    # them. Bell times, the senior checklist and the resource one-pagers all
+    # live one hop off the site in a doc the crawl walked past, because the
+    # crawl is same-domain. 16 of the 23 linked docs export as plain text with
+    # no credentials, and answering from what a document says beats handing
+    # over its URL.
+    for label, url, text in gdocs.linked_documents(all_links):
+        words = text.split()
+        for i in range(0, len(words), 150):
+            piece = " ".join(words[i:i + 150])
+            if piece:
+                chunks.append({
+                    "text": f"From the linked document {label}: {piece}",
+                    "source": url,
+                    "kind": "document",
+                    # The document's own title. source_label() names a page
+                    # from its last URL segment, which is fine for the school
+                    # site and useless for a Google Doc - every one of them
+                    # ends "/edit?usp=sharing", so the pills all read
+                    # "Edit?usp=sharing". The title is right there at ingest.
+                    "label": label,
+                })
 
     # A page that yields nothing is a silent hole in the knowledge base: the
     # chatbot will confidently not know things the site actually documents.
@@ -752,13 +784,29 @@ def get_relevant_context(query):
     }
 
     # Pages behind the retrieved chunks, best first, without repeats.
+    #
+    # Only the ones that actually matched. Retrieval fills its quotas whether
+    # or not there are five good chunks to fill them with, so on a narrow
+    # question the last slots go to whatever ranked next - and every one of
+    # those used to become a source pill. Three pills under an answer that
+    # really came from one page is a quiet overstatement of where the answer
+    # came from, and it is the kind a reader cannot check.
+    #
+    # The cutoff is the same weak threshold the gate uses, so a chunk that
+    # would not have convinced the gate does not get to name a page either.
+    # The best-matching source is always kept: an answer the gate called solid
+    # came from somewhere, and showing nothing would be its own kind of wrong.
     sources, seen = [], set()
-    for i in order:
+    for rank, i in enumerate(order):
         url = docs[i]["source"]
         if url == "manual" or url in seen:
             continue
+        if rank > 0 and sims[i] < hallucination.SIMILARITY_WEAK:
+            continue
         seen.add(url)
-        sources.append({"url": url, "label": source_label(url)})
+        sources.append({"url": url,
+                        "label": docs[i].get("label") or source_label(url),
+                        "score": round(float(sims[i]), 4)})
 
     return context, stats, sources
 
