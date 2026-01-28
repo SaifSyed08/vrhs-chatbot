@@ -1,12 +1,25 @@
 # Pinned. These were unpinned name-only entries, which meant a redeploy months
 # from now could install a new major of any of them and fail in a way that had
-# nothing to do with the commit that triggered it. Versions below are what the
-# measured numbers in the README were produced against.
+# nothing to do with the commit that triggered it.
+#
+# Every pin must install on the Python that render.yaml asks for, currently
+# 3.11. That is not automatic: these were first taken from a machine running
+# 3.13, and one of them - numpy - had moved past 3.11 support, which failed the
+# build rather than anything in the app.
 flask==3.1.2
 gunicorn==23.0.0
 openai==2.29.0
 python-dotenv==1.2.2
 httpx==0.28.1
-numpy==2.5.1
+# Held below the local version on purpose. numpy 2.5 requires Python >= 3.12
+# and Render builds this on 3.11, so pinning what happened to be installed
+# locally broke the deploy with "No matching distribution found". 2.4.6
+# supports >= 3.11, so it installs on both, and it was checked against the real
+# index before pinning: same cosines, self-match 1.0.
+#
+# The lesson is that a pin taken from a developer machine is a guess about the
+# build environment until something confirms it. Everything else here was
+# already compatible; numpy was the only one that was not.
+numpy==2.4.6
 requests==2.34.2
 beautifulsoup4==4.15.0
