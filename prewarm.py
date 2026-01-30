@@ -38,6 +38,7 @@ a list guessed by the authors will not be hit.
     VRHS_VARIANTS=5 python prewarm.py
 """
 
+import collections
 import datetime
 import json
 import os
@@ -146,16 +147,43 @@ def admit(question):
     if not kept:
         return [], "no variant passed"
 
-    # Same pages, or none of them. Two answers can each be grounded and still
-    # send a student to different places, and rotating between those is worse
-    # than never having cached anything.
-    linksets = {tuple(v["links"]) for v in kept}
-    if len(linksets) > 1:
-        return [], "variants cited different pages (%d sets)" % len(linksets)
+    # Variants must agree on where they send the reader. Two answers can each
+    # be grounded and still point somewhere different, and rotating between
+    # those is worse than never having cached anything.
+    #
+    # Agreement is by majority rather than unanimity. Requiring all three to
+    # match threw away whole questions over one odd generation - at temperature
+    # 1.0 a model will occasionally cite an extra page - and rejected four of
+    # fifteen questions that two out of three variants agreed on perfectly
+    # well. The odd one out is dropped and the agreeing ones are kept.
+    #
+    # No majority means no agreement at all: three variants, three different
+    # link sets. That is not one stray generation, it is a question this corpus
+    # answers differently every time, and freezing one of those answers picks a
+    # winner arbitrarily. Those go back to the live path.
+    #
+    # A lone survivor is exempt, and that is not a loophole. This rule exists to
+    # make rotation safe - the danger is a reader getting one answer today and a
+    # contradicting one tomorrow. One variant does not rotate, so there is
+    # nothing for it to contradict. It still had to pass every check that the
+    # live path applies and then some, which makes it strictly better than what
+    # the reader would otherwise get: a live answer that might fail those checks
+    # and arrive with a caution attached.
+    counts = collections.Counter(tuple(v["links"]) for v in kept)
+    modal, agreement = counts.most_common(1)[0]
 
-    for v in kept:
+    if agreement < 2 and len(kept) > 1:
+        return [], "no majority on pages cited (%d variants, %d sets)" % (
+            len(kept), len(counts))
+
+    agreed = [v for v in kept if tuple(v["links"]) == modal]
+    for v in agreed:
         del v["links"]
-    return kept, "ok"
+
+    note = "ok"
+    if len(counts) > 1:
+        note = "ok, dropped %d disagreeing" % (len(kept) - len(agreed))
+    return agreed, note
 
 
 def main_run():

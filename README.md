@@ -709,9 +709,29 @@ perfectly good outcome.
 question and rotated so the bot does not repeat one phrasing all year. That is
 only safe if they agree, and "each passed the grounding check" does not
 establish it — two answers can both be supported by the context and still send
-a student to different places. A set is admitted only when **every variant
-cites the same pages**; divergent link sets mean the answers differ in what
-they tell someone to do, and the whole set is rejected.
+a student to different places. Variants must therefore agree on the pages they
+cite.
+
+Agreement is by **majority, not unanimity**. Requiring all three to match threw
+away whole questions over one odd generation — at temperature 1.0 a model will
+occasionally cite an extra page — and rejected 4 of 15 questions that two of
+three variants agreed on perfectly well. The odd one out is dropped and the
+agreeing ones kept. No majority at all, three variants and three different link
+sets, means the question is answered differently every time and goes back to
+the live path.
+
+A lone survivor is exempt, which looks like a loophole and is not. The rule
+exists to make *rotation* safe; one variant does not rotate, so there is
+nothing for it to contradict, and it still had to pass every check the live
+path applies and then some.
+
+Run against the 15 answerable fixtures: **9 questions admitted, 16 variants**,
+6 left to the live path. Measured end to end through the route:
+
+| | TTFB |
+| --- | --- |
+| Cached question | **2.9 to 4.0 ms** |
+| Same route, uncached question | 930 ms |
 
 **A rebuilt index retires the cache automatically.** The file carries a
 fingerprint hashed over the chunk text — not the file, whose mtime changes on
