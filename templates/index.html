@@ -957,7 +957,10 @@
         const response = await fetch("/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: message })
+          body: JSON.stringify({
+            query: message,
+            history: conversation.slice(-HISTORY_TURNS)
+          })
         });
 
         // 5️⃣ set up for streaming
@@ -1080,6 +1083,15 @@
           notice: meta.notice || [],
           retrieval: meta.retrieval || {}
         };
+
+        // Recorded after the answer is complete, and only the plain text: the
+        // rendered bubble carries markup and source pills that mean nothing to
+        // the model.
+        conversation.push({ role: "user", content: message });
+        conversation.push({ role: "assistant", content: bubble.innerText });
+        if (conversation.length > HISTORY_TURNS) {
+          conversation = conversation.slice(-HISTORY_TURNS);
+        }
 
         if (Array.isArray(meta.sources) && meta.sources.length) {
           const row = document.createElement("div");
@@ -1217,6 +1229,20 @@
   // Kept so a thumbs rating can be filed against the question that produced it
   // and the checks that ran on it, rather than as a bare vote.
   let lastAnswerMeta = { question: "", notice: [] };
+
+  // The conversation, so a follow-up can be understood as one.
+  //
+  // Asked "does Dr. Morgan go to this school" and then "who is he", the bot
+  // used to answer the second question cold - it never saw the first. Every
+  // request carried only the current line, so a pronoun had nothing to refer
+  // back to and retrieval matched three function words against the corpus.
+  //
+  // Held here rather than on the server because the server has no sessions,
+  // which is what lets it run on one free instance with several threads and no
+  // store. Trimmed to the last few turns so a long conversation does not grow
+  // the request without limit.
+  let conversation = [];
+  const HISTORY_TURNS = 6;
   function appendMessage(text, sender) {
     const msgContainer = document.getElementById("messages");
 

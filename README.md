@@ -121,6 +121,58 @@ and the one that would have required OCR — an image-only export with no text
 layer — turned out to be precisely the one whose filename already said what it
 was. The corpus went from 279 chunks over 23 pages to 384 over 41 sources.
 
+### A link chunk belongs to what it points at
+
+Link chunks recorded the page the anchor was *found* on. Most links live in
+site-wide navigation, so that attribution was close to arbitrary: asked where
+the library website is, the answer cited **Saturday SAT Test** — a page that
+says nothing about the library and merely carries the same nav bar. The reader
+is sent to a source that cannot confirm the answer.
+
+A link chunk is *about* its target. That is what it says, what it matched on,
+and what a reader following the pill wants. Source is now the target URL and
+the pill carries the site's own wording for the link, which also beats deriving
+a name from the URL — `source_label()` called the library "Vrhslibrary".
+
+Free to fix on the existing index: `source` is not part of the embedded text,
+so 250 link chunks were re-pointed without re-embedding anything. The page an
+anchor was found on is kept as `found_on`, because a wrong link is easier to
+chase when you know where it came from.
+
+### Follow-up questions
+
+Every request carried only the current line. Asked *"Does Dr. Morgan go to this
+school?"* and then *"Who is he?"*, the bot answered the second cold — the
+pronoun had nothing to refer to, and retrieval matched three function words
+against the corpus:
+
+> Based on the context provided, "he" could refer to…
+
+The client now keeps the last three exchanges and sends them, and they sit
+between the system prompt and the current turn. The context block stays
+attached to the current question rather than being sent as its own turn, so an
+earlier turn's context is not treated as still in force.
+
+Retrieval needs separate handling, because *"Who is he?"* embeds to nothing
+useful. When a question looks dependent — four words or fewer, or carrying a
+pronoun — the previous user turn is prepended before embedding. Concatenation
+rather than a model call to rewrite the question: rewriting would sit in front
+of retrieval, which sits in front of the answer, adding a round trip to the one
+path a reader is actually waiting on. Gluing two questions together is free and
+puts the missing subject back. Only for dependent-looking questions, since
+concatenating unconditionally would blur a genuine change of subject.
+
+State lives in the browser because the server has no sessions, which is what
+lets it run on one free instance with several threads and no store.
+
+**One caveat, and it is a real one.** A follow-up can now be answered from the
+conversation rather than from the corpus. Asked what the principal does, the
+bot answered correctly from what it had already said, with retrieval scoring
+`none` and no sources shown — which is honest, but it means history has opened
+a path where the retrieval gate has nothing to grade. Cached answers are
+deliberately not served to follow-ups for the same reason: the cache is keyed
+on the question alone and knows nothing about what came before.
+
 ## The hallucination layer
 
 The failure mode of a small RAG system is not wild invention. It is a fluent

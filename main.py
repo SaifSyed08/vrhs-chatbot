@@ -185,8 +185,27 @@ def link_chunks(links):
         # The context earns its keep; the background figure was cosmetic.
         chunks.append({
             "text": f"{clean} at Vista Ridge High School: [{clean}]({href})",
-            "source": source,
+            # The page the link points AT, not the page it was found on.
+            #
+            # These were attributed to wherever the crawler happened to see the
+            # anchor, and most of them sit in site-wide navigation, so the
+            # attribution was close to arbitrary. Asked where the library
+            # website is, the answer cited "Saturday SAT Test" - a page that
+            # says nothing about the library and merely carries the same nav
+            # bar. The reader is told to check a source that cannot confirm
+            # anything.
+            #
+            # A link chunk is about its target. That is what it says, what it
+            # matched on, and what a reader following the pill wants.
+            "source": href,
+            # The site's own wording for the link, which beats deriving a name
+            # from the URL - source_label() would call the library website
+            # "Vrhslibrary".
+            "label": clean,
             "kind": "link",
+            # Kept for diagnostics: a link that turns out to be wrong is easier
+            # to chase when you know which page it came from.
+            "found_on": source,
         })
 
     return chunks
@@ -906,16 +925,87 @@ def submit_report():
     return jsonify({"status": "success"})
 
 
+# How much of the conversation goes back to the model. Three exchanges is
+# enough for "who is he" to resolve and short enough that the prompt does not
+# grow without limit across a long session.
+HISTORY_TURNS = 6
+HISTORY_CHARS = 1200
+
+# Words that make a question depend on what came before it. A follow-up like
+# "who is he" retrieves nothing on its own - it carries none of the words that
+# would match a chunk - so the question that gets embedded has to include what
+# "he" referred to.
+PRONOUN = re.compile(
+    r"\b(he|she|they|it|him|her|them|his|hers|their|theirs|its|"
+    r"this|that|these|those|there|one)\b", re.I)
+
+
+def clean_history(raw):
+    """The last few turns, trimmed, in the shape the API expects."""
+    if not isinstance(raw, list):
+        return []
+
+    turns = []
+    for item in raw[-HISTORY_TURNS:]:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = (item.get("content") or "").strip()
+        if role in ("user", "assistant") and content:
+            turns.append({"role": role, "content": content[:HISTORY_CHARS]})
+    return turns
+
+
+def retrieval_query(question, history):
+    """What to embed, which is not always what the user typed.
+
+    "Who is he?" matches nothing in the corpus. It contains no subject, so the
+    nearest chunk is whatever happens to be closest to three function words,
+    and the answer that follows is grounded in nothing.
+
+    When a question looks like it depends on the one before it, the previous
+    user turn is prepended before embedding. Concatenation rather than a model
+    call to rewrite it: rewriting sits in front of retrieval, which sits in
+    front of the answer, so it would add a round trip to the one path in this
+    system that a reader is actually waiting on. Gluing two questions together
+    is free and puts the missing subject back in the text, which is all the
+    embedding needs.
+
+    Only for questions that look dependent. Concatenating unconditionally would
+    blur a genuine change of subject - asking about bell schedules right after
+    asking about the principal should retrieve bell schedules.
+    """
+    if not history:
+        return question
+
+    words = question.split()
+    dependent = len(words) <= 4 or bool(PRONOUN.search(question))
+    if not dependent:
+        return question
+
+    previous = next((t["content"] for t in reversed(history)
+                     if t["role"] == "user"), None)
+    if not previous:
+        return question
+
+    log.info("[followup] embedding with prior turn: %s", question[:50])
+    return previous + " " + question
+
+
 @app.route("/ask", methods=["POST"])
 def ask():
     data = request.get_json()
     question = data.get("query")
+    history = clean_history(data.get("history"))
 
     # Checked before retrieval, because a hit skips both round trips - there is
     # no point embedding a question whose answer is already written and already
     # verified. This is the only path that answers without calling the API at
     # all, and it is the only one that can be quick enough to feel instant.
-    hit = cached_answer(question) if question else None
+    # Not for a follow-up. The cache is keyed on the question alone and knows
+    # nothing about what came before, so serving "who is he" a pre-written
+    # answer would answer a different question than the one asked.
+    hit = cached_answer(question) if question and not history else None
     if hit:
         def replay():
             # Sent as one chunk. The streaming shape exists so a reader is not
@@ -934,19 +1024,23 @@ def ask():
         return Response(stream_with_context(replay()),
                         content_type="text/plain; charset=utf-8")
 
-    context, stats, sources = get_relevant_context(question)
+    context, stats, sources = get_relevant_context(
+        retrieval_query(question, history))
 
     # If no KB yet, just send that and stop.
     if context.startswith("No knowledge base"):
         return jsonify({"answer": context})
 
-    messages = [{
-        "role": "system",
-        "content": dated_prompt()
-    }, {
-        "role": "user",
-        "content": f"Context:\n{context}\n\nQuestion: {question}"
-    }]
+    # History sits between the system prompt and the current turn, so a
+    # follow-up resolves against what was actually said rather than being
+    # answered cold. The context block stays attached to the current question
+    # rather than being sent as its own turn: it was retrieved for this turn,
+    # and pinning it there stops the model treating an earlier turn's context
+    # as still in force.
+    messages = ([{"role": "system", "content": dated_prompt()}]
+                + history
+                + [{"role": "user",
+                    "content": f"Context:\n{context}\n\nQuestion: {question}"}])
 
     def generate():
         answer = []
