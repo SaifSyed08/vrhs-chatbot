@@ -1146,6 +1146,10 @@ def submit_feedback():
         "question": (data.get("question") or "")[:500],
         "rating": data.get("rating"),
         "reason": data.get("reason"),
+        # What the reader typed, when they bothered to. A reason chip says
+        # which of three buckets an answer failed in; a sentence says what
+        # actually went wrong, and that is the part worth reading.
+        "comment": (data.get("comment") or "")[:1000] or None,
         "retrieval_top": data.get("retrieval_top"),
         "retrieval_level": data.get("retrieval_level"),
         "flagged": bool(data.get("flagged")),
@@ -1164,7 +1168,9 @@ def submit_feedback():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(entries, f, indent=2)
 
-    log.info(f"[feedback] {entry['rating']} level={entry['retrieval_level']} "
+    log.info(f"[feedback] {entry['rating']} "
+             f"{'+comment ' if entry['comment'] else ''}"
+             f"level={entry['retrieval_level']} "
           f"q={entry['question'][:60]}")
     return jsonify({"status": "success"})
 

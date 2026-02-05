@@ -3,13 +3,13 @@
     "scope": "answerable",
     "question": "How many hours do I owe and where do I check?",
     "run": 0,
-    "answer": "You can check how many hours you owe at Vista Ridge High School by using the \"Do I owe hours?\" form: [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog).\n\nYou can also reach out to Joanna Norling or Micah Gillum in the AP office for information on your hours owed.\n\nFor more details or related resources, visit the [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed) page or contact your Assistant Principal with any questions.\n\nLet me know if you need help with anything else!",
+    "answer": "You can check if you owe hours at Vista Ridge High School by using the \"Do I owe hours?\" form: [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog).\n\nYou can also reach out to Joanna Norling or Micah Gillum in the Assistant Principal's office for information about how many hours you owe.\n\nFor more details and resources, you can visit the [Hours Owed page](https://vrhs.leanderisd.org/campus_information/hours-owed).\n\nIf you need further assistance, feel free to contact your assistant principal! Let me know if you have any more questions.",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8431765654631034,
+    "retrieval_top": 0.843288104024278,
     "bad_links": [],
     "unsupported": []
   },
@@ -17,13 +17,13 @@
     "scope": "answerable",
     "question": "How many hours do I owe and where do I check?",
     "run": 1,
-    "answer": "To check how many hours you owe at Vista Ridge High School, you can use the following resources:\n\n- Fill out the [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog) form.\n- Check the [Hours owed tracking form](https://drive.google.com/file/d/1eI-X1hNFmoOk950AzDEihX01TWFFg-eL/view?usp=sharing).\n- Visit the [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed) page for more information.\n\nYou can also reach out to Joanna Norling or Micah Gillum in the AP office if you need further assistance in finding out your specific hours owed.\n\nIf you have more questions, feel free to contact your [Assistant Principal](https://sites.google.com/leanderisd.org/vrhs-assistant-principals-offi/home?authuser=0). Good luck getting your hours checked!",
+    "answer": "To check how many hours you owe at Vista Ridge High School, you can use the following resources:\n\n- Visit the \"Do I owe hours?\" form here: [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog)\n- You can also reach out directly to Joanna Norling or Micah Gillum in the AP (Assistant Principal) office for your hours owed.\n\nFor more details, you can visit the [Hours Owed page](https://vrhs.leanderisd.org/campus_information/hours-owed).\n\nIf you have any questions, your assistant principal can also help. Let me know if you need anything else!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8431765654631034,
+    "retrieval_top": 0.843288104024278,
     "bad_links": [],
     "unsupported": []
   },
@@ -31,27 +31,33 @@
     "scope": "answerable",
     "question": "What is the bell schedule for this year?",
     "run": 0,
-    "answer": "For the 2026-2027 school year at Vista Ridge High School, you can find the current bell schedules here:\n\n- [Regular School Day Bell Schedule (2026-2027)](https://docs.google.com/document/d/1Wd6J0PdPcQ6Yu1YUzUJgrrm7Upe2lWjcdZtj14Xicxo/edit?usp=sharing)\n- [Special Events Bell Schedule (2026-2027)](https://docs.google.com/document/d/1JXaOvUpzjmedeaC7JL1qlikHisCFSYSw5-5bzt-qYwY/edit?usp=sharing)\n- [Half Day Bell Schedule (12/18/26, 5/27/27)](https://docs.google.com/document/d/1Emwlqe9pX9jQJQJXeNdWt9Y4CMStpmqve3sdi9cMZ-8/edit?usp=sharing)\n- [Late Start Bell Schedule (2026-2027)](https://docs.google.com/document/d/1QwRwqY5Y7SFB7qo7mU0PKETCcZUyFuJy_R5kgG_UgTI/edit?usp=sharing)\n\nYou can view each schedule by clicking the corresponding link. Let me know if you need help interpreting any of these schedules!",
+    "answer": "For the 2026-2027 school year at Vista Ridge High School, here is the Regular School Day Bell Schedule:\n\n- 1st/5th Period: 8:15\u20139:45  \n- Ranger Time: 9:45\u201310:15  \n- 2nd/6th Period: 10:21\u201311:51  \n\n**3rd/7th Period:**  \n- A Lunch: 11:51\u201312:23 (Lunch), 12:29\u20131:59 (Class)  \n- B Lunch: 11:57\u20131:27 (Class), 1:27\u20131:59 (Lunch)  \n\n- 4th/8th Period: 2:05\u20133:35  \n\nYou can also find details for special and half days at these links:  \n- [Special Events Bell Schedule (2026-2027)](https://docs.google.com/document/d/1JXaOvUpzjmedeaC7JL1qlikHisCFSYSw5-5bzt-qYwY/edit?usp=sharing)  \n- [Half Day Bell Schedule (12/18/26, 5/27/27)](https://docs.google.com/document/d/1Emwlqe9pX9jQJQJXeNdWt9Y4CMStpmqve3sdi9cMZ-8/edit?usp=sharing)  \n- [Late Start Bell Schedule (2026-2027)](https://docs.google.com/document/d/1Gwq8Bsh61WxZ-rn2Mbjkc-FyqZ4dsydHRyVN8kfftD8/edit?usp=sharing)\n\nLet me know if you need details for a different schedule or have any other questions!",
     "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
+    "faults": [
+      "link"
+    ],
+    "flagged": true,
+    "notice": [
+      "I could not find this link on the school site: https://docs.google.com/document/d/1Gwq8Bsh61WxZ-rn2Mbjkc-FyqZ4dsydHRyVN8kfftD8/edit?usp=sharing"
+    ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8853995986358176,
-    "bad_links": [],
+    "retrieval_top": 0.8589906533237879,
+    "bad_links": [
+      "https://docs.google.com/document/d/1Gwq8Bsh61WxZ-rn2Mbjkc-FyqZ4dsydHRyVN8kfftD8/edit?usp=sharing"
+    ],
     "unsupported": []
   },
   {
     "scope": "answerable",
     "question": "What is the bell schedule for this year?",
     "run": 1,
-    "answer": "The bell schedules for the 2026-2027 school year at Vista Ridge High School are available through the following links:\n\n- [Regular School Day Bell Schedule (2026-2027)](https://docs.google.com/document/d/1Wd6J0PdPcQ6Yu1YUzUJgrrm7Upe2lWjcdZtj14Xicxo/edit?usp=sharing)\n- [Special Events Bell Schedule (2026-2027)](https://docs.google.com/document/d/1JXaOvUpzjmedeaC7JL1qlikHisCFSYSw5-5bzt-qYwY/edit?usp=sharing)\n- [Half Day Bell Schedule (12/18/26, 5/27/27)](https://docs.google.com/document/d/1Emwlqe9pX9jQJQJXeNdWt9Y4CMStpmqve3sdi9cMZ-8/edit?usp=sharing)\n- [Late Start Bell Schedule (2026-2027)](https://docs.google.com/document/d/1QwRwqY5Y7SFB7qo7mU0PKETCcZUyFuJy_R5kgG_UgTI/edit?usp=sharing)\n\nYou can view each schedule by clicking the appropriate link. If you need details for a specific type of school day, let me know and I'll guide you to the right schedule. Have a great school year!",
+    "answer": "For the 2026-2027 school year at Vista Ridge High School, here is the Regular School Day Bell Schedule:\n\n- 1st/5th Period: 8:15\u20139:45  \n- Ranger Time: 9:45\u201310:15  \n- 2nd/6th Period: 10:21\u201311:51  \n- 3rd/7th Period:  \n  - A Lunch: 11:51\u201312:23 (Lunch), 12:29\u20131:59 (Class)  \n  - B Lunch: 11:57\u20131:27 (Class), 1:27\u20131:59 (Lunch)  \n- 4th/8th Period: 2:05\u20133:35  \n\nIf you need special event, half day, or late start schedules, let me know and I can provide those as well! Have a great school year!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8853995986358176,
+    "retrieval_top": 0.8589906533237879,
     "bad_links": [],
     "unsupported": []
   },
@@ -59,13 +65,13 @@
     "scope": "answerable",
     "question": "Who do I contact about my schedule?",
     "run": 0,
-    "answer": "For any questions about your schedule at Vista Ridge High School, you should email the counseling office at vrhs.counseling@leanderisd.org. You can also consult the [Staff Directory](https://vrhs.leanderisd.org/directory) or visit the front office if you need further assistance.\n\nLet me know if you need anything else!",
-    "substantive": true,
+    "answer": "The context does not provide a specific contact for schedule questions. I recommend reaching out to the front office or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) to find the appropriate staff member who can assist you with your schedule. Have a great day!",
+    "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8020251853194134,
+    "retrieval_top": 0.8019978859205947,
     "bad_links": [],
     "unsupported": []
   },
@@ -73,75 +79,89 @@
     "scope": "answerable",
     "question": "Who do I contact about my schedule?",
     "run": 1,
-    "answer": "For questions about your schedule at Vista Ridge High School, you should email vrhs.counseling@leanderisd.org. If you need further assistance, you can also reach out to the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if you need anything else!",
+    "answer": "The context does not provide a specific contact person for schedule questions. I recommend reaching out to the front office or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) to find the appropriate staff member who can assist you with your schedule inquiry. If you need further help navigating, feel free to ask!",
+    "substantive": false,
+    "faults": [],
+    "flagged": false,
+    "notice": [],
+    "retrieval_level": "solid",
+    "retrieval_top": 0.8019978859205947,
+    "bad_links": [],
+    "unsupported": []
+  },
+  {
+    "scope": "answerable",
+    "question": "How do I find a teacher's email?",
+    "run": 0,
+    "answer": "You can find a teacher's email by checking the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. The directory lists staff members along with their roles and contact emails. If you need help locating a specific teacher, let me know their name and I can help!",
     "substantive": true,
     "faults": [
       "claim"
     ],
     "flagged": true,
     "notice": [
-      "Some details are not confirmed by the pages I read."
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
     ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8020251853194134,
+    "retrieval_top": 0.8146206064927992,
     "bad_links": [],
     "unsupported": [
-      "For questions about your schedule at Vista Ridge High School, you should email vrhs.counseling@leanderisd.org."
+      "You can find a teacher's email by checking the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website.",
+      "The directory lists staff members along with their roles and contact emails."
     ]
   },
   {
     "scope": "answerable",
     "question": "How do I find a teacher's email?",
-    "run": 0,
-    "answer": "You can find a teacher's email by visiting the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. This directory lists contact information for staff members, including teachers. If you have a specific teacher in mind and cannot find their email, you can also contact the front office for assistance. Let me know if you need anything else!",
-    "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
-    "retrieval_level": "solid",
-    "retrieval_top": 0.7949997783775413,
-    "bad_links": [],
-    "unsupported": []
-  },
-  {
-    "scope": "answerable",
-    "question": "How do I find a teacher's email?",
     "run": 1,
-    "answer": "You can find a teacher's email by visiting the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. If you have trouble finding the contact information you need, the front office can also assist you. Let me know if you need anything else!",
+    "answer": "You can find a teacher's email by checking the [VRHS Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. The directory lists staff names, roles, and contact information. If you need help finding a specific teacher, let me know their name and I can assist further!",
     "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
+    "faults": [
+      "claim"
+    ],
+    "flagged": true,
+    "notice": [
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
+    ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.7949997783775413,
+    "retrieval_top": 0.8146206064927992,
     "bad_links": [],
-    "unsupported": []
+    "unsupported": [
+      "You can find a teacher's email by checking the [VRHS Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website.",
+      "The directory lists staff names, roles, and contact information."
+    ]
   },
   {
     "scope": "answerable",
     "question": "How do I sign up to volunteer at the school?",
     "run": 0,
-    "answer": "To sign up to volunteer at Vista Ridge High School, you will need to complete the volunteer registration for this school year. You can do this by visiting the [Register to Volunteer](https://www.leanderisd.org/volunteerapplication) page.\n\nIf you'd like more information about volunteering at Vista Ridge, you can also check out the [Become a Volunteer](https://vrhs.leanderisd.org/volunteer) page.\n\nThank you for your interest in supporting our students!",
+    "answer": "To sign up to volunteer at Vista Ridge High School, you can follow these steps:\n\n1. Visit the Vista Ridge Volunteer page for information: [Become a Volunteer](https://vrhs.leanderisd.org/volunteer)\n2. Complete the required volunteer registration application here: [Register to Volunteer](https://www.leanderisd.org/volunteerapplication)\n\nAfter submitting your registration, follow any additional instructions provided. If you have any further questions or need help, you can also refer to the [Volunteer Handbook](https://www.leanderisd.org/volunteerhandbook).\n\nThank you for your interest in volunteering!",
     "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
+    "faults": [
+      "claim"
+    ],
+    "flagged": true,
+    "notice": [
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
+    ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8561953539562608,
+    "retrieval_top": 0.8496866088307582,
     "bad_links": [],
-    "unsupported": []
+    "unsupported": [
+      "Complete the required volunteer registration application here: [Register to Volunteer](https://www.leanderisd.org/volunteerapplication)."
+    ]
   },
   {
     "scope": "answerable",
     "question": "How do I sign up to volunteer at the school?",
     "run": 1,
-    "answer": "To sign up to volunteer at Vista Ridge High School, you need to complete the volunteer registration for the current school year. You can do this by visiting the [Register to Volunteer](https://www.leanderisd.org/volunteerapplication) page. Once registered, you can also view campus volunteer needs by logging in [here](https://apps.raptortech.com/Volunteer/Login/MTc6Vm9sdW50ZWVyOmVuLVVT).\n\nFor more details specific to Vista Ridge, you can visit the school's [Become a Volunteer](https://vrhs.leanderisd.org/volunteer) page.\n\nThank you for your interest in supporting our students! If you have any further questions, feel free to ask.",
+    "answer": "To sign up to volunteer at Vista Ridge High School, you can follow these steps:\n\n1. Visit the [Become a Volunteer](https://vrhs.leanderisd.org/volunteer) page for information about volunteering.\n2. Complete the required application by registering through the [Register to Volunteer](https://www.leanderisd.org/volunteerapplication) link.\n\nIf you need more details or have questions, you may also consult the [Volunteer Handbook](https://www.leanderisd.org/volunteerhandbook).\n\nThank you for your interest in volunteering at Vista Ridge High School!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8561953539562608,
+    "retrieval_top": 0.8496866088307582,
     "bad_links": [],
     "unsupported": []
   },
@@ -149,116 +169,139 @@
     "scope": "answerable",
     "question": "When are the STAAR testing dates?",
     "run": 0,
-    "answer": "The STAAR testing dates available in the context are for the 2024-2025 school year (not the current year). Here are those dates:\n\n- English I: Tuesday, April 15, 2025\n- English II: Wednesday, April 16, 2025\n- English I & II Makeups: Thursday, April 17, 2025 \n- US History: Tuesday, April 22, 2025\n- US History (possibly a makeup): Thursday, April 24, 2025\n- Biology: Wednesday, April 23, 2025\n- Algebra I: Wednesday, April 30, 2025\n- Algebra I Makeups: Thursday, May 1, 2025\n\nPlease note, these are last year\u2019s dates. The current 2026-2027 testing dates are not found in the context. For the most up-to-date information, you can check the [2024-2025 Testing Timeline](https://www.morethanateacher.com/wp-content/uploads/2024/05/Testing-timeline-2024-2025.pdf) or contact the front office or use the [Staff Directory](https://vrhs.leanderisd.org/directory).\n\nLet me know if you have any other questions!",
+    "answer": "The STAAR testing dates available in the context are for the 2024-2025 school year, not the current 2026-2027 year. Here are the 2024-2025 STAAR dates:\n\n- English I: Tuesday, April 15, 2025\n- English II: Wednesday, April 16, 2025\n- English I & II Makeups: Thursday, April 17, 2025\n- US History: Tuesday, April 22, 2025 and Thursday, April 24, 2025\n- Biology: Wednesday, April 23, 2025\n- Algebra I: Wednesday, April 30, 2025\n- Algebra I Makeups: Thursday, May 1, 2025\n\nThere is no information about STAAR testing dates for the 2026-2027 school year in the context provided. For the most current dates, please contact the front office or check with your counselor. Let me know if you need help finding contact information!",
     "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
+    "faults": [
+      "claim"
+    ],
+    "flagged": true,
+    "notice": [
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
+    ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8945316604190754,
+    "retrieval_top": 0.8485594221583006,
     "bad_links": [],
-    "unsupported": []
+    "unsupported": [
+      "The STAAR testing dates available in the context are for the 2024-2025 school year, not the current 2026-2027 year."
+    ]
   },
   {
     "scope": "answerable",
     "question": "When are the STAAR testing dates?",
     "run": 1,
-    "answer": "The STAAR testing dates available are for the 2024-2025 school year, not the current 2026-2027 year. Here are the STAAR dates for 2024-2025:\n\n- English I: Tuesday, April 15, 2025  \n- English II: Wednesday, April 16, 2025  \n- English I & II Makeups: Thursday, April 17, 2025  \n- US History: Tuesday, April 22, 2025  \n- Biology: Wednesday, April 23, 2025  \n- US History (another date listed): Thursday, April 24, 2025  \n- Algebra I: Wednesday, April 30, 2025  \n- Algebra I Makeups: Thursday, May 1, 2025  \n\nFor a full overview, you can view the [2024-2025 Testing Timeline](https://www.morethanateacher.com/wp-content/uploads/2024/05/Testing-timeline-2024-2025.pdf).\n\nPlease note that these dates are for the 2024-2025 school year, and the current year's testing dates are not listed. If you need the most current information, I recommend contacting the front office or checking with your counselor. Let me know if you need help finding anything else!",
+    "answer": "The STAAR testing dates I found are for the 2024-2025 school year, not for the current 2026-2027 year. Here are the 2024-2025 STAAR dates:\n\n- English I: Tuesday, April 15, 2025  \n- English II: Wednesday, April 16, 2025  \n- English I & II Makeups: Thursday, April 17, 2025  \n- US History: Tuesday, April 22, 2025 and Thursday, April 24, 2025  \n- Biology: Wednesday, April 23, 2025  \n- Algebra I: Wednesday, April 30, 2025  \n- Algebra I Makeups: Thursday, May 1, 2025  \n\nSince the information for the 2026-2027 school year was not found, I recommend checking with the front office or looking for updates on the [Vista Ridge High School website](https://vrhs.leanderisd.org/home). Let me know if you need anything else!",
     "substantive": true,
     "faults": [
       "claim"
     ],
     "flagged": true,
     "notice": [
-      "Some details are not confirmed by the pages I read."
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
     ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8945316604190754,
+    "retrieval_top": 0.8485594221583006,
     "bad_links": [],
     "unsupported": [
-      "The STAAR testing dates available are for the 2024-2025 school year, not the current 2026-2027 year."
+      "Here are the 2024-2025 STAAR dates:"
     ]
   },
   {
     "scope": "answerable",
     "question": "What is on the school calendar this month?",
     "run": 0,
-    "answer": "You can view the events and activities scheduled for this month at Vista Ridge High School by checking the following resources:\n\n- Daily Announcements: These documents contain details about what\u2019s happening each month at the school.\n  - [September Announcements](https://docs.google.com/document/d/1mAW1IgO37FI_ibBPpi5ckjTgDSFz7KVnmR9fF43AEFk/edit?usp=sharing)\n\n- For a complete look at all campus events (including athletics, fine arts, and club activities), you can add the school\u2019s calendar feeds to your Google Calendar or view them using the following links:\n  - [Campus Events: Add in Google Calendar](https://calendar.google.com/calendar?cid=bGVhbmRlcmlzZC5vcmdfb3BrZzR2dXAxM3RoaWxtMmUwZWtrNDUwOG9AZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ)\n  - [Athletics Events](https://calendar.google.com/calendar?cid=bGVhbmRlcmlzZC5vcmdfdXZtaTluOGNudGZja2VkY3ZwNWVxcnIzZmdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ)\n  - [Fine Arts Events](https://calendar.google.com/calendar?cid=bGVhbmRlcmlzZC5vcmdfbzZjMGVzMDBldGg4OWVtN2UydWd2djBqYjBAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ)\n  - [Clubs & Organizations Events](https://calendar.google.com/calendar?cid=bGVhbmRlcmlzZC5vcmdfYWk3anQybTVzN2xndWRqdXZvb3EyZmpzcW9AZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ)\n\nFeel free to check out the [September Announcements](https://docs.google.com/document/d/1mAW1IgO37FI_ibBPpi5ckjTgDSFz7KVnmR9fF43AEFk/edit?usp=sharing) for a summary of this month\u2019s highlights. Let me know if there\u2019s a particular type of event or activity you\u2019re interested in!",
-    "substantive": true,
+    "answer": "The only school calendar for the 2026-2027 year that I have access to is the [A/B Calendar (VRHS 2026-2027 Calendar)](https://drive.google.com/file/d/1n54NUIykpYtq3R8gz9i2-2K7F_Rokv4w/view?usp=drive_link), which shows the rotation of A/B days. I do not have information about any special events, holidays, or other specific activities scheduled for September 2026.\n\nFor more detailed information on events or activities happening this month, I recommend reaching out to the [Staff Directory](https://vrhs.leanderisd.org/directory) or checking with the front office.\n\nLet me know if you'd like information on A/B day scheduling or need help with anything else!",
+    "substantive": false,
     "faults": [
       "claim"
     ],
     "flagged": true,
     "notice": [
-      "Some details are not confirmed by the pages I read."
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
     ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8386615996061147,
+    "retrieval_top": 0.8327960532164103,
     "bad_links": [],
     "unsupported": [
-      "Daily Announcements: These documents contain details about what\u2019s happening each month at the school.",
-      "For a complete look at all campus events (including athletics, fine arts, and club activities), you can add the school\u2019s calendar feeds to your Google Calendar or view them using the following links:"
+      "The only school calendar for the 2026-2027 year that I have access to is the [A/B Calendar (VRHS 2026-2027 Calendar)](https://drive.google.com/file/d/1n54NUIykpYtq3R8gz9i2-2K7F_Rokv4w/view?usp=drive_link), which shows the rotation of A/B days."
     ]
   },
   {
     "scope": "answerable",
     "question": "What is on the school calendar this month?",
     "run": 1,
-    "answer": "You can view the events and important dates for this month on the Vista Ridge High School calendar by checking the following resources:\n\n- For daily updates and specific events, you can refer to the [September Announcements](https://docs.google.com/document/d/1mAW1IgO37FI_ibBPpi5ckjTgDSFz7KVnmR9fF43AEFk/edit?usp=sharing).\n- You may also view the school\u2019s calendar of events by adding the [Campus Events](https://calendar.google.com/calendar?cid=bGVhbmRlcmlzZC5vcmdfb3BrZzR2dXAxM3RoaWxtMmUwZWtrNDUwOG9AZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ) calendar to your Google account.\n- Athletics, clubs, fine arts, PTA, and other event feeds are also linked in the school\u2019s calendar section if you want to track more specific activities.\n\nIf you need information about a particular type of event or date, let me know and I'll help you find the right calendar! Have a great month at Vista Ridge!",
+    "answer": "I don't have access to the full details of the events on the school calendar for September 2026. However, you can view the official A/B Calendar for the 2026-2027 school year here: [A/B Calendar (VRHS 2026-2027 Calendar)](https://drive.google.com/file/d/1n54NUIykpYtq3R8gz9i2-2K7F_Rokv4w/view?usp=drive_link). This calendar will show you which days are A days and B days, as well as important school dates.\n\nIf you are looking for specific events or announcements for September 2026 and don't see them on the provided calendar, I recommend contacting the front office or checking with a staff member. Have a great month at Vista Ridge!",
     "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
-    "retrieval_level": "solid",
-    "retrieval_top": 0.8386615996061147,
-    "bad_links": [],
-    "unsupported": []
-  },
-  {
-    "scope": "answerable",
-    "question": "What do seniors need to do before graduation?",
-    "run": 0,
-    "answer": "The context provided does not include a detailed list of specific requirements that Vista Ridge High School seniors need to complete before graduation. However, there is information about Project Graduation, which you can find here: [Project Graduation](https://sites.google.com/view/vistaridgeprojectgrad/home).\n\nFor exact requirements (such as coursework, fines, forms, or other obligations), I recommend contacting the Vista Ridge High School front office or checking with your counselor. You can also use the [Staff Directory](https://vrhs.leanderisd.org/directory) to find the appropriate staff member to contact.\n\nIf you need more specific information, please let me know how I can help further. Good luck as you prepare for graduation!",
-    "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
-    "retrieval_level": "solid",
-    "retrieval_top": 0.8023228097217172,
-    "bad_links": [],
-    "unsupported": []
-  },
-  {
-    "scope": "answerable",
-    "question": "What do seniors need to do before graduation?",
-    "run": 1,
-    "answer": "The context provided does not include detailed information on the specific steps seniors need to complete before graduation at Vista Ridge High School. For more information about requirements and preparations for graduation, you can visit the [Project Graduation](https://sites.google.com/view/vistaridgeprojectgrad/home) page or reach out to the front office or your counselor. If you have more specific questions, you may also refer to the [Staff Directory](https://vrhs.leanderisd.org/directory) to contact the appropriate staff member. Good luck with your preparations!",
-    "substantive": false,
     "faults": [
       "claim"
     ],
     "flagged": true,
     "notice": [
-      "Some details are not confirmed by the pages I read."
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
     ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8023228097217172,
+    "retrieval_top": 0.8327960532164103,
     "bad_links": [],
     "unsupported": [
-      "For more information about requirements and preparations for graduation, you can visit the [Project Graduation](https://sites.google.com/view/vistaridgeprojectgrad/home) page or reach out to the front office or your counselor."
+      "This calendar will show you which days are A days and B days, as well as important school dates."
+    ]
+  },
+  {
+    "scope": "answerable",
+    "question": "What do seniors need to do before graduation?",
+    "run": 0,
+    "answer": "Based on the information available, here are some things seniors at Vista Ridge High School are advised to do before graduation:\n\n1. **Order Cap and Gown:** Order your Cap, Gown & Tassel Unit from Herff Jones, as this is required for graduation.\n2. **Attend the Senior Meeting:** Attend the senior meeting to receive order packets and get information about graduation items for sale.\n3. **Fill Out the FAFSA:** Completing the FAFSA is a graduation requirement. The application opens October 1st, and the priority deadline is January 15th. Be sure to check specific university deadlines if you are applying to colleges.\n4. **Review the Post High School Checklist:** \n   - Your school Google account will transition to an alum account after graduation, active for one year.\n   - Download any files or folders from your school Google Drive that you want to keep, as you won\u2019t be able to create new files once the alum account is active.\n   \nFor more details, you might want to look at the [SUMMER BEFORE SENIOR YEAR](https://vrhs.leanderisd.org/seniors-2027#h.8303diwz6ah) resource. If you have any more specific questions or need information not listed here, you can check with the [Staff Directory](https://vrhs.leanderisd.org/directory) or the school\u2019s front office.\n\nBest of luck with your senior year and graduation preparations!",
+    "substantive": true,
+    "faults": [
+      "claim"
+    ],
+    "flagged": true,
+    "notice": [
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
+    ],
+    "retrieval_level": "solid",
+    "retrieval_top": 0.819101943102569,
+    "bad_links": [],
+    "unsupported": [
+      "Order your Cap, Gown & Tassel Unit from Herff Jones, as this is required for graduation.",
+      "Completing the FAFSA is a graduation requirement.",
+      "The application opens October 1st, and the priority deadline is January 15th."
+    ]
+  },
+  {
+    "scope": "answerable",
+    "question": "What do seniors need to do before graduation?",
+    "run": 1,
+    "answer": "Here are some important things seniors at Vista Ridge High School should do before graduation, based on the available context:\n\n- Fill out the FAFSA (Free Application for Federal Student Aid). This is a graduation requirement. The FAFSA opens October 1st each year, and the priority deadline is January 15th.\n- Order your Cap and Gown through Herff Jones. Only the Cap, Gown & Tassel Unit is required, but other products are available.\n- Attend the Senior Meeting to receive order packets and information about Cap and Gown and other items for sale.\n- Check out the [Post High School Checklist](https://vrhs.leanderisd.org/seniors-2027#h.8303diwz6ah) for a detailed list of things to complete before graduating.\n- Prepare your school Google Account for transition: After graduation, your school Google account will be switched to an alum account (firstname.lastnameXX@alum.leanderisd.org), which will be active for one year. Download any important files you wish to keep, as creating new documents will not be possible with the alum account.\n- Consider participating in [Project Graduation](https://sites.google.com/view/vistaridgeprojectgrad/home).\n\nIf you have more specific questions about graduation requirements or deadlines, please visit the [Staff Directory](https://vrhs.leanderisd.org/directory) or contact the front office for the most updated and detailed information.\n\nBest wishes for a successful senior year!",
+    "substantive": true,
+    "faults": [
+      "claim"
+    ],
+    "flagged": true,
+    "notice": [
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
+    ],
+    "retrieval_level": "solid",
+    "retrieval_top": 0.819101943102569,
+    "bad_links": [],
+    "unsupported": [
+      "Order your Cap and Gown through Herff Jones.",
+      "Only the Cap, Gown & Tassel Unit is required, but other products are available.",
+      "Attend the Senior Meeting to receive order packets and information about Cap and Gown and other items for sale.",
+      "Check out the [Post High School Checklist](https://vrhs.leanderisd.org/seniors-2027#h.8303diwz6ah) for a detailed list of things to complete before graduating.",
+      "Consider participating in [Project Graduation](https://sites.google.com/view/vistaridgeprojectgrad/home)."
     ]
   },
   {
     "scope": "answerable",
     "question": "What resources are there for parents?",
     "run": 0,
-    "answer": "Vista Ridge High School offers a number of resources for parents. Here are some you may find helpful:\n\n- [Parent Resources](https://vrhs.leanderisd.org/parent_resources): A central resource page for parents.\n- [Technology Support for Parents](https://www.leanderisd.org/tech_support): Assistance with technology or online services.\n- [Home Access Center](https://www.leanderisd.org/homeaccess): Allows parents to check grades, attendance, and more.\n- [Absence for Students](https://www.leanderisd.org/attendance): Procedure for reporting student absences.\n- [Meals: Pay Online](https://www.leanderisd.org/mealsonline/): Manage and pay for student meals online.\n- [Naviance Family Connection](https://student.naviance.com/vrhs): College and career planning.\n- [Parent/Student Handbook & Dress Code](https://www.leanderisd.org/handbooks): Guidelines and policies.\n- [Volunteer Registration](https://www.leanderisd.org/volunteerlogin): For parents who want to volunteer.\n- [PTA Clothes Closet](https://www.leanderisd.org/clothescloset): Clothing assistance for students in need.\n- [District Information](https://www.leanderisd.org/): General Leander ISD info.\n\nIf you have a specific need or question, let me know so I can point you to the exact resource! Have a great day!",
+    "answer": "Vista Ridge High School provides a Resources page specifically for parents, which you can access here: [Resources](https://vrhs.leanderisd.org/parent_resources).\n\nAdditionally, there is dedicated Technology Support for Parents, available here: [Technology Support for Parents](https://www.leanderisd.org/tech_support).\n\nIf you are looking for a specific type of resource or have a particular need, please let me know! Otherwise, you may find more information or assistance on those pages. Have a great day!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.827064855313201,
+    "retrieval_top": 0.8270890202093595,
     "bad_links": [],
     "unsupported": []
   },
@@ -266,75 +309,72 @@
     "scope": "answerable",
     "question": "What resources are there for parents?",
     "run": 1,
-    "answer": "Vista Ridge High School offers several resources for parents, including:\n\n- [Parent Resources](https://vrhs.leanderisd.org/parent_resources)\n- [Technology Support for Parents](https://www.leanderisd.org/tech_support)\n- [Home Access Center](https://www.leanderisd.org/homeaccess) (for grades, attendance, etc.)\n- [Absence Reporting for Students](https://www.leanderisd.org/attendance)\n- [Pay for Student Meals Online](https://www.leanderisd.org/mealsonline/)\n- [Parent/Student Handbook & Dress Code](https://www.leanderisd.org/handbooks)\n- [PTA Clothes Closet](https://www.leanderisd.org/clothescloset)\n- [Student Health Information](https://www.leanderisd.org/health)\n- [Volunteer Registration](https://www.leanderisd.org/volunteerlogin)\n- [Young Parent Services (Pregnant Teenagers and Teenage Parents)](https://www.leanderisd.org/yps)\n- [Registration Information](https://sites.google.com/leanderisd.org/vrhs-counseling-services/registration?authuser=0)\n- [Free and Reduced Meal Application](https://www.leanderisd.org/cns)\n\nYou can find more details or links to specific resources on the [Resources](https://vrhs.leanderisd.org/parent_resources) page. If you need something not listed here, the [Staff Directory](https://vrhs.leanderisd.org/directory) or the front office can help you further. Have a great day!",
+    "answer": "Vista Ridge High School offers a [Resources](https://vrhs.leanderisd.org/parent_resources) page specifically for parents, which you can visit for a variety of support materials. Additionally, there is a [Technology Support for Parents](https://www.leanderisd.org/tech_support) page to help with technology-related issues.\n\nIf you need more specific resources or details that are not listed, I recommend reaching out to the school directly or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) for further assistance. Let me know if you have any other questions!",
     "substantive": true,
-    "faults": [
-      "claim"
-    ],
-    "flagged": true,
-    "notice": [
-      "Some details are not confirmed by the pages I read."
-    ],
+    "faults": [],
+    "flagged": false,
+    "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.827064855313201,
+    "retrieval_top": 0.8270890202093595,
     "bad_links": [],
-    "unsupported": [
-      "Vista Ridge High School offers several resources for parents, including:",
-      "[Absence Reporting for Students](https://www.leanderisd.org/attendance)",
-      "[Pay for Student Meals Online](https://www.leanderisd.org/mealsonline/)",
-      "[Parent/Student Handbook & Dress Code](https://www.leanderisd.org/handbooks)",
-      "[Young Parent Services (Pregnant Teenagers and Teenage Parents)](https://www.leanderisd.org/yps)"
-    ]
+    "unsupported": []
   },
   {
     "scope": "answerable",
     "question": "What is the student check-out policy?",
     "run": 0,
-    "answer": "Starting on November 11, 2024, all in-person student checkouts at Vista Ridge High School must occur before 2:45 PM. After 2:45 PM, you will need to wait until the normal dismissal time to pick up your student. Please expect up to a 20 minute wait for early checkouts due to construction on campus, which may make the process take longer.\n\nOn early release days (12/19/25 and 5/29/26), the in-person checkout cutoff time is 11:45 AM.\n\nIf you need detailed instructions, you can find them here: [How To Check Your Student Out Early](https://sites.google.com/leanderisd.org/vrhsattendance/student-sign-out).\n\nIf you try to check out your student during their lunch or athletic period, there may be a longer wait or the student may not be able to be located.\n\nIf you need further assistance or details, feel free to contact the front office. Let me know if you need anything else!",
+    "answer": "The student check-out policy at Vista Ridge High School is as follows:\n\n- All in-person checkouts must occur BEFORE 2:45 PM. This policy started on 11/11/24.\n- After 2:45 PM, you will need to wait to meet your student at the regular dismissal time.\n- Notes or emails received by 10:30 AM with a dismissal time later than 2:45 PM will still be accepted. The 2:45 PM cutoff is only for in-person checkouts.\n- On early release days (listed as 12/19/25 & 5/29/26), the cutoff pickup time is 11:45 AM.\n- Please anticipate a 20-minute wait due to campus construction, which can increase the time needed to process checkouts.\n- Attempting to check out a student during their lunch or athletic period may take longer or could make it difficult to locate the student.\n\nFor more detailed instructions, you can visit: [How To Check Your Student Out Early](https://sites.google.com/leanderisd.org/vrhsattendance/student-sign-out).\n\nLet me know if you have any other questions!",
     "substantive": true,
     "faults": [
       "claim"
     ],
     "flagged": true,
     "notice": [
-      "Some details are not confirmed by the pages I read."
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
     ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8525590083168522,
+    "retrieval_top": 0.8355728890295457,
     "bad_links": [],
     "unsupported": [
-      "Starting on November 11, 2024, all in-person student checkouts at Vista Ridge High School must occur before 2:45 PM.",
-      "After 2:45 PM, you will need to wait until the normal dismissal time to pick up your student.",
-      "Please expect up to a 20 minute wait for early checkouts due to construction on campus, which may make the process take longer.",
-      "On early release days (12/19/25 and 5/29/26), the in-person checkout cutoff time is 11:45 AM.",
-      "If you try to check out your student during their lunch or athletic period, there may be a longer wait or the student may not be able to be located."
+      "Notes or emails received by 10:30 AM with a dismissal time later than 2:45 PM will still be accepted.",
+      "The 2:45 PM cutoff is only for in-person checkouts.",
+      "On early release days (listed as 12/19/25 & 5/29/26), the cutoff pickup time is 11:45 AM.",
+      "Please anticipate a 20-minute wait due to campus construction, which can increase the time needed to process checkouts.",
+      "Attempting to check out a student during their lunch or athletic period may take longer or could make it difficult to locate the student."
     ]
   },
   {
     "scope": "answerable",
     "question": "What is the student check-out policy?",
     "run": 1,
-    "answer": "Vista Ridge High School has a specific policy for student check-outs:\n\n- Starting November 11, 2024, all in-person student checkouts must occur BEFORE 2:45 PM. Please anticipate a 20-minute wait due to campus construction, which may cause delays in delivering early dismissal passes and student pickups.\n- After 2:45 PM, in-person checkouts are not available; you will need to wait for the normal dismissal time.\n- On early release days (12/19/25 & 5/29/26), the cutoff pickup time is 11:45 AM.\n- If you attempt to check out a student during their lunch or athletic period, it could result in a longer wait or possible delays in locating the student.\n\nFor step-by-step instructions, please visit: [How To Check Your Student Out Early](https://sites.google.com/leanderisd.org/vrhsattendance/student-sign-out)\n\nIf you have more questions, feel free to contact the front office. Have a great day!",
+    "answer": "The student check-out policy at Vista Ridge High School is as follows:\n\n- All in-person student checkouts must occur before 2:45 PM. This policy began on 11/11/24.\n- If you submit a note or email for dismissal by 10:30 AM, you can request a dismissal time later than 2:45 PM (the 2:45 PM cutoff applies only to in-person checkouts).\n- Please expect a wait time of about 20 minutes for your student to be checked out.\n- Due to ongoing construction, it may take longer for students to be located and come to the front office.\n- Attempting to check out a student during their lunch or athletic period could result in a longer wait or an unsuccessful checkout.\n- On early release days (12/19/25 & 5/29/26), the cutoff pickup time is 11:45 AM.\n\nYou can find more details and instructions here: [How To Check Your Student Out Early](https://sites.google.com/leanderisd.org/vrhsattendance/student-sign-out).\n\nIf you have further questions, please contact the [front office](https://vrhs.leanderisd.org/directory). Hope this helps!",
     "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
+    "faults": [
+      "claim"
+    ],
+    "flagged": true,
+    "notice": [
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
+    ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8525590083168522,
+    "retrieval_top": 0.8355728890295457,
     "bad_links": [],
-    "unsupported": []
+    "unsupported": [
+      "If you submit a note or email for dismissal by 10:30 AM, you can request a dismissal time later than 2:45 PM (the 2:45 PM cutoff applies only to in-person checkouts).",
+      "Please expect a wait time of about 20 minutes for your student to be checked out."
+    ]
   },
   {
     "scope": "answerable",
     "question": "Where do I drop off my student in the morning?",
     "run": 0,
-    "answer": "I'm sorry, but the specific location for morning student drop-off at Vista Ridge High School is not provided in the available context. For the most accurate and up-to-date information, please contact the front office or check with a staff member in the [Staff Directory](https://vrhs.leanderisd.org/directory).\n\nLet me know if there's anything else I can help you with!",
+    "answer": "I'm sorry, but the provided information does not specify where to drop off students at Vista Ridge High School in the morning. For the most accurate information, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory).\n\nLet me know if there\u2019s anything else I can help you with!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8386402808832989,
+    "retrieval_top": 0.8269030040141719,
     "bad_links": [],
     "unsupported": []
   },
@@ -342,13 +382,13 @@
     "scope": "answerable",
     "question": "Where do I drop off my student in the morning?",
     "run": 1,
-    "answer": "I'm sorry, but I don't have specific information in the provided context about the designated location for morning student drop-off at Vista Ridge High School. For the most accurate instructions, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if there's anything else I can help with!",
+    "answer": "I'm sorry, but the provided information does not specify where to drop off your student in the morning at Vista Ridge High School. For the most accurate details, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if there's anything else I can help with!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8386402808832989,
+    "retrieval_top": 0.8269030040141719,
     "bad_links": [],
     "unsupported": []
   },
@@ -356,13 +396,13 @@
     "scope": "answerable",
     "question": "How do I log into Ranger Time?",
     "run": 0,
-    "answer": "You can log into Ranger Time using the following links:\n\n- [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx)\n- [Ranger Time (Minga-Flextime)](http://app.minga.io/flextime)\n- [Minga - Ranger Time](https://app.minga.io/flextime)\n\nClick one of these links and enter your credentials as required. If you have trouble accessing your account, please reach out to the front office or check with your assistant principal for further assistance. Good luck!",
+    "answer": "To log into Ranger Time at Vista Ridge High School, you can use the following portals:\n\n- [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx)\n- [Ranger Time (Minga-Flextime)](http://app.minga.io/flextime)\n- [Minga - Ranger Time](https://app.minga.io/flextime)\n\nIf you need specific login instructions or encounter any issues, please contact the front office or visit the [Staff Directory](https://vrhs.leanderisd.org/directory) for further assistance. Good luck with your Ranger Time!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8625638985012443,
+    "retrieval_top": 0.8625843910678649,
     "bad_links": [],
     "unsupported": []
   },
@@ -370,13 +410,13 @@
     "scope": "answerable",
     "question": "How do I log into Ranger Time?",
     "run": 1,
-    "answer": "To log into Ranger Time at Vista Ridge High School, you can use the following links:\n\n- [Ranger Time (Minga-Flextime)](http://app.minga.io/flextime)\n- [Minga - Ranger Time](https://app.minga.io/flextime)\n- [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx)\n\nSimply click one of these links and follow the login instructions provided on the page. If you have any trouble accessing your account, please contact the front office or check with your assistant principal for further assistance. Good luck with Ranger Time!",
+    "answer": "You can log into Ranger Time for Vista Ridge High School by visiting the following link: [Ranger Time (Minga-Flextime)](http://app.minga.io/flextime).\n\nIf you need access to the portal specifically, you can also use the [Ranger Time Portal](https://adv.leanderisd.org/login.aspx?ReturnUrl=%2fDefault.aspx).\n\nIf you experience any issues logging in or need specific instructions, I recommend reaching out to the front office or checking with your teacher for assistance. Let me know if there's anything else I can help with!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8625638985012443,
+    "retrieval_top": 0.8625843910678649,
     "bad_links": [],
     "unsupported": []
   },
@@ -384,13 +424,13 @@
     "scope": "answerable",
     "question": "Where do I report an absence?",
     "run": 0,
-    "answer": "To report an absence for a student at Vista Ridge High School, please visit the [Absence for students](https://www.leanderisd.org/attendance) page for more information and instructions.\n\nIf you have any additional questions, you can also contact the front office or your Assistant Principal. Let me know if you need anything else!",
+    "answer": "To report an absence for a student at Vista Ridge High School, please visit the Absence for students page: [Absence for students](https://www.leanderisd.org/attendance).\n\nIf you need further assistance, you can also contact the front office. Let me know if you need any more help!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8282149403104404,
+    "retrieval_top": 0.8398382692974039,
     "bad_links": [],
     "unsupported": []
   },
@@ -398,70 +438,77 @@
     "scope": "answerable",
     "question": "Where do I report an absence?",
     "run": 1,
-    "answer": "For information on how to report an absence for students at Vista Ridge High School, please visit the [Absence for students](https://www.leanderisd.org/attendance) page. If you need additional assistance, you can also contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if you need help finding anything else!",
-    "substantive": true,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
-    "retrieval_level": "solid",
-    "retrieval_top": 0.8282149403104404,
-    "bad_links": [],
-    "unsupported": []
-  },
-  {
-    "scope": "answerable",
-    "question": "How do I start a new club?",
-    "run": 0,
-    "answer": "To start a new club at Vista Ridge High School, you\u2019ll need to complete the required documents and follow these steps:\n\n1. Access and complete the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).\n\n2. Fill out the annual [club request packet](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog) online. This is required for both new and existing clubs.\n\n3. If your club will be handling money (like dues or fundraising), you\u2019ll also need to submit a completed copy of your club\u2019s by-laws along with the online packet. You can find relevant requirements here: [Bona Fide Student Group Information and Requirements](https://sites.google.com/leanderisd.org/vrhs-finance/bona-fide-student-club-requirements).\n\n4. Be sure a sponsor and student leaders are involved in completing the application.\n\n5. For questions or further assistance, you are instructed to contact Dr. Peabody or Ms. Kelly.\n\nAdditionally, parents must complete a section of student registration that gives permission for their child to participate in clubs using the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog).\n\nIf you need further help, you can contact Dr. Peabody, Ms. Kelly, or check with the front office. Good luck with your new club!",
+    "answer": "To report an absence for a student at Vista Ridge High School, you can use the absence request form located on the VRHS Staff page. For more detailed instructions, you can also refer to the district's page for student absences here: [Absence for students](https://www.leanderisd.org/attendance).\n\nIf you need further assistance, please contact the front office or check the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if I can help with anything else!",
     "substantive": true,
     "faults": [
       "claim"
     ],
     "flagged": true,
     "notice": [
-      "Some details are not confirmed by the pages I read."
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
     ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8430454791880901,
+    "retrieval_top": 0.8398382692974039,
     "bad_links": [],
     "unsupported": [
-      "If your club will be handling money (like dues or fundraising), you\u2019ll also need to submit a completed copy of your club\u2019s by-laws along with the online packet.",
-      "Be sure a sponsor and student leaders are involved in completing the application."
+      "To report an absence for a student at Vista Ridge High School, you can use the absence request form located on the VRHS Staff page."
     ]
   },
   {
     "scope": "answerable",
     "question": "How do I start a new club?",
-    "run": 1,
-    "answer": "To start a new club at Vista Ridge High School, follow these steps:\n\n1. Access and complete the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).\n2. Complete the annual [club request packet](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog) online at the beginning of the year. This is required for all clubs, including new ones.\n3. If your club will handle money (such as dues), review the [Information and Requirements for Bona Fide Student Groups](https://sites.google.com/leanderisd.org/vrhs-finance/bona-fide-student-club-requirements). You will also need to submit a completed copy of your club\u2019s by-laws with the club packet.\n4. Make sure a parent/guardian completes the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog) for student participation.\n\nIf you have questions or need further guidance about starting a new club, you are encouraged to contact Dr. Peabody or Ms. Kelly.\n\nGood luck with starting your new club!",
+    "run": 0,
+    "answer": "To start a new club at Vista Ridge High School, you need to complete the following steps:\n\n1. Fill out the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).\n2. Complete the annual [club request packet](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog); this is required every year for all clubs, including new ones.\n3. If your club will handle money (such as dues or fundraising), you must also submit a copy of your by-laws along with the online packet. See the [Information and Requirements for Bona Fide Student Groups](https://sites.google.com/leanderisd.org/vrhs-finance/bona-fide-student-club-requirements) for details.\n4. Make sure you have a club sponsor and that parents/guardians submit the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog).\n\nIf you have any questions about starting a new club, you are directed to contact Dr. Peabody or Ms. Kelly for assistance.\n\nLet me know if you need any of these links again or if you have more questions! Good luck with your new club!",
     "substantive": true,
     "faults": [
       "claim"
     ],
     "flagged": true,
     "notice": [
-      "Some details are not confirmed by the pages I read."
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
     ],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8430454791880901,
+    "retrieval_top": 0.8429187028738138,
     "bad_links": [],
     "unsupported": [
-      "This is required for all clubs, including new ones.",
-      "If your club will handle money (such as dues), review the Information and Requirements for Bona Fide Student Groups.",
-      "You will also need to submit a completed copy of your club\u2019s by-laws with the club packet."
+      "Make sure you have a club sponsor and that parents/guardians submit the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog)."
+    ]
+  },
+  {
+    "scope": "answerable",
+    "question": "How do I start a new club?",
+    "run": 1,
+    "answer": "To start a new club at Vista Ridge High School, you\u2019ll need to follow these steps:\n\n1. Complete the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).\n2. Fill out the [club request packet](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog) at the beginning of the school year. This is required for both new and existing clubs.\n3. If your club will handle any money (for dues, fundraisers, etc.), you'll also need to submit your club\u2019s by-laws with the online packet. More info is available on [Bona Fide Student Group Information and Requirements](https://sites.google.com/leanderisd.org/vrhs-finance/bona-fide-student-club-requirements).\n4. A parent or guardian must submit the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog) for you to participate in clubs.\n\nIf you have questions about starting a new club, you are instructed to contact Dr. Peabody or Ms. Kelly. If you need their contact info, please refer to the [Staff Directory](https://vrhs.leanderisd.org/directory).\n\nGood luck with your new club idea!",
+    "substantive": true,
+    "faults": [
+      "claim"
+    ],
+    "flagged": true,
+    "notice": [
+      "Some of this is not stated on the pages I found, so check the sources before relying on it."
+    ],
+    "retrieval_level": "solid",
+    "retrieval_top": 0.8429187028738138,
+    "bad_links": [],
+    "unsupported": [
+      "Complete the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).",
+      "Fill out the [club request packet](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog) at the beginning of the school year.",
+      "This is required for both new and existing clubs.",
+      "If your club will handle any money (for dues, fundraisers, etc.), you'll also need to submit your club\u2019s by-laws with the online packet.",
+      "A parent or guardian must submit the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog) for you to participate in clubs."
     ]
   },
   {
     "scope": "answerable",
     "question": "What clubs and organizations are offered?",
     "run": 0,
-    "answer": "You can view the current list of clubs and organizations offered at Vista Ridge High School by checking this [Google Spreadsheet](https://docs.google.com/spreadsheets/d/1Y4dH0xP7yj5TshBoHbrqlNPuwkLjaBUxXK33hcYQt8M/edit?usp=sharing). This document contains detailed information about each club, including sponsors and student contacts.\n\nFor more general information about clubs and organizations at VRHS, you can also visit the [Clubs & Organizations](https://vrhs.leanderisd.org/campus_information/clubs) page on the school website.\n\nIf you need information about a specific club or can't find what you're looking for, the [club sponsor and student info page](https://vrhs.leanderisd.org/campus_information/clubs/sponsor-student-info) may also be helpful.\n\nLet me know if you need help with a specific club or have any other questions!",
+    "answer": "You can find the current list of clubs and organizations offered at Vista Ridge High School on the [Clubs & Organizations](https://vrhs.leanderisd.org/campus_information/clubs) page. This page will provide up-to-date information about available clubs and how to get involved. If you have questions about a specific club, you can also reach out to the front office or check the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if you need help finding a particular type of club!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8270858333305442,
+    "retrieval_top": 0.8271160738185296,
     "bad_links": [],
     "unsupported": []
   },
@@ -469,13 +516,13 @@
     "scope": "answerable",
     "question": "What clubs and organizations are offered?",
     "run": 1,
-    "answer": "You can find a list of clubs and organizations offered at Vista Ridge High School by checking the following resources:\n\n- The [Clubs & Organizations page](https://vrhs.leanderisd.org/campus_information/clubs) on the Vista Ridge High School website.\n- This [Google spreadsheet](https://docs.google.com/spreadsheets/d/1Y4dH0xP7yj5TshBoHbrqlNPuwkLjaBUxXK33hcYQt8M/edit?usp=sharing) lists the current clubs with sponsor and student info.\n- For more information about individual clubs or how to join, you can also visit the [Club Sponsors and Student Information page](https://vrhs.leanderisd.org/campus_information/clubs/sponsor-student-info).\n\nIf you\u2019re looking for something specific or want to start a new club, let me know! Have fun exploring all the options at Vista Ridge!",
+    "answer": "You can find a list of clubs and organizations offered at Vista Ridge High School by visiting the [Clubs & Organizations](https://vrhs.leanderisd.org/campus_information/clubs) page on their website. This page should have the most up-to-date information about current clubs, activities, and student organizations available at the school.\n\nIf you have trouble finding the specific club you're interested in or want more details, you may want to contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory). Good luck finding a club that interests you!",
     "substantive": true,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "solid",
-    "retrieval_top": 0.8270858333305442,
+    "retrieval_top": 0.8271160738185296,
     "bad_links": [],
     "unsupported": []
   },
@@ -483,13 +530,13 @@
     "scope": "out_of_scope",
     "question": "What is the capital of France?",
     "run": 0,
-    "answer": "I'm sorry, but I do not have that information. If you have questions specifically about Vista Ridge High School, I'd be happy to help!",
+    "answer": "I'm sorry, but I don't have that information. If you have a question specific to Vista Ridge High School, I'd be happy to help! For other questions, you might want to consult a general resource or search engine. Let me know if there's anything related to VRHS you need assistance with!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7118212312427331,
+    "retrieval_top": 0.7304189508505273,
     "bad_links": [],
     "unsupported": []
   },
@@ -497,13 +544,13 @@
     "scope": "out_of_scope",
     "question": "What is the capital of France?",
     "run": 1,
-    "answer": "I do not have that information in the context provided. If you have questions about Vista Ridge High School, please let me know how I can assist!",
+    "answer": "I'm sorry, but I do not have that information. If you need help with a Vista Ridge High School-related question, feel free to ask! For general knowledge questions, I encourage you to consult another trusted resource. Have a great day!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7118212312427331,
+    "retrieval_top": 0.7304189508505273,
     "bad_links": [],
     "unsupported": []
   },
@@ -511,13 +558,17 @@
     "scope": "out_of_scope",
     "question": "Can you write me a Python function to reverse a linked list?",
     "run": 0,
-    "answer": "I'm here to assist with questions related to Vista Ridge High School. I don't have information or resources on writing Python functions or coding in general. If you have a question about a specific class or resource at Vista Ridge related to programming, I recommend reaching out to your teacher or checking the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if you need help finding school resources!",
-    "substantive": false,
-    "faults": [],
-    "flagged": false,
-    "notice": [],
+    "answer": "Sure! Here is a Python function that reverses a linked list:\n\n```python\nclass ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef reverse_linked_list(head):\n    prev = None\n    current = head\n    while current:\n        next_node = current.next\n        current.next = prev\n        prev = current\n        current = next_node\n    return prev\n```\n\nLet me know if you need the function explained or have any other questions!",
+    "substantive": true,
+    "faults": [
+      "answered-uncovered"
+    ],
+    "flagged": true,
+    "notice": [
+      "I could not find anything about this on the school's pages, so this answer is not coming from them."
+    ],
     "retrieval_level": "none",
-    "retrieval_top": 0.6944414278653674,
+    "retrieval_top": 0.6944430842546085,
     "bad_links": [],
     "unsupported": []
   },
@@ -525,13 +576,13 @@
     "scope": "out_of_scope",
     "question": "Can you write me a Python function to reverse a linked list?",
     "run": 1,
-    "answer": "I'm here to help with questions and information related to Vista Ridge High School. Unfortunately, I don't have information or resources to assist with writing Python functions or coding help. If you need assistance with programming, I recommend reaching out to your computer science teacher or checking with the front office for tutoring resources. Let me know if you have any questions related to Vista Ridge!",
+    "answer": "I'm here to help with Vista Ridge High School information and services. Unfortunately, I don't have resources to provide programming help or write Python functions.\n\nIf you have any questions about Vista Ridge High School, feel free to ask!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.6944414278653674,
+    "retrieval_top": 0.6944430842546085,
     "bad_links": [],
     "unsupported": []
   },
@@ -539,13 +590,13 @@
     "scope": "out_of_scope",
     "question": "What are Harvard's admission requirements?",
     "run": 0,
-    "answer": "I do not have information about Harvard's admission requirements. For questions related to Vista Ridge High School, I'm happy to help! If you have a specific question about VRHS or need help with college prep resources at the school, please let me know. Otherwise, you can visit Harvard's official website for their admission requirements. Let me know if there's anything else I can assist you with!",
+    "answer": "I do not have information about Harvard University's admission requirements in the context provided. For details about Harvard admissions, please visit Harvard's official website. If you have questions about Vista Ridge High School requirements or need help preparing for college applications, you can reach out to your counselor using the [Staff Directory](https://vrhs.leanderisd.org/directory) or contact the front office. Let me know if you need help with anything else!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
-    "retrieval_level": "weak",
-    "retrieval_top": 0.7835393712156923,
+    "retrieval_level": "solid",
+    "retrieval_top": 0.7901813984914879,
     "bad_links": [],
     "unsupported": []
   },
@@ -553,13 +604,13 @@
     "scope": "out_of_scope",
     "question": "What are Harvard's admission requirements?",
     "run": 1,
-    "answer": "I do not have information about Harvard's admission requirements. For questions related to Vista Ridge High School, feel free to ask! If you need help finding college resources at VRHS, you can reach out to the counselors through the [Staff Directory](https://vrhs.leanderisd.org/directory) or contact the front office. Let me know if I can help with anything else related to Vista Ridge!",
+    "answer": "I do not have information about Harvard University's specific admission requirements in the context provided. For details about Harvard admissions, please visit their official website.\n\nIf you are seeking information related to college admissions or need help with school-specific processes such as SAT scores, FAFSA, or AP registration, please let me know! If you need further college advising, I recommend reaching out to a counselor at Vista Ridge High School through the [Staff Directory](https://vrhs.leanderisd.org/directory) or by visiting the front office. Good luck with your college plans!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
-    "retrieval_level": "weak",
-    "retrieval_top": 0.7835393712156923,
+    "retrieval_level": "solid",
+    "retrieval_top": 0.7901813984914879,
     "bad_links": [],
     "unsupported": []
   },
@@ -567,13 +618,13 @@
     "scope": "out_of_scope",
     "question": "Who won the World Series in 2024?",
     "run": 0,
-    "answer": "I\u2019m sorry, but I do not have that information. For help with questions outside of Vista Ridge High School, you may want to check a sports or news website. If you need information related to the school, feel free to ask!",
+    "answer": "I do not have information about the winner of the 2024 World Series. For questions unrelated to Vista Ridge High School, I recommend checking a sports news website. If you have any questions about our school, feel free to ask!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7274802474080183,
+    "retrieval_top": 0.7355901724075584,
     "bad_links": [],
     "unsupported": []
   },
@@ -581,13 +632,13 @@
     "scope": "out_of_scope",
     "question": "Who won the World Series in 2024?",
     "run": 1,
-    "answer": "I do not have that information in the context provided. For questions unrelated to Vista Ridge High School, I recommend checking a reliable sports news source. If you have any questions about VRHS, feel free to ask!",
+    "answer": "I'm sorry, but I do not have information about the winner of the 2024 World Series. If you have any school-related questions, feel free to ask!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7274802474080183,
+    "retrieval_top": 0.7355901724075584,
     "bad_links": [],
     "unsupported": []
   },
@@ -595,7 +646,7 @@
     "scope": "out_of_scope",
     "question": "What is the tuition at UT Austin?",
     "run": 0,
-    "answer": "I'm sorry, but I do not have information about the tuition at UT Austin. For questions about colleges or universities outside of Vista Ridge High School, please contact the appropriate institution directly or check their website. If you have any school-specific questions, you can reach out to the VRHS front office or consult the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if there\u2019s anything else I can assist you with!",
+    "answer": "I do not have information about the tuition at UT Austin. For questions about university costs, I recommend visiting UT Austin\u2019s official website. If you need further assistance or college guidance, please contact the VRHS counseling office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory). Good luck with your college search!",
     "substantive": false,
     "faults": [],
     "flagged": false,
@@ -609,7 +660,7 @@
     "scope": "out_of_scope",
     "question": "What is the tuition at UT Austin?",
     "run": 1,
-    "answer": "I'm sorry, but I do not have information about tuition at UT Austin. For questions not related to Vista Ridge High School, I recommend checking UT Austin's official website or contacting their admissions office. If you have questions about Vista Ridge, please let me know\u2014I'm happy to help!",
+    "answer": "I do not have information about the tuition at UT Austin. For details about UT Austin's tuition, please visit their official website or contact their admissions office directly. If you have any other questions related to Vista Ridge High School, I'd be happy to help!",
     "substantive": false,
     "faults": [],
     "flagged": false,
@@ -623,13 +674,13 @@
     "scope": "out_of_scope",
     "question": "How do I fix a NullPointerException in Java?",
     "run": 0,
-    "answer": "I'm sorry, but I don't have information on fixing a NullPointerException in Java from the Vista Ridge High School context. If you are looking for programming help, you may want to reach out to your computer science teacher or check with a staff member for guidance. You can find their contact information in the [Staff Directory](https://vrhs.leanderisd.org/directory). Good luck with your coding!",
+    "answer": "I'm sorry, but I don't have information on fixing a NullPointerException in Java in the context provided from Vista Ridge High School resources. For help with Java programming issues, I recommend reaching out to your computer science teacher or checking with a staff member for guidance. You can find contact information in the [Staff Directory](https://vrhs.leanderisd.org/directory). Good luck with your project!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7132545066019285,
+    "retrieval_top": 0.715816791253585,
     "bad_links": [],
     "unsupported": []
   },
@@ -637,13 +688,13 @@
     "scope": "out_of_scope",
     "question": "How do I fix a NullPointerException in Java?",
     "run": 1,
-    "answer": "I'm sorry, but I do not have information about fixing a NullPointerException in Java. If you are looking for programming help, you might consider reaching out to your computer science teacher or checking with the [Staff Directory](https://vrhs.leanderisd.org/directory) for someone who can assist you. Let me know if you need help finding another resource!",
+    "answer": "I'm sorry, but I don't have information about fixing a NullPointerException in Java based on the context from the Vista Ridge High School website. For programming or technical questions like this, you might want to reach out to your computer science teacher or check with someone in the Technology Support team at Vista Ridge. You can also find contact information through the [Staff Directory](https://vrhs.leanderisd.org/directory). Good luck!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7132545066019285,
+    "retrieval_top": 0.715816791253585,
     "bad_links": [],
     "unsupported": []
   },
@@ -651,13 +702,13 @@
     "scope": "out_of_scope",
     "question": "What time does the mall close tonight?",
     "run": 0,
-    "answer": "I'm sorry, but I do not have any information about mall hours. For information specific to Vista Ridge High School, feel free to ask! If you have other questions, I\u2019m happy to help.",
+    "answer": "I'm sorry, but I do not have any information about mall hours. For questions not related to Vista Ridge High School, I recommend checking the mall\u2019s official website or contacting them directly. If you have any school-related questions, feel free to ask!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
-    "retrieval_level": "weak",
-    "retrieval_top": 0.784203669445567,
+    "retrieval_level": "none",
+    "retrieval_top": 0.7666504583450948,
     "bad_links": [],
     "unsupported": []
   },
@@ -665,13 +716,13 @@
     "scope": "out_of_scope",
     "question": "What time does the mall close tonight?",
     "run": 1,
-    "answer": "I'm sorry, but I don't have any information about mall hours. If you have questions related to Vista Ridge High School, feel free to ask!",
+    "answer": "I'm sorry, but I do not have information about mall hours. For questions unrelated to Vista Ridge High School, I recommend checking directly with the mall or their website. If you need help with anything at Vista Ridge, feel free to ask!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
-    "retrieval_level": "weak",
-    "retrieval_top": 0.784203669445567,
+    "retrieval_level": "none",
+    "retrieval_top": 0.7666504583450948,
     "bad_links": [],
     "unsupported": []
   },
@@ -679,13 +730,13 @@
     "scope": "out_of_scope",
     "question": "Explain the plot of Hamlet.",
     "run": 0,
-    "answer": "I'm here to help with Vista Ridge High School information! Unfortunately, I don't have details on the plot of Hamlet in the context provided. If you need help with English or Theatre classes, you might try reaching out to your teacher or check with the [Staff Directory](https://vrhs.leanderisd.org/directory) for more assistance. Let me know if you have any other school-related questions!",
+    "answer": "I do not have information about the plot of Hamlet in the context provided from the Vista Ridge High School website. If you need information about Hamlet or related coursework, I recommend reaching out to your English teacher or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) for guidance. Let me know if there's anything else I can assist you with!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7234682938232562,
+    "retrieval_top": 0.7234108618473258,
     "bad_links": [],
     "unsupported": []
   },
@@ -693,13 +744,13 @@
     "scope": "out_of_scope",
     "question": "Explain the plot of Hamlet.",
     "run": 1,
-    "answer": "I don't have information about the plot of Hamlet in the context provided from the Vista Ridge High School website. If you need help with a Theatre Arts class or production, you can check the [Theatre Arts](https://sites.google.com/leanderisd.org/vista-ridge-theatre/home) page for more relevant resources or speak to your teacher. Let me know if there\u2019s anything else I can help with!",
+    "answer": "I\u2019m sorry, but I do not have information about the plot of Hamlet in the context provided. If you need help related to Hamlet in connection with a class or project at Vista Ridge High School, I recommend reaching out to your English or Theatre Arts teacher. You can find staff contact information in our [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if there\u2019s anything else I can help you with!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7234682938232562,
+    "retrieval_top": 0.7234108618473258,
     "bad_links": [],
     "unsupported": []
   },
@@ -707,13 +758,13 @@
     "scope": "out_of_scope",
     "question": "What is the weather going to be tomorrow?",
     "run": 0,
-    "answer": "I'm sorry, but I do not have information about the weather. For weather updates, please check a reliable weather website or app. If you need school-related information, feel free to ask!",
+    "answer": "I'm sorry, but I do not have information about the weather. For weather updates, please check a trusted weather website or app. If you have any other school-related questions, I'd be happy to help!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7450574136363368,
+    "retrieval_top": 0.7365114361595066,
     "bad_links": [],
     "unsupported": []
   },
@@ -721,13 +772,13 @@
     "scope": "out_of_scope",
     "question": "What is the weather going to be tomorrow?",
     "run": 1,
-    "answer": "I'm sorry, but I do not have information about the weather. For the most accurate and up-to-date weather forecast, please check a trusted weather website or app. If you have any school-related questions, I'd be happy to help!",
+    "answer": "I'm sorry, but I do not have information about the weather. For weather updates, please check a reliable weather website or app. If you have any questions related to Vista Ridge High School, feel free to ask!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7450574136363368,
+    "retrieval_top": 0.7365114361595066,
     "bad_links": [],
     "unsupported": []
   },
@@ -735,13 +786,13 @@
     "scope": "out_of_scope",
     "question": "How much does a Tesla Model 3 cost?",
     "run": 0,
-    "answer": "I'm sorry, but I do not have information about the cost of a Tesla Model 3. If you have questions related to Vista Ridge High School, I can definitely help!",
+    "answer": "I'm sorry, but I do not have information about the cost of a Tesla Model 3. If you have any questions related to Vista Ridge High School, please let me know\u2014I'm here to help!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7229212029644756,
+    "retrieval_top": 0.7232071847478992,
     "bad_links": [],
     "unsupported": []
   },
@@ -749,13 +800,13 @@
     "scope": "out_of_scope",
     "question": "How much does a Tesla Model 3 cost?",
     "run": 1,
-    "answer": "I'm sorry, but I do not have information about the cost of a Tesla Model 3. If you have questions specific to Vista Ridge High School, I'd be happy to help!",
+    "answer": "I'm sorry, but I do not have information about the cost of a Tesla Model 3. For questions unrelated to Vista Ridge High School, I recommend checking the official Tesla website or another trusted resource. If you have any questions about the school, feel free to ask!",
     "substantive": false,
     "faults": [],
     "flagged": false,
     "notice": [],
     "retrieval_level": "none",
-    "retrieval_top": 0.7229212029644756,
+    "retrieval_top": 0.7232071847478992,
     "bad_links": [],
     "unsupported": []
   }

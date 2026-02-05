@@ -31,14 +31,16 @@
        up instead of the suggestions running the full width of the window. */
     :root { --composer-width: 620px; }
 
-    /* Keyboard users get a visible target; mouse users do not see a ring. */
+    /* Keyboard users get a visible target; mouse users do not see a ring.
+       The feedback controls are real <button> elements, so they are already
+       covered here and need no selector of their own. */
     button:focus-visible,
     a:focus-visible,
-    .thumb-btn:focus-visible,
-    .followup-btn:focus-visible {
+    .fb-input:focus-visible {
       outline: 2px solid #e60023;
       outline-offset: 2px;
     }
+
     .chat-container {
       max-width: 1000px;
       margin: 0 auto;
@@ -551,104 +553,122 @@
       opacity: 1;
     }
 
-    .bot-feedback {
-      font-size: 0.9rem;
-      color: #555;
-      margin: 6px 0 16px 4px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      opacity: 0;
-      transform: translateX(-18px);
-      transition: opacity 0.4s ease, transform 0.4s ease;
-    }
 
-    .bot-feedback.show {
-      opacity: 1;
-      transform: translateX(0);
-    }
 
-    /* thumbs row */
-    .thumbs {
+    /* One line under an answer: sources on the left, rating on the right. */
+    .answer-footer {
       display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      pointer-events: auto;
+      margin: 6px 0 14px 4px;
+      min-height: 24px;
     }
 
-    .thumb-icon {
-      width: 22px;
-      height: 22px;
-      fill: none;                 /* outline look */
-      stroke: #333;               /* outline color */
-      stroke-width: 2;
-      transition: 0.2s ease;
-    }
-
-
-    .thumb-btn {
+    .feedback-inline {
       display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 0 0 auto;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+    }
+
+    /* Hidden until the answer is hovered, and always available to the
+       keyboard, which never hovers anything. */
+    .answer-footer.reveal .feedback-inline,
+    .feedback-inline:focus-within { opacity: 1; }
+
+    .fb-btn {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 6px;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: none;
       border-radius: 6px;
-      border: 1.8px solid #ddd;
+      background: transparent;
+      color: #9aa0a6;
       cursor: pointer;
-      background: white;
-      transition: 0.2s ease;
-      opacity: 0.7;
+      transition: color 0.15s ease, background-color 0.15s ease;
+    }
+    .fb-btn svg { width: 15px; height: 15px; stroke-width: 1.9; }
+    .fb-btn:hover { background: #f1f2f4; color: #5f6368; }
+    .fb-btn.active { color: #c40020; }
+
+    .fb-thanks {
+      font-size: 0.75rem;
+      color: #8a8f94;
+      margin-left: 4px;
+      white-space: nowrap;
     }
 
-    .thumb-btn:hover {
-      opacity: 1;
+    .fb-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin: -6px 0 14px 4px;
     }
 
-    .thumb-btn.active .thumb-icon {
-      stroke-width: 0;
-      opacity: 0.8;
-      fill: #333;        /* becomes filled */
+    .fb-reasons { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .fb-reason {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 4px 10px;
+      border: 1px solid #e0e3e6;
+      border-radius: 999px;
+      background: #fff;
+      color: #5f6368;
+      cursor: pointer;
+      transition: border-color 0.15s ease, color 0.15s ease;
     }
+    .fb-reason:hover { border-color: #c9cdd2; color: #2c2f33; }
+    .fb-reason.active { border-color: #c40020; color: #c40020; }
+
+    .fb-comment { display: flex; gap: 6px; align-items: center; }
+
+    .fb-input {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 5px 10px;
+      width: 260px;
+      max-width: 48vw;
+      border: 1px solid #e0e3e6;
+      border-radius: 999px;
+      outline: none;
+      background: #fff;
+      color: #2c2f33;
+    }
+    .fb-input:focus { border-color: #c40020; }
+
+    .fb-send {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 5px 12px;
+      border: none;
+      border-radius: 999px;
+      background: #e60023;
+      color: #fff;
+      cursor: pointer;
+    }
+    .fb-send:hover { background: #c40020; }
+
+    /* thumbs row */
 
 
-    .thumb-btn.active {
-      opacity: 1;
-      border-color: #aaa;
-      background: #f1f1f1;
-      transform: scale(1.07);
-    }
+
+
+
+
+
 
     /* follow-up outline buttons */
-    .followup-options {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 1px;
-      align-items: flex-start; /* ensures items stay LEFT aligned */
 
-    }
 
-    .followup-btn {
-      border: 1.5px solid #bbb;
-      padding: 8px 12px;
-      border-radius: 10px;
-      background: white;
-      width: 248px;        /* stops full width */
-      text-align: center;
-      cursor: pointer;
-      font-size: 0.82rem;
-      transition: 0.18s ease;
-    }
 
-    .followup-btn:hover {
-      background: #f5f5f5;
-    }
-
-    .feedback-header {
-      display: inline-flex;   /* keeps everything compact */
-      align-items: center;
-      gap: 16px;              /* small space between text and thumbs */
-      margin-bottom: 6px;
-
-    }
 
     /* Pages the answer was retrieved from. Shown only when the retrieval gate
        is satisfied, so a pill always points at a page that actually matched. */
@@ -821,67 +841,76 @@
       }
 
       function createFeedbackElement() {
+        // Rewritten from a full-width block that announced itself with "Was
+        // this helpful?" and sat on its own line under every answer. Three
+        // things were wrong with it: the question is cognitive load on someone
+        // who came here to read an answer, the controls were larger than the
+        // source pills they sat under, and a rating could not be changed once
+        // given - a misclick was permanent.
+        //
+        // Now it is two small icons that live on the same line as the sources,
+        // stay invisible until the answer is hovered, and can be changed as
+        // often as the reader likes.
         const fb = document.createElement("div");
-        fb.className = "bot-feedback";
+        fb.className = "feedback-inline";
 
         fb.innerHTML = `
-          <div class="feedback-header">
-    <span class="feedback-text">Was this helpful?</span>
-
-    <div class="thumbs">
-      <span class="thumb-btn" data-type="up">
-        <!-- THUMBS UP SVG -->
-        <svg class="thumb-icon" viewBox="0 0 24 24" fill="none">
-          <path d="M3 10C3 9.44772 3.44772 9 4 9H7V21H4C3.44772 21 3 20.5523 3 20V10Z"
-                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M7 11V19L8.9923 20.3282C9.64937 20.7662 10.4214 21 11.2111 21H16.4586C17.9251 21 19.1767 19.9398 19.4178 18.4932L20.6119 11.3288C20.815 10.1097 19.875 9 18.6391 9H14"
-                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7"
-                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </span>
-
-      <span class="thumb-btn" data-type="down">
-        <!-- THUMBS DOWN SVG (mirrored) -->
-        <svg class="thumb-icon" viewBox="0 0 24 24" fill="none" style="transform: rotate(180deg);">
-          <path d="M3 10C3 9.44772 3.44772 9 4 9H7V21H4C3.44772 21 3 20.5523 3 20V10Z"
-                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M7 11V19L8.9923 20.3282C9.64937 20.7662 10.4214 21 11.2111 21H16.4586C17.9251 21 19.1767 19.9398 19.4178 18.4932L20.6119 11.3288C20.815 10.1097 19.875 9 18.6391 9H14"
-                stroke="currentColor"  stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7"
-                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </span>
-    </div>
-  </div>
-
-          <div class="followup-options">
-            <div class="followup-btn" data-reason="not_found">Didn't find what I was looking for</div>
-            <div class="followup-btn" data-reason="not_up_to_date">Not up-to-date</div>
-            <div class="followup-btn" data-reason="inaccurate">Inaccurate</div>
-          </div>
+          <button class="fb-btn" data-type="up" title="Helpful" aria-label="Helpful">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 10C3 9.44772 3.44772 9 4 9H7V21H4C3.44772 21 3 20.5523 3 20V10Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7 11V19L8.9923 20.3282C9.64937 20.7662 10.4214 21 11.2111 21H16.4586C17.9251 21 19.1767 19.9398 19.4178 18.4932L20.6119 11.3288C20.815 10.1097 19.875 9 18.6391 9H14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="fb-btn" data-type="down" title="Not helpful" aria-label="Not helpful">
+            <svg viewBox="0 0 24 24" fill="none" style="transform: rotate(180deg);" aria-hidden="true">
+              <path d="M3 10C3 9.44772 3.44772 9 4 9H7V21H4C3.44772 21 3 20.5523 3 20V10Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7 11V19L8.9923 20.3282C9.64937 20.7662 10.4214 21 11.2111 21H16.4586C17.9251 21 19.1767 19.9398 19.4178 18.4932L20.6119 11.3288C20.815 10.1097 19.875 9 18.6391 9H14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <span class="fb-thanks" hidden>Thanks</span>
         `;
 
-        const textEl = fb.querySelector(".feedback-text");
-        const thumbs = fb.querySelectorAll(".thumb-btn");
-        const followupBox = fb.querySelector(".followup-options");
-        const followupButtons = fb.querySelectorAll(".followup-btn");
+        // The detail panel is a sibling rather than a child, because it needs
+        // the full width of the conversation and the icon row does not.
+        const panel = document.createElement("div");
+        panel.className = "fb-panel";
+        panel.hidden = true;
+        panel.innerHTML = `
+          <div class="fb-reasons">
+            <button class="fb-reason" data-reason="not_found">Didn't find it</button>
+            <button class="fb-reason" data-reason="not_up_to_date">Out of date</button>
+            <button class="fb-reason" data-reason="inaccurate">Inaccurate</button>
+          </div>
+          <div class="fb-comment">
+            <input type="text" class="fb-input" maxlength="1000"
+                   placeholder="What went wrong? (optional)" />
+            <button class="fb-send" type="button">Send</button>
+          </div>
+        `;
+        fb.panel = panel;
 
-        let finalized = false;
+        const buttons = fb.querySelectorAll(".fb-btn");
+        const thanks = fb.querySelector(".fb-thanks");
+        const reasons = panel.querySelectorAll(".fb-reason");
+        const input = panel.querySelector(".fb-input");
+        const send = panel.querySelector(".fb-send");
 
-        // The rating used to change this text and go nowhere. It is now filed
-        // with the question and the verification result, so a run of negative
-        // ratings on well-retrieved answers reads differently from negative
-        // ratings on questions the corpus never covered.
+        // Captured now, because lastAnswerMeta moves on to the next answer.
         const context = lastAnswerMeta;
-        const sendFeedback = (rating, reason) => {
+        let rating = null;
+        let reason = null;
+
+        const post = (comment) => {
           fetch("/feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               question: context.question,
               rating: rating,
-              reason: reason || null,
+              reason: reason,
+              comment: comment || null,
               retrieval_level: (context.retrieval || {}).level || null,
               retrieval_top: (context.retrieval || {}).top || null,
               flagged: (context.notice || []).length > 0
@@ -889,39 +918,68 @@
           }).catch(err => console.warn("feedback not recorded", err));
         };
 
-        thumbs.forEach(btn => {
+        const flash = () => {
+          thanks.hidden = false;
+          clearTimeout(fb._t);
+          fb._t = setTimeout(() => { thanks.hidden = true; }, 1800);
+        };
+
+        buttons.forEach(btn => {
           btn.addEventListener("click", () => {
-            if (finalized) return;
-
-            // Remove previous states
-            thumbs.forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-
             const type = btn.dataset.type;
 
-            if (type === "up") {
-              // Positive → finalize immediately
-              sendFeedback("up", null);
-              finalized = true;
-              textEl.innerText = "Thanks for your feedback!";
-              followupBox.style.display = "none";
+            // Clicking the active rating clears it. A rating is an opinion and
+            // opinions get withdrawn; the previous version treated the first
+            // click as final, so a misclick could not be taken back.
+            if (rating === type) {
+              rating = null;
+              reason = null;
+              btn.classList.remove("active");
+              panel.hidden = true;
               return;
             }
 
-            // Negative → show follow-up options
-            followupBox.style.display = "flex";
+            rating = type;
+            reason = null;
+            buttons.forEach(b => b.classList.toggle("active", b === btn));
+
+            if (type === "up") {
+              panel.hidden = true;
+              post(null);
+              flash();
+              return;
+            }
+
+            // Negative: ask what went wrong, but file the rating immediately.
+            // Waiting for a reason meant a reader who shrugged and moved on
+            // was recorded as never having rated at all.
+            post(null);
+            panel.hidden = false;
+            reasons.forEach(r => r.classList.remove("active"));
+            input.value = "";
+            input.focus();
           });
         });
 
-        followupButtons.forEach(option => {
+        reasons.forEach(option => {
           option.addEventListener("click", () => {
-            if (finalized) return;
-
-            sendFeedback("down", option.dataset.reason);
-            finalized = true;
-            textEl.innerText = "Thanks, we'll review this message.";
-            followupBox.style.display = "none";
+            reason = option.dataset.reason;
+            reasons.forEach(r => r.classList.toggle("active", r === option));
+            post(input.value.trim());
+            flash();
           });
+        });
+
+        const submitComment = () => {
+          const text = input.value.trim();
+          if (!text) return;
+          post(text);
+          flash();
+          input.blur();
+        };
+        send.addEventListener("click", submitComment);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); submitComment(); }
         });
 
         return fb;
@@ -1093,6 +1151,13 @@
           conversation = conversation.slice(-HISTORY_TURNS);
         }
 
+        // One row under the answer holding both the sources and the rating
+        // icons, rather than two stacked blocks. With sources the icons sit at
+        // the right of that line; without them the row has a single child and
+        // they end up on the left, which is what space-between does for free.
+        const footer = document.createElement("div");
+        footer.className = "answer-footer";
+
         if (Array.isArray(meta.sources) && meta.sources.length) {
           const row = document.createElement("div");
           row.className = "source-pills";
@@ -1111,7 +1176,7 @@
             pill.innerText = src.label;
             row.appendChild(pill);
           });
-          msgContainer.appendChild(row);
+          footer.appendChild(row);
         }
 
         if (Array.isArray(meta.notice) && meta.notice.length) {
@@ -1120,7 +1185,7 @@
 
           const title = document.createElement("div");
           title.className = "verify-title";
-          title.innerText = "Worth double-checking";
+          title.innerText = "Worth a second look";
           card.appendChild(title);
 
           meta.notice.forEach(point => {
@@ -1134,13 +1199,30 @@
         msgContainer.scrollTop = msgContainer.scrollHeight;
         if (firstBotMessageShown) {
           const fb = createFeedbackElement();
-          msgContainer.appendChild(fb);
+          footer.appendChild(fb);
+          msgContainer.appendChild(footer);
+          msgContainer.appendChild(fb.panel);
 
-          setTimeout(() => {
-            fb.classList.add("show");
-          }, 2400);
+          // Revealed by hovering the answer itself, not just the thin footer
+          // strip - an answer with no sources leaves that strip almost
+          // invisible, and nobody hunts for a control they cannot see. Kept
+          // visible while a rating is set or the comment box is open, so it
+          // does not vanish mid-sentence.
+          const reveal = (on) => {
+            if (!on && (footer.querySelector(".fb-btn.active")
+                        || !fb.panel.hidden
+                        || fb.contains(document.activeElement)
+                        || fb.panel.contains(document.activeElement))) return;
+            footer.classList.toggle("reveal", on);
+          };
+          [bubble, footer, fb.panel].forEach(el => {
+            el.addEventListener("mouseenter", () => reveal(true));
+            el.addEventListener("mouseleave", () => reveal(false));
+            el.addEventListener("focusin", () => reveal(true));
+          });
         } else {
           firstBotMessageShown = true;
+          msgContainer.appendChild(footer);
         }
 
 
@@ -1256,30 +1338,14 @@
 
     msgContainer.appendChild(bubble);
 
-    // Add feedback ONLY for bot messages
-    if (sender === "bot") {
-
-      // ❌ If this is the very first bot message → skip
-      if (!firstBotMessageShown) {
-        firstBotMessageShown = true;
-      } else {
-        // ✅ For all other bot messages → add feedback
-        const fb = document.createElement("div");
-        fb.className = "bot-feedback";
-        fb.innerText = "Was this message helpful?";
-        msgContainer.appendChild(fb);
-
-        // Delay fade-in slide-in animation
-        setTimeout(() => {
-          fb.classList.add("show");
-        }, 900);
-
-        // Click action
-        fb.onclick = () => {
-          fb.innerText = "Thanks for your feedback!";
-          fb.style.color = "#666";
-        };
-      }
+    // No feedback control here. This path renders messages that were not
+    // streamed, and it used to append a second "Was this message helpful?"
+    // widget that only rewrote its own text - it posted nothing, so every
+    // rating collected through it was discarded. The real one is built in the
+    // streaming path, where the retrieval diagnostics the rating has to be
+    // filed against actually exist.
+    if (sender === "bot" && !firstBotMessageShown) {
+      firstBotMessageShown = true;
     }
 
     // Auto-scroll

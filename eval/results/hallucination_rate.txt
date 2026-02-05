@@ -2,25 +2,29 @@ trials: 50 (30 answerable, 20 out of scope), 2 run(s) per question, gpt-4.1 at p
 
 rate                                             count      of          
 ------------------------------------------------------------------------
-fabricated link                                      0      50      0.0%
-unsupported claim                                    8      50     16.0%
-answered an uncovered question                       0      20      0.0%
-declined a question the corpus covers                3      30     10.0%
+fabricated link                                      1      50      2.0%
+unsupported claim                                   14      50     28.0%
+answered an uncovered question                       1      20      5.0%
+declined a question the corpus covers                5      30     16.7%
 
 what the reader sees                             count      of          
 ------------------------------------------------------------------------
-trials with any fault                                8      50     16.0%
-  of those, flagged to the reader                    8       8    100.0%
-  of those, reached reader unflagged                 0       8      0.0%
+trials with any fault                               16      50     32.0%
+  of those, flagged to the reader                   16      16    100.0%
+  of those, reached reader unflagged                 0      16      0.0%
 answerable, no fault, warned anyway                  0      30      0.0%
 
 refused a question the corpus covers (the opposite failure):
-  What do seniors need to do before graduation?
-      retrieval=solid top=0.8023228097217172
+  Who do I contact about my schedule?
+      retrieval=solid top=0.8019978859205947
+  Who do I contact about my schedule?
+      retrieval=solid top=0.8019978859205947
+  What is on the school calendar this month?
+      retrieval=solid top=0.8327960532164103
   Where do I drop off my student in the morning?
-      retrieval=solid top=0.8386402808832989
+      retrieval=solid top=0.8269030040141719
   Where do I drop off my student in the morning?
-      retrieval=solid top=0.8386402808832989
+      retrieval=solid top=0.8269030040141719
 
 Read with care: at this sample size a single trial moves any rate by several points, and
 temperature 1.0 means a rerun will not reproduce these exactly. The out-of-scope set is

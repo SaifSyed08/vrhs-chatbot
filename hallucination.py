@@ -114,22 +114,26 @@ class Verdict:
             first = self.bad_links[0]
             extra = len(self.bad_links) - 1
             tail = f" and {extra} other" + ("s" if extra > 1 else "") if extra else ""
-            points.append(f"This link may not exist: {first}{tail}")
+            points.append(f"I could not find this link on the school "
+                          f"site: {first}{tail}")
 
         if not self.declined:
             if self.retrieval_level == "none":
-                points.append("Nothing on the VRHS site covers this, so the "
-                              "answer above is not based on school pages.")
+                points.append("I could not find anything about this on the "
+                              "school's pages, so this answer is not coming "
+                              "from them.")
             elif self.retrieval_level == "weak":
-                points.append("Only a loose match on the school pages.")
+                points.append("I did not find a close match on the school's "
+                              "pages, so this may not be right.")
 
         if len(points) < 2:
             if self.unsupported:
-                points.append("Some details are not confirmed by the pages "
-                              "I read.")
+                points.append("Some of this is not stated on the pages I "
+                              "found, so check the sources before relying "
+                              "on it.")
             elif self.grader_failed:
-                points.append("The grounding check did not finish, so this "
-                              "answer is unverified.")
+                points.append("I was not able to finish checking this "
+                              "answer.")
 
         return points[:2]
 
@@ -420,6 +424,50 @@ def keep_real_claims(client, claims):
 # than retried.
 
 
+# Words too common to carry evidence either way.
+STOPWORDS = frozenset("""a an and are as at be by can do does for from has have
+how i if in is it its me my no not of on or our so that the their them there
+these they this to was we were what when where which who will with you your
+also please more some any all be been being at into over under""".split())
+
+# How much of a claim's substance has to be findable in the source before the
+# flag is treated as a mistake by the grader.
+SUPPORT_THRESHOLD = 0.9
+
+
+def lexically_supported(claim, context):
+    """Whether every distinctive word of a claim already appears in the source.
+
+    A backstop against the grader's precision falling apart on long contexts,
+    which is a measured problem rather than a hypothetical one. Once ingest
+    started reading linked documents the retrieved context roughly tripled in
+    density, and gpt-4o-mini began reporting claims as unsupported whose every
+    term was sitting in the text it had been given - "Completing the FAFSA is a
+    graduation requirement", "Order your Cap, Gown & Tassel Unit from Herff
+    Jones", both of them verbatim in context. The caution rate went 16% to 32%
+    on a corpus that had got better, not worse.
+
+    This does not try to decide whether the source *supports* the claim, which
+    is genuinely hard and is the grader's job. It only catches the case where
+    the source plainly contains the material: if every distinctive word is
+    already there, the grader has almost certainly lost it in the noise rather
+    than found a fabrication.
+
+    Deliberately conservative. A near-total match is required, so a claim that
+    keeps a topic's vocabulary while inverting its meaning - "students may NOT
+    check out after 2:45" against a source saying they may - still reaches the
+    reader as a flag, because that is a real failure this cannot detect.
+    """
+    words = {w for w in re.findall(r"[a-z0-9]+", claim.lower())
+             if w not in STOPWORDS and len(w) > 2}
+    if len(words) < 3:
+        return False
+
+    haystack = set(re.findall(r"[a-z0-9]+", context.lower()))
+    found = sum(1 for w in words if w in haystack)
+    return found / len(words) >= SUPPORT_THRESHOLD
+
+
 def check_claim_grounding(client, answer, context):
     """Which claims about the school the context fails to support.
 
@@ -435,6 +483,11 @@ def check_claim_grounding(client, answer, context):
         return []
 
     claims = keep_real_claims(client, claims)
+
+    # Drop anything the source plainly already contains. See
+    # lexically_supported: on long document-derived contexts the grader
+    # reports claims whose every word is sitting in the text it was handed.
+    claims = [c for c in claims if not lexically_supported(c, context)]
 
     # Last, drop anything the answer does not actually say. The detector
     # sometimes reports a noun phrase describing what was missing - "senior
