@@ -563,6 +563,10 @@
       gap: 12px;
       margin: 6px 0 14px 4px;
       min-height: 24px;
+      /* Same ceiling as .chat-bubble. Without it the row is as wide as the
+         window and space-between throws the icons against the far edge of the
+         interface, yards from the answer they belong to. */
+      max-width: 75%;
     }
 
     .feedback-inline {
@@ -595,14 +599,16 @@
     }
     .fb-btn svg { width: 15px; height: 15px; stroke-width: 1.9; }
     .fb-btn:hover { background: #f1f2f4; color: #5f6368; }
-    .fb-btn.active { color: #c40020; }
 
-    .fb-thanks {
-      font-size: 0.75rem;
-      color: #8a8f94;
-      margin-left: 4px;
-      white-space: nowrap;
-    }
+    /* Filled, not just recoloured. An outline that changes hue is easy to miss
+       at 15px; a solid shape reads as "chosen" at a glance. */
+    .fb-btn.active { color: #c40020; }
+    .fb-btn.active svg path { fill: currentColor; }
+
+    /* [hidden] sets display:none at low specificity, so a class rule setting
+       display:flex silently beats it - which is why the reason chips were
+       showing before anyone had rated anything. */
+    .fb-panel[hidden] { display: none; }
 
     .fb-panel {
       display: flex;
@@ -610,6 +616,7 @@
       align-items: center;
       gap: 6px;
       margin: -6px 0 14px 4px;
+      max-width: 75%;
     }
 
     .fb-reasons { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -635,7 +642,7 @@
       font-size: 0.78rem;
       padding: 5px 10px;
       width: 260px;
-      max-width: 48vw;
+      max-width: 100%;
       border: 1px solid #e0e3e6;
       border-radius: 999px;
       outline: none;
@@ -643,18 +650,6 @@
       color: #2c2f33;
     }
     .fb-input:focus { border-color: #c40020; }
-
-    .fb-send {
-      font-family: inherit;
-      font-size: 0.78rem;
-      padding: 5px 12px;
-      border: none;
-      border-radius: 999px;
-      background: #e60023;
-      color: #fff;
-      cursor: pointer;
-    }
-    .fb-send:hover { background: #c40020; }
 
     /* thumbs row */
 
@@ -869,7 +864,6 @@
               <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <span class="fb-thanks" hidden>Thanks</span>
         `;
 
         // The detail panel is a sibling rather than a child, because it needs
@@ -885,17 +879,14 @@
           </div>
           <div class="fb-comment">
             <input type="text" class="fb-input" maxlength="1000"
-                   placeholder="What went wrong? (optional)" />
-            <button class="fb-send" type="button">Send</button>
+                   placeholder="What went wrong? (optional) - press Enter" />
           </div>
         `;
         fb.panel = panel;
 
         const buttons = fb.querySelectorAll(".fb-btn");
-        const thanks = fb.querySelector(".fb-thanks");
         const reasons = panel.querySelectorAll(".fb-reason");
         const input = panel.querySelector(".fb-input");
-        const send = panel.querySelector(".fb-send");
 
         // Captured now, because lastAnswerMeta moves on to the next answer.
         const context = lastAnswerMeta;
@@ -916,12 +907,6 @@
               flagged: (context.notice || []).length > 0
             })
           }).catch(err => console.warn("feedback not recorded", err));
-        };
-
-        const flash = () => {
-          thanks.hidden = false;
-          clearTimeout(fb._t);
-          fb._t = setTimeout(() => { thanks.hidden = true; }, 1800);
         };
 
         buttons.forEach(btn => {
@@ -946,7 +931,6 @@
             if (type === "up") {
               panel.hidden = true;
               post(null);
-              flash();
               return;
             }
 
@@ -961,25 +945,28 @@
           });
         });
 
+        // A chip is the submission. There was a Send button next to the text
+        // box, which made a reader who had already clicked "Inaccurate" wonder
+        // whether their click had counted - the answer being that it had, and
+        // the button was for something else. Clicking a chip files it, and
+        // Enter files whatever has been typed. Nothing needs confirming twice.
         reasons.forEach(option => {
           option.addEventListener("click", () => {
-            reason = option.dataset.reason;
-            reasons.forEach(r => r.classList.toggle("active", r === option));
+            const already = reason === option.dataset.reason;
+            reason = already ? null : option.dataset.reason;
+            reasons.forEach(r => r.classList.toggle("active",
+                                                    !already && r === option));
             post(input.value.trim());
-            flash();
           });
         });
 
-        const submitComment = () => {
+        input.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
           const text = input.value.trim();
           if (!text) return;
           post(text);
-          flash();
           input.blur();
-        };
-        send.addEventListener("click", submitComment);
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") { e.preventDefault(); submitComment(); }
         });
 
         return fb;
