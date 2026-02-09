@@ -765,6 +765,54 @@ def source_label(url):
     return " ".join(labelled) or "Vista Ridge High School"
 
 
+# How far below the best match a source may sit and still be worth naming, and
+# how many to name at all.
+SOURCE_MARGIN = 0.02
+MAX_SOURCES = 3
+
+SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+
+
+# Scaffolding this file added when the chunk was built. Useful to the
+# embedding, meaningless to a reader hovering a pill.
+DOC_PREFIX = re.compile(r"^From the linked document .*?: ")
+
+
+def best_sentence(chunk, query, limit=180):
+    """The line from a chunk most worth showing under a source pill.
+
+    A pill says which page an answer leaned on and gives no way to check that
+    without opening it. One sentence is enough to tell whether the page is
+    plausible, and picking it by overlap with the question beats taking the
+    first sentence, which on this corpus is often a heading or the tail of a
+    navigation bar.
+
+    Nothing is returned for a link chunk. Its text is a sentence this file
+    wrote - "Bus Info at Vista Ridge High School: [Bus Info](url)" - so a
+    preview of it would only repeat the pill's own label back at the reader.
+    """
+    if chunk.get("kind") == "link":
+        return None
+
+    text = DOC_PREFIX.sub("", chunk["text"])
+    words = {w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) > 2}
+    best, score = "", -1
+
+    for sentence in SENTENCE_SPLIT.split(text):
+        sentence = " ".join(sentence.split())
+        if len(sentence) < 25:
+            continue
+        terms = set(re.findall(r"[a-z0-9]+", sentence.lower()))
+        overlap = len(words & terms)
+        # Length is only a tie-break; a long sentence should not win on bulk.
+        if (overlap, -abs(len(sentence) - 110)) > (score, -10 ** 6):
+            best, score = sentence, overlap
+
+    if not best:
+        best = " ".join(text.split())
+    return best[:limit] + ("..." if len(best) > limit else "")
+
+
 def get_relevant_context(query):
     """Return the top chunks, similarity stats, and the pages they came from."""
     docs, matrix = load_index()
@@ -815,17 +863,31 @@ def get_relevant_context(query):
     # would not have convinced the gate does not get to name a page either.
     # The best-matching source is always kept: an answer the gate called solid
     # came from somewhere, and showing nothing would be its own kind of wrong.
+    # An absolute floor was not enough on its own. Five slots get filled
+    # whether or not there are five good chunks, and on a question the corpus
+    # covers well the trailing ones still clear 0.78 while contributing
+    # nothing - "where are the bell schedules" was listing five pages. So a
+    # source also has to be close to the best one, and there is a hard cap.
+    # Three pills is as many as a reader will check.
+    top_score = float(sims[order[0]]) if len(order) else 0.0
+
     sources, seen = [], set()
     for rank, i in enumerate(order):
         url = docs[i]["source"]
         if url == "manual" or url in seen:
             continue
-        if rank > 0 and sims[i] < hallucination.SIMILARITY_WEAK:
-            continue
+        if rank > 0:
+            if sims[i] < hallucination.SIMILARITY_WEAK:
+                continue
+            if top_score - float(sims[i]) > SOURCE_MARGIN:
+                continue
+            if len(sources) >= MAX_SOURCES:
+                break
         seen.add(url)
         sources.append({"url": url,
                         "label": docs[i].get("label") or source_label(url),
-                        "score": round(float(sims[i]), 4)})
+                        "score": round(float(sims[i]), 4),
+                        "snippet": best_sentence(docs[i], query)})
 
     return context, stats, sources
 

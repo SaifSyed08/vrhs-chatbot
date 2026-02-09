@@ -104,6 +104,12 @@ class Verdict:
         is a caution, not a report: it names the most actionable problem and
         stops. Order matters, a fabricated link is worth more to a reader than
         a general warning.
+
+        Kept short and impersonal. An earlier pass wrote these as sentences in
+        the first person - "I did not find a close match on the school's pages,
+        so this may not be right" - which reads as the bot apologising and is
+        three lines of text under an answer somebody is trying to skim. A
+        caution should be readable at a glance or it is not a caution.
         """
         if self.grounded:
             return []
@@ -114,26 +120,21 @@ class Verdict:
             first = self.bad_links[0]
             extra = len(self.bad_links) - 1
             tail = f" and {extra} other" + ("s" if extra > 1 else "") if extra else ""
-            points.append(f"I could not find this link on the school "
-                          f"site: {first}{tail}")
+            points.append(f"Link not found on the school site: "
+                          f"{first}{tail}")
 
         if not self.declined:
             if self.retrieval_level == "none":
-                points.append("I could not find anything about this on the "
-                              "school's pages, so this answer is not coming "
-                              "from them.")
+                points.append("Nothing on the school's pages covers this.")
             elif self.retrieval_level == "weak":
-                points.append("I did not find a close match on the school's "
-                              "pages, so this may not be right.")
+                points.append("No close match on the school's pages.")
 
         if len(points) < 2:
             if self.unsupported:
-                points.append("Some of this is not stated on the pages I "
-                              "found, so check the sources before relying "
-                              "on it.")
+                points.append("Some details aren't stated on the sources "
+                              "below.")
             elif self.grader_failed:
-                points.append("I was not able to finish checking this "
-                              "answer.")
+                points.append("This answer wasn't fully checked.")
 
         return points[:2]
 

@@ -558,7 +558,10 @@
     /* One line under an answer: sources on the left, rating on the right. */
     .answer-footer {
       display: flex;
-      align-items: center;
+      /* Top, not centre. Source pills wrap to two lines on a narrow window and
+         a centred icon then floats halfway down the block, unattached to
+         anything. */
+      align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
       margin: 6px 0 14px 4px;
@@ -587,8 +590,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       padding: 0;
       border: none;
       border-radius: 6px;
@@ -597,7 +600,7 @@
       cursor: pointer;
       transition: color 0.15s ease, background-color 0.15s ease;
     }
-    .fb-btn svg { width: 15px; height: 15px; stroke-width: 1.9; }
+    .fb-btn svg { width: 17px; height: 17px; stroke-width: 1.85; }
     .fb-btn:hover { background: #f1f2f4; color: #5f6368; }
 
     /* Filled, not just recoloured. An outline that changes hue is easy to miss
@@ -667,6 +670,51 @@
 
     /* Pages the answer was retrieved from. Shown only when the retrieval gate
        is satisfied, so a pill always points at a page that actually matched. */
+    /* The pill previews what it is citing. A pill names a page and gives no
+       way to judge it without leaving the conversation; one line of the text
+       the answer actually leaned on is usually enough to tell whether it is
+       worth opening. Link chunks get none, because their text is a sentence
+       this app generated and would only repeat the pill's own label. */
+    .source-pill { position: relative; }
+
+    .pill-tip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      z-index: 20;
+      width: max-content;
+      max-width: 320px;
+      padding: 8px 11px;
+      border-radius: 8px;
+      background: #2c2f33;
+      color: #f2f3f4;
+      font-size: 0.76rem;
+      line-height: 1.45;
+      text-align: left;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      opacity: 0;
+      transform: translateY(4px);
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+    }
+
+    /* The little arrow. */
+    .pill-tip::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 14px;
+      border: 5px solid transparent;
+      border-top-color: #2c2f33;
+    }
+
+    .source-pill:hover .pill-tip,
+    .source-pill:focus-visible .pill-tip {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
     .source-pills {
       display: flex;
       flex-wrap: wrap;
@@ -1161,6 +1209,16 @@
             pill.target = "_blank";
             pill.rel = "noopener";
             pill.innerText = src.label;
+
+            if (src.snippet) {
+              const tip = document.createElement("span");
+              tip.className = "pill-tip";
+              // textContent, not innerHTML: this is page text scraped off the
+              // web and must never be parsed as markup.
+              tip.textContent = src.snippet;
+              pill.appendChild(tip);
+            }
+
             row.appendChild(pill);
           });
           footer.appendChild(row);
