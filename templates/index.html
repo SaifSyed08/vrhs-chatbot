@@ -603,9 +603,10 @@
     .fb-btn svg { width: 17px; height: 17px; stroke-width: 1.85; }
     .fb-btn:hover { background: #f1f2f4; color: #5f6368; }
 
-    /* Filled, not just recoloured. An outline that changes hue is easy to miss
-       at 15px; a solid shape reads as "chosen" at a glance. */
-    .fb-btn.active { color: #c40020; }
+    /* Filled, not recoloured. The fill is what reads as "chosen"; turning it
+       red as well made a rating look like a warning, which is the wrong tone
+       for someone who just told us the answer was fine. */
+    .fb-btn.active { color: #5f6368; }
     .fb-btn.active svg path { fill: currentColor; }
 
     /* [hidden] sets display:none at low specificity, so a class rule setting
@@ -638,7 +639,20 @@
     .fb-reason:hover { border-color: #c9cdd2; color: #2c2f33; }
     .fb-reason.active { border-color: #c40020; color: #c40020; }
 
-    .fb-comment { display: flex; gap: 6px; align-items: center; }
+    .fb-comment { display: flex; gap: 8px; align-items: center; }
+
+    /* Sits beside the box rather than under it: the prompt to press Enter and
+       the confirmation that Enter worked belong in the same spot, because they
+       are the two halves of one exchange. */
+    .fb-hint {
+      font-size: 0.74rem;
+      color: #9aa0a6;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .fb-hint.show { opacity: 1; }
+    .fb-hint.done { color: #1e8e3e; }
 
     .fb-input {
       font-family: inherit;
@@ -927,7 +941,8 @@
           </div>
           <div class="fb-comment">
             <input type="text" class="fb-input" maxlength="1000"
-                   placeholder="What went wrong? (optional) - press Enter" />
+                   placeholder="Type..." />
+            <span class="fb-hint"></span>
           </div>
         `;
         fb.panel = panel;
@@ -935,6 +950,7 @@
         const buttons = fb.querySelectorAll(".fb-btn");
         const reasons = panel.querySelectorAll(".fb-reason");
         const input = panel.querySelector(".fb-input");
+        const hint = panel.querySelector(".fb-hint");
 
         // Captured now, because lastAnswerMeta moves on to the next answer.
         const context = lastAnswerMeta;
@@ -989,7 +1005,11 @@
             panel.hidden = false;
             reasons.forEach(r => r.classList.remove("active"));
             input.value = "";
-            input.focus();
+            hint.className = "fb-hint";
+            hint.textContent = "";
+            // Deliberately not focused. Autofocusing outlined the box the
+            // instant thumbs-down was clicked, which reads as a demand for an
+            // explanation before the rating counts. It already counted.
           });
         });
 
@@ -1008,12 +1028,24 @@
           });
         });
 
+        input.addEventListener("input", () => {
+          if (input.value.trim()) {
+            hint.className = "fb-hint show";
+            hint.textContent = "enter to submit";
+          } else {
+            hint.className = "fb-hint";
+            hint.textContent = "";
+          }
+        });
+
         input.addEventListener("keydown", (e) => {
           if (e.key !== "Enter") return;
           e.preventDefault();
           const text = input.value.trim();
           if (!text) return;
           post(text);
+          hint.className = "fb-hint show done";
+          hint.textContent = "Submitted ✓";
           input.blur();
         });
 
@@ -1282,6 +1314,33 @@
   // largest friction in the interface.
   document.addEventListener("DOMContentLoaded", () => {
     const box = document.getElementById("query");
+
+    // Start typing anywhere and the composer takes it.
+    //
+    // The composer is the only thing anyone types into, so requiring a click
+    // first is a step that exists for no reason - and it is easy to lose:
+    // clicking a source pill or a thumb moves focus away, and the next
+    // keystroke went nowhere.
+    //
+    // The event is not cancelled, so the character that triggered this lands
+    // in the box on its own. Modifier combinations are left alone, or this
+    // would swallow copy, paste, find and reload.
+    document.addEventListener("keydown", (e) => {
+      if (!box || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.length !== 1) return;
+
+      const active = document.activeElement;
+      const tag = active && active.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (active && active.isContentEditable) return;
+
+      // Someone selecting an answer to copy is not trying to type.
+      const selection = window.getSelection();
+      if (selection && String(selection).length) return;
+
+      box.focus();
+    });
+
     if (box) {
       box.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.isComposing) {
