@@ -658,8 +658,14 @@
       font-family: inherit;
       font-size: 0.78rem;
       padding: 5px 10px;
-      width: 260px;
+      /* Starts about as wide as its placeholder and grows with what is typed,
+         so an empty box is a small invitation rather than a wide slot that
+         looks like it expects an essay. Width is set in ch by the input
+         handler; the +24px covers the horizontal padding, which counts toward
+         width under the border-box rule this page sets globally. */
+      width: calc(7ch + 24px);
       max-width: 100%;
+      transition: width 0.14s ease;
       border: 1px solid #e0e3e6;
       border-radius: 999px;
       outline: none;
@@ -1005,6 +1011,7 @@
             panel.hidden = false;
             reasons.forEach(r => r.classList.remove("active"));
             input.value = "";
+            fit();
             hint.className = "fb-hint";
             hint.textContent = "";
             // Deliberately not focused. Autofocusing outlined the box the
@@ -1028,7 +1035,15 @@
           });
         });
 
+        // Grow to fit, within bounds: never narrower than the placeholder,
+        // never wider than the conversation column.
+        const fit = () => {
+          const chars = Math.min(44, Math.max(7, input.value.length + 1));
+          input.style.width = "calc(" + chars + "ch + 24px)";
+        };
+
         input.addEventListener("input", () => {
+          fit();
           if (input.value.trim()) {
             hint.className = "fb-hint show";
             hint.textContent = "enter to submit";
