@@ -777,6 +777,35 @@ SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 # embedding, meaningless to a reader hovering a pill.
 DOC_PREFIX = re.compile(r"^From the linked document .*?: ")
 
+# Hosts worth naming in plain words. A student hovering a pill wants to know
+# whether they are about to open a Google Doc or leave for the district site,
+# and "docs.google.com" says that less clearly than "Google Doc" does.
+FRIENDLY_HOST = {
+    "docs.google.com": "Google Doc",
+    "drive.google.com": "Google Drive file",
+    "sites.google.com": "Google Site",
+    "forms.gle": "Google Form",
+    "calendar.google.com": "Google Calendar",
+    "www.leanderisd.org": "the district site",
+    "leanderisd.org": "the district site",
+    "vrhs.leanderisd.org": "the school site",
+}
+
+
+def describe_destination(url):
+    """Where a link goes, in words rather than a URL."""
+    try:
+        parts = urlparse(url)
+    except ValueError:
+        return None
+    if not parts.netloc:
+        return None
+
+    where = FRIENDLY_HOST.get(parts.netloc)
+    if where:
+        return "Opens " + where
+    return "Opens " + parts.netloc
+
 
 def best_sentence(chunk, query, limit=180):
     """The line from a chunk most worth showing under a source pill.
@@ -787,12 +816,16 @@ def best_sentence(chunk, query, limit=180):
     first sentence, which on this corpus is often a heading or the tail of a
     navigation bar.
 
-    Nothing is returned for a link chunk. Its text is a sentence this file
-    wrote - "Bus Info at Vista Ridge High School: [Bus Info](url)" - so a
-    preview of it would only repeat the pill's own label back at the reader.
+    A link chunk has no sentence to show. Its text is one this file wrote -
+    "Bus Info at Vista Ridge High School: [Bus Info](url)" - so previewing it
+    would repeat the pill's own label. It gets its destination instead, which
+    was the first version's answer of "nothing at all" improved on: most
+    sources on this site are links, so returning None left the majority of
+    pills with no preview and the feature looking broken. Where a page opens is
+    the one thing a link source can honestly tell you before you click it.
     """
     if chunk.get("kind") == "link":
-        return None
+        return describe_destination(chunk["source"])
 
     text = DOC_PREFIX.sub("", chunk["text"])
     words = {w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) > 2}
