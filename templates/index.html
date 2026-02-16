@@ -695,45 +695,31 @@
        the answer actually leaned on is usually enough to tell whether it is
        worth opening. Link chunks get none, because their text is a sentence
        this app generated and would only repeat the pill's own label. */
-    .source-pill { position: relative; }
-
+    /* A panel that follows the cursor, not a speech bubble anchored to the
+       pill. Anchored above, it read as another chat message and got clipped by
+       the scrolling message list whenever the answer sat near the top. Fixed
+       positioning takes it out of that scroll context entirely. */
     .pill-tip {
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 0;
-      z-index: 20;
-      width: max-content;
-      max-width: 320px;
-      padding: 8px 11px;
-      border-radius: 8px;
-      background: #2c2f33;
-      color: #f2f3f4;
-      font-size: 0.76rem;
-      line-height: 1.45;
+      position: fixed;
+      z-index: 60;
+      max-width: 300px;
+      padding: 7px 10px;
+      border: 1px solid #e3e5e8;
+      border-radius: 6px;
+      background: #fff;
+      color: #3c4043;
+      font-size: 0.74rem;
+      line-height: 1.4;
       text-align: left;
       white-space: normal;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateY(-3px);
       pointer-events: none;
-      transition: opacity 0.16s ease, transform 0.16s ease;
+      transition: opacity 0.13s ease, transform 0.13s ease;
     }
 
-    /* The little arrow. */
-    .pill-tip::after {
-      content: "";
-      position: absolute;
-      top: 100%;
-      left: 14px;
-      border: 5px solid transparent;
-      border-top-color: #2c2f33;
-    }
-
-    .source-pill:hover .pill-tip,
-    .source-pill:focus-visible .pill-tip {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .pill-tip.show { opacity: 1; transform: translateY(0); }
 
     .source-pills {
       display: flex;
@@ -1263,7 +1249,35 @@
               // textContent, not innerHTML: this is page text scraped off the
               // web and must never be parsed as markup.
               tip.textContent = src.snippet;
-              pill.appendChild(tip);
+              // Body, not the pill. As a child it inherited the message list's
+              // clipping; fixed positioning only escapes that from the top of
+              // the document.
+              document.body.appendChild(tip);
+
+              const place = (e) => {
+                const pad = 14;
+                let x = e.clientX + pad;
+                let y = e.clientY + pad;
+                const box = tip.getBoundingClientRect();
+                // Flip rather than run off the edge.
+                if (x + box.width > window.innerWidth - 8) {
+                  x = e.clientX - box.width - pad;
+                }
+                if (y + box.height > window.innerHeight - 8) {
+                  y = e.clientY - box.height - pad;
+                }
+                tip.style.left = Math.max(8, x) + "px";
+                tip.style.top = Math.max(8, y) + "px";
+              };
+
+              pill.addEventListener("mouseenter", (e) => {
+                place(e);
+                tip.classList.add("show");
+              });
+              pill.addEventListener("mousemove", place);
+              pill.addEventListener("mouseleave", () => {
+                tip.classList.remove("show");
+              });
             }
 
             row.appendChild(pill);

@@ -238,6 +238,38 @@ def page_links(soup, source):
     return found
 
 
+def page_embeds(soup, source):
+    """Google files a page embeds rather than links to.
+
+    The clubs page carries its whole club list as an iframe holding a Google
+    spreadsheet. Nothing links it, so a crawler that only reads anchors walks
+    past the single most useful table on the site - 137 clubs with sponsors,
+    rooms and meeting times - and the bot answers "I don't have that".
+
+    Matched on URL shape, not on any particular document, so a sheet embedded
+    on a page nobody has considered yet is picked up on the next ingest without
+    being added to a list. That is the same reason the crawl replaced a
+    hardcoded page list: a whitelist only ever finds what somebody thought to
+    name.
+    """
+    found = []
+
+    # An embed has no anchor text, so the page names it. Its own heading beats
+    # the URL slug, which for a Google file is an opaque id.
+    heading = soup.find(["h1", "h2"])
+    title = (heading.get_text(" ", strip=True) if heading else "")         or source_label(source)
+
+    for tag in soup.find_all(["iframe", "embed"]):
+        src = tag.get("src") or tag.get("data-src") or ""
+        if not src:
+            continue
+        src = absolute(src)
+        if src.startswith("http") and gdocs.readable(src):
+            found.append((title, src))
+
+    return found
+
+
 def page_markdown(soup):
     """Page text with links inline as [label](url), rather than appended.
 
@@ -338,12 +370,14 @@ def scrape_vrhs_pages():
     chunks = []
 
     all_links = []
+    all_embeds = []
 
     for url in urls:
         log.info(f"Scraping {url}...")
         try:
             soup = fetch(url)
             all_links.extend(page_links(soup, url))
+            all_embeds.extend(page_embeds(soup, url))
             combined_text = page_markdown(soup)
 
             words = combined_text.split()
@@ -372,10 +406,16 @@ def scrape_vrhs_pages():
     # crawl is same-domain. 16 of the 23 linked docs export as plain text with
     # no credentials, and answering from what a document says beats handing
     # over its URL.
-    for label, url, text in gdocs.linked_documents(all_links):
-        words = text.split()
-        for i in range(0, len(words), 150):
-            piece = " ".join(words[i:i + 150])
+    # Anchors and embeds together. gdocs decides what it can open and how to
+    # split it - word windows for a document, one row per entry for a
+    # spreadsheet - because the right chunking depends on the format and it is
+    # the part that knows the format.
+    references = [(label, href) for label, href, _ in all_links] + all_embeds
+    if all_embeds:
+        log.info(f"found {len(all_embeds)} embedded Google files")
+
+    for label, url, pieces in gdocs.linked_documents(references):
+        for piece in pieces:
             if piece:
                 chunks.append({
                     "text": f"From the linked document {label}: {piece}",
@@ -807,7 +847,7 @@ def describe_destination(url):
     return "Opens " + parts.netloc
 
 
-def best_sentence(chunk, query, limit=180):
+def best_sentence(chunk, query, limit=110):
     """The line from a chunk most worth showing under a source pill.
 
     A pill says which page an answer leaned on and gives no way to check that

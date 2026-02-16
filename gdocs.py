@@ -33,6 +33,8 @@ Everything here fails soft. A document that will not load must not take an
 ingest down with it, and a missing filename just leaves a label as it was.
 """
 
+import csv
+import io
 import logging
 import re
 import urllib.parse
@@ -41,9 +43,17 @@ log = logging.getLogger("vrhs.gdocs")
 
 DOC_ID = re.compile(r"https://docs\.google\.com/document/d/([\w-]+)")
 DRIVE_ID = re.compile(r"https://drive\.google\.com/file/d/([\w-]+)")
-SHEET_ID = re.compile(r"https://docs\.google\.com/spreadsheets/d/([\w-]+)")
+# Matches a sheet however it is linked or embedded. The clubs page carries its
+# spreadsheet as an iframe ending /htmlembed, and published sheets use a /d/e/
+# path, so keying on "/spreadsheets/d/" alone missed both.
+SHEET_ID = re.compile(
+    r"https://docs\.google\.com/spreadsheets/d/(?:e/)?([\w-]+)")
 
 TIMEOUT = 25
+# Sheets take longer than documents. The clubs spreadsheet is 45 KB of CSV and
+# timed out at 25 s, which is how it stayed missing from the corpus while
+# appearing to be "not public".
+SHEET_TIMEOUT = 60
 
 # Bounds. Ingest already takes about twenty seconds and these are sequential
 # network calls on top of it, so the crawl's habit of staying small applies
@@ -102,12 +112,50 @@ def remote_name(url, session=None):
     return re.sub(r"\.(pdf|docx?|xlsx?|pptx?)$", "", name, flags=re.I)
 
 
+def sheet_rows(text, label):
+    """One readable line per spreadsheet row, headed by its first column.
+
+    A sheet is not prose and chunking it by word count cuts rows in half, which
+    leaves a club's name in one chunk and its meeting time in another. Row by
+    row, each club becomes a unit that can be retrieved on its own and read
+    whole - which is what "when does Aerospace Club meet" actually needs.
+    """
+    rows = list(csv.reader(io.StringIO(text)))
+    if not rows:
+        return []
+
+    header = [h.strip() for h in rows[0]]
+    out = []
+
+    for row in rows[1:]:
+        cells = [c.strip() for c in row]
+        if not any(cells):
+            continue
+
+        name = cells[0] if cells else ""
+        # A row with only its first cell filled is a section banner, not an
+        # entry - "STUDENT INTEREST CLUBS" and the like.
+        if name and not any(cells[1:]):
+            continue
+
+        parts = []
+        for key, value in zip(header[1:], cells[1:]):
+            if value and key:
+                parts.append("%s: %s" % (key, value))
+        if not parts:
+            continue
+
+        out.append("%s, from %s. %s" % (name or "Entry", label,
+                                        " ".join(parts)))
+    return out
+
+
 def document_text(url, session=None):
     """Plain text of a public Google Doc or Sheet, or None."""
     import requests
 
     fid = document_id(url)
-    export = None
+    export, timeout = None, TIMEOUT
     if fid:
         export = ("https://docs.google.com/document/d/%s/export?format=txt"
                   % fid)
@@ -116,12 +164,13 @@ def document_text(url, session=None):
         if fid:
             export = ("https://docs.google.com/spreadsheets/d/%s/export"
                       "?format=csv" % fid)
+            timeout = SHEET_TIMEOUT
     if not export:
         return None
 
     get = (session or requests).get
     try:
-        response = get(export, timeout=TIMEOUT)
+        response = get(export, timeout=timeout)
     except Exception as e:
         log.warning("could not read doc %s: %s", fid[:12], e)
         return None
@@ -140,6 +189,11 @@ def document_text(url, session=None):
         # a shell whose content lives in a linked sub-document.
         return None
 
+    # Newlines are load-bearing in a CSV and noise in a document. Collapsing
+    # them for everything turned the clubs spreadsheet into one 45,000
+    # character line, which csv.reader read as a single row with no data in it.
+    if sheet_id(url) and not document_id(url):
+        return text
     return " ".join(text.split())
 
 
@@ -176,33 +230,63 @@ def enrich_labels(links):
     return out
 
 
-def linked_documents(links):
-    """Chunk-ready text for every public Google Doc the site links to.
+WORDS_PER_CHUNK = 150
 
-    Returns (label, url, text) triples. Order follows the links so a rerun is
-    reproducible, and each unique URL is fetched once however often it is
-    linked.
+
+def readable(url):
+    """Whether this is a Google file this module knows how to open."""
+    return bool(document_id(url) or sheet_id(url))
+
+
+def linked_documents(references):
+    """Chunk-ready pieces for every public Google file the site points at.
+
+    Takes (label, url) pairs from anywhere the crawl found a Google URL -
+    anchors, iframes, embeds - and returns (label, url, pieces). Nothing here
+    knows about any particular document: it matches on the URL shape, so a
+    spreadsheet embedded on a page nobody has thought about yet is read on the
+    next ingest without anyone adding it to a list.
+
+    Pieces are split by format rather than uniformly. A document gets word
+    windows like a page; a spreadsheet gets one piece per row, because chunking
+    a sheet by word count cuts rows in half and leaves a club's name in one
+    chunk and its meeting time in another.
     """
     import requests
 
     session = requests.Session()
     done, out = set(), []
 
-    for label, href, _source in links:
+    for label, href in references:
         if len(out) >= MAX_DOCS:
             log.info("stopping at %d documents", MAX_DOCS)
             break
-        if href in done or not (document_id(href) or sheet_id(href)):
+        if not href or href in done or not readable(href):
             continue
         done.add(href)
 
-        log.info("reading document: %s", (label or href)[:60])
+        name = label or "Linked document"
+        log.info("reading %s: %s",
+                 "spreadsheet" if sheet_id(href) and not document_id(href)
+                 else "document", name[:60])
+
         text = document_text(href, session)
-        if text:
-            out.append((label or "Linked document", href, text))
-        else:
+        if not text:
             log.info("  skipped, not public or no text")
+            continue
+
+        if sheet_id(href) and not document_id(href):
+            pieces = sheet_rows(text, name)
+        else:
+            words = text.split()
+            pieces = [" ".join(words[i:i + WORDS_PER_CHUNK])
+                      for i in range(0, len(words), WORDS_PER_CHUNK)]
+
+        pieces = [p for p in pieces if p.strip()]
+        if pieces:
+            out.append((name, href, pieces))
+            log.info("  %d pieces", len(pieces))
 
     session.close()
-    log.info("read %d of %d linked documents", len(out), len(done))
+    log.info("read %d of %d linked files", len(out), len(done))
     return out
