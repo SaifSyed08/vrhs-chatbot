@@ -113,6 +113,10 @@ SEED_URLS = [
     SITE + "/volunteer",
     SITE + "/parent_resources",
     SITE + "/staar-testing-dates",
+    # District news carries the campus announcements the front page points at
+    # but does not contain. Different host, so the same-domain crawl never
+    # reaches it from a link.
+    "https://news.leanderisd.org/category/vrhs",
 ]
 
 # Hubs whose navigation is read to find the rest.
@@ -238,6 +242,10 @@ def page_links(soup, source):
     return found
 
 
+GOOGLE_URL = re.compile(
+    r"https://(?:docs|drive)\.google\.com/[^\s\"'<>\)]+")
+
+
 def page_embeds(soup, source):
     """Google files a page embeds rather than links to.
 
@@ -266,6 +274,20 @@ def page_embeds(soup, source):
         src = absolute(src)
         if src.startswith("http") and gdocs.readable(src):
             found.append((title, src))
+
+    # And anything Google-shaped left in the raw markup.
+    #
+    # The front page carries three "Custom embed" iframes with no src at all -
+    # Google Sites injects them from script after load - so a parser that only
+    # reads attributes finds nothing there. The URLs are still in the page, in
+    # the script payload, and a file is worth reading however it got onto the
+    # page. Anything not a readable document or sheet is discarded by
+    # gdocs.readable, so forms and slide decks fall out here rather than
+    # needing their own rule.
+    for match in GOOGLE_URL.finditer(str(soup)):
+        url = match.group(0).split("&amp;")[0].rstrip("\\\"'")
+        if gdocs.readable(url):
+            found.append((title, url))
 
     return found
 
@@ -414,7 +436,22 @@ def scrape_vrhs_pages():
     if all_embeds:
         log.info(f"found {len(all_embeds)} embedded Google files")
 
-    for label, url, pieces in gdocs.linked_documents(references):
+    read_documents = gdocs.linked_documents(references)
+
+    # A file read as a document does not also need a link chunk. Both point at
+    # the same thing, so the reader is offered two pills for one document -
+    # and the link chunk is the worse of the two, since it holds a sentence
+    # this file generated rather than anything the document says.
+    document_keys = {gdocs.file_key(url) for _, url, _ in read_documents}
+    before = len(chunks)
+    chunks = [c for c in chunks
+              if not (c.get("kind") == "link"
+                      and gdocs.file_key(c["source"]) in document_keys)]
+    if before != len(chunks):
+        log.info(f"dropped {before - len(chunks)} link chunks for files read "
+                 f"in full")
+
+    for label, url, pieces in read_documents:
         for piece in pieces:
             if piece:
                 chunks.append({
@@ -1200,6 +1237,10 @@ def ask():
         # retracting what the user has already read.
         verdict = hallucination.verify_answer(client, "".join(answer), context,
                                               stats, question)
+        # The notice can say "check the sources below" only if there will be
+        # sources below. They are withheld when the gate says the corpus does
+        # not cover the question.
+        verdict.has_sources = bool(sources) and verdict.retrieval_level != "none"
         log.info(f"[grounding] z={verdict.retrieval_z} "
               f"top_sim={verdict.retrieval_top} "
               f"level={verdict.retrieval_level} "
@@ -1266,6 +1307,98 @@ def handle_unexpected(error):
     )
 
 
+# Issues filed in the last hour, so a public endpoint cannot be turned into an
+# issue firehose.
+_issue_times = deque()
+_issue_lock = threading.Lock()
+
+REASON_LABEL = {
+    "not_found": "not-found",
+    "not_up_to_date": "out-of-date",
+    "inaccurate": "inaccurate",
+}
+
+
+def issue_allowed():
+    """Whether another issue may be filed this hour."""
+    cutoff = time.time() - 3600
+    with _issue_lock:
+        while _issue_times and _issue_times[0] < cutoff:
+            _issue_times.popleft()
+        if len(_issue_times) >= config.GITHUB_ISSUES_PER_HOUR:
+            return False
+        _issue_times.append(time.time())
+        return True
+
+
+def file_issue(entry):
+    """Raise a GitHub issue for a thumbs-down, on a background thread.
+
+    Only for negative ratings. A thumbs-up needs no triage and filing one as an
+    issue would bury the ones that do.
+
+    The retrieval diagnostics go in the body because they decide what kind of
+    problem it is: a low score means the site does not cover the question and
+    somebody has to add a page, while a solid score means retrieval worked and
+    the answer was still poor, which is a prompt problem. Those need different
+    fixes and the rating alone cannot tell them apart.
+    """
+    if not config.GITHUB_TOKEN or entry.get("rating") != "down":
+        return
+    if not issue_allowed():
+        log.warning("[feedback] issue rate limit reached, not filing")
+        return
+
+    question = entry.get("question") or "(no question recorded)"
+    reason = entry.get("reason")
+    labels = ["user-feedback"]
+    if reason in REASON_LABEL:
+        labels.append(REASON_LABEL[reason])
+
+    body = [
+        "A reader marked this answer unhelpful.",
+        "",
+        "**Question**",
+        "> " + question.replace(chr(10), " "),
+        "",
+        "**Reason given:** " + (reason or "none selected"),
+        "**Comment:** " + (entry.get("comment") or "none"),
+        "",
+        "**Retrieval at the time**",
+        "- level: `%s`" % entry.get("retrieval_level"),
+        "- top similarity: `%s`" % entry.get("retrieval_top"),
+        "- answer carried a caution: `%s`" % entry.get("flagged"),
+        "",
+        "_Filed automatically by the chatbot's /feedback endpoint._",
+    ]
+
+    def send():
+        try:
+            import requests
+            response = requests.post(
+                "https://api.github.com/repos/%s/issues" % config.GITHUB_REPO,
+                headers={
+                    "Authorization": "Bearer " + config.GITHUB_TOKEN,
+                    "Accept": "application/vnd.github+json",
+                },
+                json={
+                    "title": "Feedback: " + question[:80],
+                    "body": chr(10).join(body),
+                    "labels": labels,
+                },
+                timeout=20)
+            if response.status_code >= 300:
+                log.warning("[feedback] github said %s: %s",
+                            response.status_code, response.text[:200])
+            else:
+                log.info("[feedback] filed issue %s",
+                         response.json().get("number"))
+        except Exception as e:
+            log.warning("[feedback] could not file issue: %s", e)
+
+    threading.Thread(target=send, name="file-issue", daemon=True).start()
+
+
 @app.route("/feedback", methods=["POST"])
 def submit_feedback():
     """Record a thumbs rating against the retrieval diagnostics for that answer.
@@ -1302,6 +1435,9 @@ def submit_feedback():
     entries.append(entry)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(entries, f, indent=2)
+
+    # Fired after the file write, so a GitHub outage cannot lose the record.
+    file_issue(entry)
 
     log.info(f"[feedback] {entry['rating']} "
              f"{'+comment ' if entry['comment'] else ''}"

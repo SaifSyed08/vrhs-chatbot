@@ -576,7 +576,8 @@
       display: flex;
       align-items: center;
       gap: 2px;
-      flex: 0 0 auto;
+      flex: 0 1 auto;
+      min-width: 0;
       opacity: 0;
       transition: opacity 0.18s ease;
     }
@@ -616,11 +617,10 @@
 
     .fb-panel {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
-      gap: 6px;
-      margin: -6px 0 14px 4px;
-      max-width: 75%;
+      gap: 5px;
+      margin-left: 4px;
     }
 
     .fb-reasons { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -664,7 +664,10 @@
          handler; the +24px covers the horizontal padding, which counts toward
          width under the border-box rule this page sets globally. */
       width: calc(7ch + 24px);
-      max-width: 100%;
+      /* Capped well short of the row. It shares a line with the thumbs and
+         three chips now, and a box that kept growing pushed them off the
+         edge. Longer comments scroll inside it. */
+      max-width: 220px;
       transition: width 0.14s ease;
       border: 1px solid #e0e3e6;
       border-radius: 999px;
@@ -889,6 +892,65 @@
         return tokens;
       }
 
+      // A cursor-following panel, shared by source pills and by the links
+      // inside an answer. Appended to the body rather than to the element it
+      // describes: as a child it inherits the message list's clipping, and
+      // fixed positioning only escapes that from the top of the document.
+      function attachTip(el, text) {
+        const tip = document.createElement("span");
+        tip.className = "pill-tip";
+        // textContent, not innerHTML. This is text scraped off the web and
+        // must never be parsed as markup.
+        tip.textContent = text;
+        document.body.appendChild(tip);
+
+        const place = (e) => {
+          const pad = 14;
+          let x = e.clientX + pad;
+          let y = e.clientY + pad;
+          const box = tip.getBoundingClientRect();
+          if (x + box.width > window.innerWidth - 8) {
+            x = e.clientX - box.width - pad;
+          }
+          if (y + box.height > window.innerHeight - 8) {
+            y = e.clientY - box.height - pad;
+          }
+          tip.style.left = Math.max(8, x) + "px";
+          tip.style.top = Math.max(8, y) + "px";
+        };
+
+        el.addEventListener("mouseenter", (e) => {
+          place(e);
+          tip.classList.add("show");
+        });
+        el.addEventListener("mousemove", place);
+        el.addEventListener("mouseleave", () => tip.classList.remove("show"));
+      }
+
+      // Where a link in an answer goes, in the same words the source pills
+      // use. A reader deciding whether to click deserves to know it is about
+      // to open a Google Doc without having to read the URL.
+      function describeLink(href) {
+        let host;
+        try {
+          host = new URL(href, window.location.href).hostname;
+        } catch (err) {
+          return null;
+        }
+        const friendly = {
+          "docs.google.com": "Opens Google Doc",
+          "drive.google.com": "Opens Google Drive file",
+          "sites.google.com": "Opens Google Site",
+          "calendar.google.com": "Opens Google Calendar",
+          "forms.gle": "Opens Google Form",
+          "www.leanderisd.org": "Opens the district site",
+          "leanderisd.org": "Opens the district site",
+          "news.leanderisd.org": "Opens district news",
+          "vrhs.leanderisd.org": "Opens the school site"
+        };
+        return friendly[host] || ("Opens " + host);
+      }
+
       function createFeedbackElement() {
         // Rewritten from a full-width block that announced itself with "Was
         // this helpful?" and sat on its own line under every answer. Three
@@ -920,8 +982,10 @@
           </button>
         `;
 
-        // The detail panel is a sibling rather than a child, because it needs
-        // the full width of the conversation and the icon row does not.
+        // The panel sits inside the icon row, immediately after the thumbs.
+        // As a separate block underneath it appeared a long way from the
+        // button that opened it, and the connection between clicking
+        // thumbs-down and three chips showing up elsewhere was not obvious.
         const panel = document.createElement("div");
         panel.className = "fb-panel";
         panel.hidden = true;
@@ -1024,7 +1088,7 @@
         // Grow to fit, within bounds: never narrower than the placeholder,
         // never wider than the conversation column.
         const fit = () => {
-          const chars = Math.min(44, Math.max(7, input.value.length + 1));
+          const chars = Math.min(24, Math.max(7, input.value.length + 1));
           input.style.width = "calc(" + chars + "ch + 24px)";
         };
 
@@ -1195,6 +1259,15 @@
           bubble.appendChild(tmp);
         }
 
+        // Every link the answer produced gets the same hover panel the source
+        // pills have. Done once the stream is complete rather than as tokens
+        // arrive, because a link is only a link once its closing bracket has
+        // been parsed.
+        bubble.querySelectorAll("a[href]").forEach(a => {
+          const where = describeLink(a.getAttribute("href"));
+          if (where) attachTip(a, where);
+        });
+
         // 4) source pills and the verification notice
         let meta = {};
         if (metaBuffer && metaBuffer.trim()) {
@@ -1243,42 +1316,7 @@
             pill.rel = "noopener";
             pill.innerText = src.label;
 
-            if (src.snippet) {
-              const tip = document.createElement("span");
-              tip.className = "pill-tip";
-              // textContent, not innerHTML: this is page text scraped off the
-              // web and must never be parsed as markup.
-              tip.textContent = src.snippet;
-              // Body, not the pill. As a child it inherited the message list's
-              // clipping; fixed positioning only escapes that from the top of
-              // the document.
-              document.body.appendChild(tip);
-
-              const place = (e) => {
-                const pad = 14;
-                let x = e.clientX + pad;
-                let y = e.clientY + pad;
-                const box = tip.getBoundingClientRect();
-                // Flip rather than run off the edge.
-                if (x + box.width > window.innerWidth - 8) {
-                  x = e.clientX - box.width - pad;
-                }
-                if (y + box.height > window.innerHeight - 8) {
-                  y = e.clientY - box.height - pad;
-                }
-                tip.style.left = Math.max(8, x) + "px";
-                tip.style.top = Math.max(8, y) + "px";
-              };
-
-              pill.addEventListener("mouseenter", (e) => {
-                place(e);
-                tip.classList.add("show");
-              });
-              pill.addEventListener("mousemove", place);
-              pill.addEventListener("mouseleave", () => {
-                tip.classList.remove("show");
-              });
-            }
+            if (src.snippet) attachTip(pill, src.snippet);
 
             row.appendChild(pill);
           });
@@ -1305,9 +1343,9 @@
         msgContainer.scrollTop = msgContainer.scrollHeight;
         if (firstBotMessageShown) {
           const fb = createFeedbackElement();
+          fb.appendChild(fb.panel);
           footer.appendChild(fb);
           msgContainer.appendChild(footer);
-          msgContainer.appendChild(fb.panel);
 
           // Revealed by hovering the answer itself, not just the thin footer
           // strip - an answer with no sources leaves that strip almost

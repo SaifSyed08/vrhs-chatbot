@@ -232,6 +232,34 @@ def enrich_labels(links):
 
 WORDS_PER_CHUNK = 150
 
+# Anchor text that names nothing. A file linked as "click here" and embedded
+# under a real heading should be called by the heading.
+VAGUE_LABELS = frozenset([
+    "click here", "here", "link", "this link", "view", "open", "download",
+    "more", "read more", "see here", "click", "this", "document", "doc",
+    "click here to open to print or download", "print", "form",
+])
+
+
+def file_key(url):
+    """Identifies the file behind a URL, whatever shape the URL is.
+
+    The clubs spreadsheet is linked as an anchor reading "click here" and
+    embedded as an iframe under the heading "Clubs". Same file, two URLs -
+    /edit and /htmlembed - so keying on the URL read it twice, chunked it
+    twice, and offered a reader two source pills for one document, one of them
+    labelled "click here".
+    """
+    return document_id(url) or sheet_id(url) or drive_id(url) or url
+
+
+def label_quality(label):
+    """How much a label tells you. Higher is better."""
+    clean = " ".join((label or "").split())
+    if not clean or clean.lower() in VAGUE_LABELS:
+        return (0, 0)
+    return (1, len(clean))
+
 
 def readable(url):
     """Whether this is a Google file this module knows how to open."""
@@ -254,18 +282,31 @@ def linked_documents(references):
     """
     import requests
 
+    import requests as _requests  # noqa: F401  (kept for symmetry)
+
+    # One entry per file, keeping the most informative label anyone gave it and
+    # the URL that came with it.
+    best = {}
+    for label, href in references:
+        if not href or not readable(href):
+            continue
+        key = file_key(href)
+        current = best.get(key)
+        if current is None or label_quality(label) > label_quality(current[0]):
+            best[key] = (label, href)
+
     session = requests.Session()
     done, out = set(), []
 
-    for label, href in references:
+    for label, href in best.values():
         if len(out) >= MAX_DOCS:
             log.info("stopping at %d documents", MAX_DOCS)
             break
-        if not href or href in done or not readable(href):
-            continue
         done.add(href)
 
-        name = label or "Linked document"
+        name = " ".join((label or "").split()) or "Linked document"
+        if name.lower() in VAGUE_LABELS:
+            name = "Linked document"
         log.info("reading %s: %s",
                  "spreadsheet" if sheet_id(href) and not document_id(href)
                  else "document", name[:60])

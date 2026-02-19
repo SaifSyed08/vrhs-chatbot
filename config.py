@@ -115,6 +115,26 @@ HTTP_CONNECT_TIMEOUT = _float("VRHS_HTTP_CONNECT_TIMEOUT", 5.0)
 HTTP_READ_TIMEOUT = _float("VRHS_HTTP_READ_TIMEOUT", 60.0)
 
 
+# === Feedback ===
+
+# Where thumbs-down feedback goes so it survives a deploy.
+#
+# Render's filesystem is ephemeral: data/feedback.json is wiped every time the
+# service restarts or redeploys, which means every rating collected so far has
+# already been lost. A GitHub issue is durable, is already where the work gets
+# tracked, and needs no database.
+#
+# Unset by default, so the file remains the only store until a token is
+# configured. A token needs no more than issues:write on this one repository.
+GITHUB_TOKEN = os.getenv("VRHS_GITHUB_TOKEN", "")
+GITHUB_REPO = os.getenv("VRHS_GITHUB_REPO", "SaifSyed08/vrhs-chatbot")
+
+# /feedback is public and unauthenticated, so anyone who finds it can file
+# issues through it. A cap is the difference between a feedback channel and a
+# spam endpoint; past it, feedback still records to the log and the file.
+GITHUB_ISSUES_PER_HOUR = _int("VRHS_GITHUB_ISSUES_PER_HOUR", 12)
+
+
 # === Serving ===
 
 # Render supplies PORT and expects the process to bind to it. This was

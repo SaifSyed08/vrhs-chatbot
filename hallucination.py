@@ -87,10 +87,16 @@ class Verdict:
         # retrieval-level caution, which exists to flag misplaced confidence
         # and has nothing to say about an answer that claimed nothing.
         self.declined = False
+        # Whether the reader will be shown any sources at all. The
+        # unsupported-claim notice tells them to check the sources below, and
+        # there is nothing below when retrieval came up empty.
+        self.has_sources = True
 
     @property
     def grounded(self):
-        if self.bad_links or self.unsupported:
+        if self.bad_links:
+            return False
+        if self.unsupported and self.has_sources:
             return False
         # A reply that declined is treated as clean whatever retrieval scored.
         # Nothing was asserted, so there is nothing for a reader to verify.
@@ -130,8 +136,11 @@ class Verdict:
                 points.append("No close match on the school's pages.")
 
         if len(points) < 2:
-            if self.unsupported:
-                points.append("Some details aren't stated on the sources "
+            # Only when there is something to check against. The line points
+            # the reader at the sources below it, and an answer with no sources
+            # has none - so it read as a warning with no way to act on it.
+            if self.unsupported and self.has_sources:
+                points.append("Some details may not align with the sources "
                               "below.")
             elif self.grader_failed:
                 points.append("This answer wasn't fully checked.")

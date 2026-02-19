@@ -1,0 +1,78 @@
+# Re-scrape the site and rebuild the index on a schedule.
+#
+# The corpus is a snapshot. Everything in it was true on the day it was built
+# and quietly stops being true afterwards, without anything failing: a club
+# changes its meeting room, the announcements document rolls over to a new
+# month, a bell schedule is replaced. The bot goes on answering confidently
+# from the old copy, and the grounding checks cannot help - the answer really
+# is supported by the context, the context is just out of date.
+#
+# Every fortnight rather than monthly. The announcement documents this ingest
+# reads are per-month, so a four-week cycle can leave the current month's
+# missing for most of the month it describes, and clubs move around at the
+# start of each semester. Cost is not the constraint either way: a rebuild is
+# roughly 860 embeddings, about two cents.
+#
+# Sunday early morning, when nobody is asking the bot anything, so a rebuild
+# that goes wrong is noticed before Monday rather than during first period.
+name: refresh-index
+
+on:
+  schedule:
+    - cron: "0 9 * * 0"
+  # Always runnable by hand - after a site change, or to check the ingest still
+  # works without waiting two weeks to find out.
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-index
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Matches render.yaml. A rebuild that runs on a different Python than
+          # the deployment is a rebuild whose output has not been tested where
+          # it will be used.
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Rebuild the index
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          VRHS_NO_WARM: "1"
+        run: python -c "import rebuild; rebuild.main()"
+
+      - name: Commit if anything changed
+        run: |
+          git config user.name "SaifSyed08"
+          git config user.email "saifsyed2999@gmail.com"
+
+          # Embeddings are floats and wobble in the last digits between runs,
+          # so the file almost always differs by a byte or two. rebuild.py
+          # decides whether the corpus actually changed and leaves a marker;
+          # committing on file difference alone would push a no-op fortnightly
+          # and bury the real changes.
+          if [ ! -f .index-changed ]; then
+            echo "corpus unchanged, nothing to commit"
+            exit 0
+          fi
+
+          rm -f .index-changed
+          git add data/vrhs_embeddings.json
+          git commit -m "Refresh the index from the live site
+
+          Scheduled fortnightly rebuild. See the run log for what the crawl
+          found and which linked documents were readable."
+          git push
