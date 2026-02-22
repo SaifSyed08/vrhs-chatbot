@@ -31,6 +31,176 @@
        up instead of the suggestions running the full width of the window. */
     :root { --composer-width: 620px; }
 
+    /* ===================================================================
+       Compact mode, toggled with the 2 key.
+       ===================================================================
+       A second skin over the same markup, not a second interface. Everything
+       below is an override on body.compact, so the two cannot drift apart the
+       way a forked template would - a fix to the composer or the feedback row
+       lands in both by construction.
+
+       It inverts the ground: the default is a white card floating on grey, and
+       this is grey chrome on white, with smaller type throughout.
+       ------------------------------------------------------------------- */
+    body.compact { background: #ffffff; padding: 0; }
+
+    body.compact .chat-container {
+      max-width: 780px;
+      height: 100%;
+      background: #fff;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    body.compact .chat-header {
+      background: none;
+      color: #6b7075;
+      border-bottom: 1px solid #eceef0;
+      padding: 10px 18px;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    /* The greeting is the app telling you what it is while you are already
+       looking at it. Gone here; the placeholder does that job. */
+    body.compact .chat-header > span:first-child { visibility: hidden; }
+
+    body.compact .chat-messages { padding: 14px 18px 10px 18px; }
+    body.compact .chat-bubble { font-size: 0.86rem; padding: 10px 13px; }
+    body.compact .source-pill,
+    body.compact .fb-reason { font-size: 0.72rem; }
+    body.compact .chat-input input { font-size: 0.86rem; padding: 9px 12px; }
+    body.compact .quick-prompts button { font-size: 0.74rem; }
+
+    /* --- the landing state ---------------------------------------------
+       Before the first question there is no conversation to show, so the
+       composer is the whole interface: one wide box in the middle of an empty
+       page. Sending the first question is what turns it into a chat window. */
+    body.compact.awaiting .chat-messages,
+    body.compact.awaiting .quick-prompts,
+    body.compact.awaiting .chat-header { display: none; }
+
+    body.compact.awaiting .chat-input {
+      flex: 1;
+      align-items: center;
+      padding: 0 24px;
+    }
+
+    body.compact.awaiting .input-pill {
+      max-width: 620px;
+      padding: 10px 10px 10px 18px;
+    }
+
+    body.compact.awaiting .chat-input input { font-size: 1.05rem; }
+
+    /* Everything that was hidden slides in once the first answer is on its
+       way, rather than appearing fully formed. */
+    body.compact .chat-messages,
+    body.compact .quick-prompts,
+    body.compact .chat-header { animation: settleIn 0.34s ease both; }
+
+    @keyframes settleIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* The composer travels from the middle of the page to the bottom. */
+    body.compact .chat-input,
+    body.compact .input-pill {
+      transition: flex 0.42s cubic-bezier(0.33, 0.9, 0.35, 1),
+                  padding 0.42s ease,
+                  max-width 0.42s cubic-bezier(0.33, 0.9, 0.35, 1);
+    }
+
+    /* --- the snake -------------------------------------------------------
+       A red segment that runs the perimeter on hover. Drawn as an SVG rect
+       rather than an animated border because a border cannot be dashed round
+       a radius, and pathLength="100" normalises the dash to the shape, so one
+       set of numbers works at every width the box takes. */
+    .pill-snake {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+    }
+
+    body.compact .input-pill { position: relative; }
+    body.compact .input-pill:hover .pill-snake { opacity: 1; }
+    body.compact .input-pill:focus-within .pill-snake { opacity: 0; }
+
+    .pill-snake rect {
+      fill: none;
+      stroke: #e60023;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-dasharray: 22 78;
+      animation: snake 1.5s linear infinite;
+    }
+
+    @keyframes snake {
+      to { stroke-dashoffset: -100; }
+    }
+
+    /* Red caret, so the one part of the page you are acting on is the one
+       part that is not grey. */
+    body.compact .chat-input input { caret-color: #e60023; }
+
+    /* --- the disclaimer -------------------------------------------------- */
+    .disclaimer {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(20, 22, 24, 0.42);
+      animation: fadeUp 0.18s ease both;
+    }
+
+    .disclaimer-card {
+      max-width: 430px;
+      padding: 22px 24px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+    }
+
+    .disclaimer-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 1rem;
+      color: #2c2f33;
+    }
+
+    .disclaimer-card p {
+      margin: 0 0 16px 0;
+      font-size: 0.85rem;
+      line-height: 1.55;
+      color: #5f6368;
+    }
+
+    .disclaimer-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    .disclaimer-actions button {
+      font-family: inherit;
+      font-size: 0.82rem;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid #e0e3e6;
+      background: #fff;
+      color: #5f6368;
+      cursor: pointer;
+    }
+
+    .disclaimer-actions .accept {
+      border-color: #e60023;
+      background: #e60023;
+      color: #fff;
+    }
+
     /* Keyboard users get a visible target; mouse users do not see a ring.
        The feedback controls are real <button> elements, so they are already
        covered here and need no selector of their own. */
@@ -862,6 +1032,13 @@
     </div>
     <div class="chat-input">
       <div class="input-pill">
+        <!-- The travelling outline. pathLength="100" makes the dash lengths
+             mean percentages of the perimeter, so one set of numbers works
+             whatever width the composer takes. -->
+        <svg class="pill-snake" aria-hidden="true" focusable="false"
+             preserveAspectRatio="none">
+          <rect x="1" y="1" rx="999" pathLength="100" />
+        </svg>
         <input type="text" id="query" placeholder="Ask about VRHS..."
                autocomplete="off" aria-label="Ask a question" />
         <button onclick="sendMessage()" id="submitButton" aria-label="Send">
@@ -1128,6 +1305,20 @@
         const message = input.value.trim();
         if (!message) return;
 
+        // The disclaimer gates the first question and nothing after it.
+        // requireDisclaimer returns true when it has already been accepted;
+        // otherwise it returns false and calls back once the reader accepts,
+        // so the question they typed is still sent and they do not have to
+        // type it again.
+        if (window.requireDisclaimer && !window.requireDisclaimer(sendMessage)) {
+          return;
+        }
+
+        // The landing state ends here rather than on focus or on a keystroke,
+        // so the wide empty composer stands until there is actually something
+        // to show underneath it.
+        if (window.leaveLanding) window.leaveLanding();
+
         // 2️⃣ show the user bubble
         appendMessage(message, 'user');
         input.value = "";
@@ -1374,6 +1565,87 @@
       }
 
       </script>>
+
+<script>
+  // ===================================================================
+  // Compact mode and the disclaimer.
+  // ===================================================================
+  (function () {
+    const body = document.body;
+
+    // The 2 key switches skins, and has to be caught before the type-anywhere
+    // handler - that one fires when nothing is focused, which is exactly when
+    // this one wants the key, and it would otherwise put a "2" in the
+    // composer. Once the composer has focus, 2 is a character again, so a
+    // question containing a number types normally.
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "2" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const active = document.activeElement;
+      const tag = active && active.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (active && active.isContentEditable) return;
+
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      body.classList.toggle("compact");
+
+      // Entering compact with nothing asked yet drops to the landing state.
+      // Leaving never does, because a conversation is already on screen.
+      if (body.classList.contains("compact") && !window.__asked) {
+        body.classList.add("awaiting");
+      } else {
+        body.classList.remove("awaiting");
+      }
+    }, true);
+
+    // A one-way trip, taken by the first question rather than by a timer.
+    window.leaveLanding = function () {
+      window.__asked = true;
+      body.classList.remove("awaiting");
+    };
+
+    // Shown on the first send, not on load. A notice that appears before
+    // anyone has done anything is furniture and gets dismissed unread; one
+    // that appears as the first question goes out is about that question.
+    // It blocks, which is the point - it is not a toast.
+    let accepted = false;
+
+    window.requireDisclaimer = function (proceed) {
+      if (accepted) return true;
+
+      const wrap = document.createElement("div");
+      wrap.className = "disclaimer";
+      wrap.innerHTML = [
+        '<div class="disclaimer-card" role="dialog" aria-modal="true"',
+        '     aria-labelledby="disclaimer-title">',
+        '  <h3 id="disclaimer-title">Before you ask</h3>',
+        '  <p>This assistant answers from pages on the Vista Ridge High School',
+        '     website. It can be wrong, out of date, or miss things the site',
+        '     does not cover. Check anything that matters &mdash; a deadline, a',
+        '     fee, a room &mdash; against the source it cites, or with the front',
+        '     office.</p>',
+        '  <div class="disclaimer-actions">',
+        '    <button type="button" class="cancel">Cancel</button>',
+        '    <button type="button" class="accept">I understand</button>',
+        '  </div>',
+        '</div>'
+      ].join("");
+      document.body.appendChild(wrap);
+
+      const close = () => wrap.remove();
+      wrap.querySelector(".cancel").addEventListener("click", close);
+      wrap.querySelector(".accept").addEventListener("click", () => {
+        accepted = true;
+        close();
+        proceed();
+      });
+      wrap.addEventListener("click", (e) => { if (e.target === wrap) close(); });
+      wrap.querySelector(".accept").focus();
+
+      return false;
+    };
+  })();
+  </script>
 
 <script>
   // Enter sends. The composer is a single-line input, so there is no newline

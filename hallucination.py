@@ -96,7 +96,7 @@ class Verdict:
     def grounded(self):
         if self.bad_links:
             return False
-        if self.unsupported and self.has_sources:
+        if len(self.unsupported) >= 2 and self.has_sources:
             return False
         # A reply that declined is treated as clean whatever retrieval scored.
         # Nothing was asserted, so there is nothing for a reader to verify.
@@ -129,21 +129,33 @@ class Verdict:
             points.append(f"Link not found on the school site: "
                           f"{first}{tail}")
 
-        if not self.declined:
-            if self.retrieval_level == "none":
-                points.append("Nothing on the school's pages covers this.")
-            elif self.retrieval_level == "weak":
-                points.append("No close match on the school's pages.")
-
-        if len(points) < 2:
-            # Only when there is something to check against. The line points
-            # the reader at the sources below it, and an answer with no sources
-            # has none - so it read as a warning with no way to act on it.
-            if self.unsupported and self.has_sources:
+        # At most one point about grounding, and the retrieval one wins.
+        #
+        # These used to stack: "No close match on the school's pages" followed
+        # by "Some details may not align with the sources below" said the same
+        # worry twice, and the second is implied by the first - if retrieval
+        # found nothing close, of course the details may not line up. One line
+        # gets read; two get skipped.
+        if not self.declined and self.retrieval_level == "none":
+            points.append("Your query had no close match on the school's "
+                          "pages, so this may not be right.")
+        elif not self.declined and self.retrieval_level == "weak":
+            points.append("Your query had only a loose match on the school's "
+                          "pages.")
+        elif self.unsupported and self.has_sources:
+            # Two or more, not one.
+            #
+            # A single flagged claim in a long answer is usually the grader
+            # being marginal on a sentence the source states in other words -
+            # the failure mode measured all through this file. Two or more is a
+            # pattern rather than a wobble, and the panel is worth spending on
+            # a pattern. The claims are still recorded either way; this decides
+            # only whether the reader is interrupted.
+            if len(self.unsupported) >= 2:
                 points.append("Some details may not align with the sources "
                               "below.")
-            elif self.grader_failed:
-                points.append("This answer wasn't fully checked.")
+        elif self.grader_failed:
+            points.append("This answer wasn't fully checked.")
 
         return points[:2]
 
