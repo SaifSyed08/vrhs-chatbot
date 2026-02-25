@@ -52,33 +52,95 @@
       box-shadow: none;
     }
 
-    body.compact .chat-header {
-      background: none;
-      color: #6b7075;
-      border-bottom: 1px solid #eceef0;
-      padding: 10px 18px;
-      font-size: 0.82rem;
-      font-weight: 500;
+    /* The bar carried a greeting and a menu. The greeting told you what the
+       app is while you were already looking at it, and the menu is two links.
+       Dropping the whole strip buys about fifty pixels of conversation, which
+       is the scarce thing on this screen. */
+    body.compact .chat-header { display: none; }
+
+    /* The message list is cut off flat at both ends - by the top of the frame
+       and by the composer below it. A mask fades the last few pixels instead,
+       so text passes out of view rather than being sliced. Cheaper and
+       steadier than overlaying two gradient elements, which would have to be
+       kept in front of the content and behind the scrollbar. */
+    body.compact .chat-messages {
+      padding: 18px 18px 14px 18px;
+      -webkit-mask-image: linear-gradient(to bottom,
+                          transparent 0, #000 20px,
+                          #000 calc(100% - 26px), transparent 100%);
+      mask-image: linear-gradient(to bottom,
+                  transparent 0, #000 20px,
+                  #000 calc(100% - 26px), transparent 100%);
     }
-
-    /* The greeting is the app telling you what it is while you are already
-       looking at it. Gone here; the placeholder does that job. */
-    body.compact .chat-header > span:first-child { visibility: hidden; }
-
-    body.compact .chat-messages { padding: 14px 18px 10px 18px; }
     body.compact .chat-bubble { font-size: 0.86rem; padding: 10px 13px; }
     body.compact .source-pill,
-    body.compact .fb-reason { font-size: 0.72rem; }
-    body.compact .chat-input input { font-size: 0.86rem; padding: 9px 12px; }
-    body.compact .quick-prompts button { font-size: 0.74rem; }
+    body.compact .fb-reason { font-size: 0.68rem; padding: 2px 8px; }
+    body.compact .source-lead { font-size: 0.66rem; }
+    body.compact .pill-tip { font-size: 0.68rem; max-width: 240px; }
+
+    /* The caution was sized for a page where it was the only thing under an
+       answer. Here it competes with the conversation for a smaller screen, and
+       it is a footnote rather than an announcement. */
+    body.compact .verify-card {
+      padding: 7px 10px;
+      font-size: 0.7rem;
+      line-height: 1.4;
+    }
+    body.compact .verify-card .verify-title { font-size: 0.7rem; }
+    body.compact .fb-btn { width: 24px; height: 24px; }
+    body.compact .fb-btn svg { width: 14px; height: 14px; }
+    body.compact .chat-input {
+      padding: 2px 16px 8px 16px;
+    }
+    body.compact .chat-input input { font-size: 0.82rem; padding: 7px 11px; }
+    body.compact .input-pill { padding: 3px 3px 3px 7px; }
+    body.compact .chat-input button { width: 30px; height: 30px; }
+    body.compact .quick-prompts {
+      padding: 3px 0 2px 0;
+      gap: 6px;
+    }
+    body.compact .quick-prompts button {
+      font-size: 0.68rem;
+      padding: 3px 9px;
+    }
 
     /* --- the landing state ---------------------------------------------
        Before the first question there is no conversation to show, so the
        composer is the whole interface: one wide box in the middle of an empty
        page. Sending the first question is what turns it into a chat window. */
     body.compact.awaiting .chat-messages,
-    body.compact.awaiting .quick-prompts,
-    body.compact.awaiting .chat-header { display: none; }
+    body.compact.awaiting .quick-prompts { display: none; }
+
+    /* The line above the box on the landing screen. It is the only thing
+       telling a first-time reader what this is for, and it goes the moment
+       there is a conversation to read instead. */
+    .landing-title { display: none; }
+
+    body.compact.awaiting .landing-title {
+      display: block;
+      width: 100%;
+      max-width: 620px;
+      margin: 0 auto 18px auto;
+      padding: 0 4px;
+      font-size: 1.5rem;
+      line-height: 1.35;
+      font-weight: 600;
+      color: #2c2f33;
+      text-align: left;
+      animation: settleIn 0.4s ease both;
+    }
+
+    body.compact.awaiting .landing-title span {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 400;
+      color: #8a8f94;
+      margin-top: 6px;
+    }
+
+    body.compact.awaiting .chat-input {
+      flex-direction: column;
+    }
 
     body.compact.awaiting .chat-input {
       flex: 1;
@@ -105,12 +167,19 @@
     }
 
     /* The composer travels from the middle of the page to the bottom. */
+    /* Slower and flatter than the default easing. The old curve overshot,
+       which on a pill reads as a stretch rather than a move - the width
+       animates faster than the eye expects a box to change shape. */
     body.compact .chat-input,
     body.compact .input-pill {
-      transition: flex 0.42s cubic-bezier(0.33, 0.9, 0.35, 1),
-                  padding 0.42s ease,
-                  max-width 0.42s cubic-bezier(0.33, 0.9, 0.35, 1);
+      transition: flex 0.62s cubic-bezier(0.4, 0.0, 0.2, 1),
+                  padding 0.62s cubic-bezier(0.4, 0.0, 0.2, 1),
+                  max-width 0.62s cubic-bezier(0.4, 0.0, 0.2, 1),
+                  font-size 0.4s ease;
     }
+
+    body.compact .chat-messages,
+    body.compact .quick-prompts { animation-duration: 0.5s; }
 
     /* --- the snake -------------------------------------------------------
        A red segment that runs the perimeter on hover. Drawn as an SVG rect
@@ -132,12 +201,19 @@
     body.compact .input-pill:focus-within .pill-snake { opacity: 0; }
 
     .pill-snake rect {
+      /* Sized here, not on the element. The rect needs to be two pixels inside
+         the box so the stroke is not clipped, and that is calc() - which an
+         SVG presentation attribute cannot express but a CSS geometry property
+         can. Without this the rect had no width at all and drew nothing, which
+         is why the outline never appeared. */
+      width: calc(100% - 2px);
+      height: calc(100% - 2px);
       fill: none;
       stroke: #e60023;
-      stroke-width: 2;
+      stroke-width: 1.6;
       stroke-linecap: round;
-      stroke-dasharray: 22 78;
-      animation: snake 1.5s linear infinite;
+      stroke-dasharray: 18 82;
+      animation: snake 2.1s linear infinite;
     }
 
     @keyframes snake {
@@ -149,6 +225,11 @@
     body.compact .chat-input input { caret-color: #e60023; }
 
     /* --- the disclaimer -------------------------------------------------- */
+    /* No dimming sheet over the page. A full-bleed scrim darkens the whole
+       window to draw attention to one small card, which is a heavier gesture
+       than a first-use notice deserves and washes out the interface behind it.
+       The card carries its own weight with a shadow; the layer around it only
+       exists to catch clicks and is invisible. */
     .disclaimer {
       position: fixed;
       inset: 0;
@@ -157,16 +238,18 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
-      background: rgba(20, 22, 24, 0.42);
-      animation: fadeUp 0.18s ease both;
+      background: transparent;
     }
 
     .disclaimer-card {
-      max-width: 430px;
-      padding: 22px 24px;
+      max-width: 400px;
+      padding: 20px 22px;
       border-radius: 12px;
       background: #fff;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+      border: 1px solid #eceef0;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.20),
+                  0 2px 8px rgba(0, 0, 0, 0.08);
+      animation: settleIn 0.22s ease both;
     }
 
     .disclaimer-card h3 {
@@ -182,7 +265,11 @@
       color: #5f6368;
     }
 
-    .disclaimer-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .disclaimer-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
 
     .disclaimer-actions button {
       font-family: inherit;
@@ -199,6 +286,31 @@
       border-color: #e60023;
       background: #e60023;
       color: #fff;
+      /* Room for the arrow to move into, reserved now so the button does not
+         resize under the cursor. */
+      padding-right: 16px;
+      transition: padding-right 0.18s ease, background-color 0.15s ease;
+    }
+
+    .disclaimer-actions .accept .arrow {
+      display: inline-block;
+      width: 0;
+      margin-left: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: width 0.18s ease, margin-left 0.18s ease,
+                  opacity 0.18s ease;
+    }
+
+    .disclaimer-actions .accept:hover {
+      background: #c40020;
+      padding-right: 13px;
+    }
+
+    .disclaimer-actions .accept:hover .arrow {
+      width: 12px;
+      margin-left: 6px;
+      opacity: 1;
     }
 
     /* Keyboard users get a visible target; mouse users do not see a ring.
@@ -1031,6 +1143,14 @@
 
     </div>
     <div class="chat-input">
+      <!-- Landing-screen heading. Only rendered in compact mode's opening
+           state; the CSS hides it everywhere else, so the default interface is
+           untouched. -->
+      <div class="landing-title">
+        Can't find what you're looking for?
+        <span>Ask below and I'll check the school's pages.</span>
+      </div>
+
       <div class="input-pill">
         <!-- The travelling outline. pathLength="100" makes the dash lengths
              mean percentages of the perimeter, so one set of numbers works
@@ -1611,6 +1731,10 @@
     let accepted = false;
 
     window.requireDisclaimer = function (proceed) {
+      // Compact mode only. The default interface already carries its own
+      // notice, and two disclaimers for one product is one disclaimer nobody
+      // reads.
+      if (!body.classList.contains("compact")) return true;
       if (accepted) return true;
 
       const wrap = document.createElement("div");
@@ -1626,7 +1750,8 @@
         '     office.</p>',
         '  <div class="disclaimer-actions">',
         '    <button type="button" class="cancel">Cancel</button>',
-        '    <button type="button" class="accept">I understand</button>',
+        '    <button type="button" class="accept">I understand',
+        '      <span class="arrow" aria-hidden="true">&rarr;</span></button>',
         '  </div>',
         '</div>'
       ].join("");
