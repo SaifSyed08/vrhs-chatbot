@@ -32,6 +32,52 @@
     :root { --composer-width: 620px; }
 
     /* ===================================================================
+       The ranger.
+       ===================================================================
+       Ask after the mascot and he walks in along the top of the composer,
+       waves, and leaves. One sheet, two rows of eight: row 0 walks, row 1
+       waves. steps(8) is what makes it read as pixel art - the frame has to
+       snap rather than blend.
+
+       Rebuilt from the original sheet, which had a near-opaque black backdrop
+       that would have rendered as a black box. The backdrop is flood-filled
+       away from each frame's edge rather than thresholded, so the character's
+       own dark outline and boots survive, and every frame is bottom-aligned on
+       one baseline so he does not bob while walking. */
+    .ranger {
+      position: absolute;
+      bottom: 100%;
+      width: 27px;
+      height: 54px;
+      background-image: url("/static/ranger.png");
+      background-size: 216px 108px;
+      background-repeat: no-repeat;
+      /* Smoothing pixel art is the one thing that always looks wrong. */
+      image-rendering: pixelated;
+      pointer-events: none;
+      z-index: 40;
+    }
+
+    .ranger.walking { animation: rangerWalk 0.72s steps(8) infinite; }
+    .ranger.waving { animation: rangerWave 1.1s steps(8) infinite; }
+
+    /* Mirrored for the walk home; the sheet only faces one way. */
+    .ranger.leaving { transform: scaleX(-1); }
+
+    @keyframes rangerWalk {
+      from { background-position: 0 0; }
+      to { background-position: -216px 0; }
+    }
+
+    @keyframes rangerWave {
+      from { background-position: 0 -54px; }
+      to { background-position: -216px -54px; }
+    }
+
+    /* He stands on this, so it has to be something to stand on. */
+    .chat-input { position: relative; }
+
+    /* ===================================================================
        Compact mode, toggled with the 2 key.
        ===================================================================
        A second skin over the same markup, not a second interface. Everything
@@ -1434,6 +1480,13 @@
           return;
         }
 
+        // The mascot turns up if you ask after him. Fired on the question
+        // rather than on the answer, so he is already walking while the model
+        // is still thinking.
+        if (/mascots?/i.test(message) && window.summonRanger) {
+          window.summonRanger();
+        }
+
         // The landing state ends here rather than on focus or on a keystroke,
         // so the wide empty composer stands until there is actually something
         // to show underneath it.
@@ -1685,6 +1738,59 @@
       }
 
       </script>>
+
+<script>
+  // ===================================================================
+  // The ranger.
+  // ===================================================================
+  (function () {
+    let busy = false;
+
+    window.summonRanger = function () {
+      // One at a time. Asking twice while he is still on screen should not
+      // produce two of him walking through each other.
+      if (busy) return;
+      const rail = document.querySelector(".chat-input");
+      if (!rail) return;
+      busy = true;
+
+      const el = document.createElement("div");
+      el.className = "ranger walking";
+      el.style.left = "-40px";
+      el.setAttribute("aria-hidden", "true");
+      rail.appendChild(el);
+
+      // How far he walks is a share of the rail rather than a pixel count, so
+      // the trip makes sense on a phone and on a wide window. The duration is
+      // derived from the distance to hold his speed constant - a fixed
+      // duration would have him sprinting across a large screen.
+      const stop = Math.max(70, Math.round(rail.clientWidth * 0.3));
+      const speed = 46; // px per second, about right for the stride
+      const walkMs = Math.round((stop + 40) / speed * 1000);
+
+      requestAnimationFrame(() => {
+        el.style.transition = "left " + walkMs + "ms linear";
+        el.style.left = stop + "px";
+      });
+
+      const leave = () => {
+        el.classList.remove("waving");
+        el.classList.add("walking", "leaving");
+        el.style.transition = "left " + walkMs + "ms linear";
+        el.style.left = "-40px";
+        setTimeout(() => { el.remove(); busy = false; }, walkMs + 150);
+      };
+
+      const wave = () => {
+        el.classList.remove("walking");
+        el.classList.add("waving");
+        setTimeout(leave, 2200);
+      };
+
+      setTimeout(wave, walkMs + 80);
+    };
+  })();
+  </script>
 
 <script>
   // ===================================================================
