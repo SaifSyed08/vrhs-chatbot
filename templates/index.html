@@ -77,6 +77,12 @@
     /* He stands on this, so it has to be something to stand on. */
     .chat-input { position: relative; }
 
+    /* If the greeting and the standing disclaimer are already on screen when
+       the skin is switched, they shrink rather than vanish - removing turns of
+       a conversation someone is reading would be worse than making them small.
+       A fresh compact session never renders them at all. */
+    body.compact .mid-disclaimer { font-size: 0.62rem; line-height: 1.35; }
+
     /* ===================================================================
        Compact mode, toggled with the 2 key.
        ===================================================================
@@ -127,10 +133,20 @@
     /* The caution was sized for a page where it was the only thing under an
        answer. Here it competes with the conversation for a smaller screen, and
        it is a footnote rather than an announcement. */
+    /* The elbow connector hangs 9px above the card and 1px from its left
+       edge, so the card needs headroom above it and clearance to its left or
+       the bracket is clipped by the message column. The default sizing gave it
+       both; the compact override took them away. */
     body.compact .verify-card {
-      padding: 7px 10px;
+      margin: 2px 0 8px 10px;
+      padding: 0 0 0 22px;
       font-size: 0.7rem;
       line-height: 1.4;
+    }
+    body.compact .verify-card::before {
+      top: -6px;
+      width: 12px;
+      height: 19px;
     }
     body.compact .verify-card .verify-title { font-size: 0.7rem; }
     body.compact .fb-btn { width: 24px; height: 24px; }
@@ -165,24 +181,25 @@
     body.compact.awaiting .landing-title {
       display: block;
       width: 100%;
-      max-width: 620px;
-      margin: 0 auto 18px auto;
-      padding: 0 4px;
-      font-size: 1.5rem;
-      line-height: 1.35;
-      font-weight: 600;
-      color: #2c2f33;
-      text-align: left;
-      animation: settleIn 0.4s ease both;
+      max-width: 760px;
+      margin: 0 auto 26px auto;
+      padding: 0 8px;
+      /* A display face, not the interface font. This is the one piece of
+         type on the screen that is meant to be looked at rather than read
+         through, and Public Sans at 40px is just a big version of the
+         placeholder underneath it. */
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.9rem, 5.2vw, 3.1rem);
+      line-height: 1.15;
+      font-weight: 400;
+      letter-spacing: -0.015em;
+      color: #1f2225;
+      text-align: center;
+      animation: settleIn 0.45s ease both;
     }
 
-    body.compact.awaiting .landing-title span {
-      display: block;
-      font-size: 0.92rem;
-      font-weight: 400;
-      color: #8a8f94;
-      margin-top: 6px;
-    }
+    /* The second line explained what the box below it already says. */
+    body.compact.awaiting .landing-title span { display: none; }
 
     body.compact.awaiting .chat-input {
       flex-direction: column;
@@ -195,8 +212,16 @@
     }
 
     body.compact.awaiting .input-pill {
-      max-width: 620px;
+      max-width: 560px;
       padding: 10px 10px 10px 18px;
+    }
+
+    /* The default composer grows when it takes focus and the landing one did
+       not, which made the big version feel like a picture of an input rather
+       than an input. */
+    body.compact.awaiting .input-pill:focus-within {
+      max-width: 720px;
+      padding: 13px 13px 13px 22px;
     }
 
     body.compact.awaiting .chat-input input { font-size: 1.05rem; }
@@ -213,19 +238,30 @@
     }
 
     /* The composer travels from the middle of the page to the bottom. */
-    /* Slower and flatter than the default easing. The old curve overshot,
-       which on a pill reads as a stretch rather than a move - the width
-       animates faster than the eye expects a box to change shape. */
-    body.compact .chat-input,
-    body.compact .input-pill {
-      transition: flex 0.62s cubic-bezier(0.4, 0.0, 0.2, 1),
-                  padding 0.62s cubic-bezier(0.4, 0.0, 0.2, 1),
-                  max-width 0.62s cubic-bezier(0.4, 0.0, 0.2, 1),
-                  font-size 0.4s ease;
+    /* Layout is not animated between the two states, only appearance.
+       Transitioning flex and max-width meant the composer was re-laid out on
+       every frame, and a 999px radius on a box whose width is mid-flight
+       renders as an ellipse - which is what "pills morphing into ovals" was.
+       The layout now switches in one frame and the composer slides the short
+       distance into place, which reads as the same movement and cannot
+       distort anything.
+
+       Focus growth keeps its transition: that one is a genuine width change
+       the reader caused, and it is not competing with a reflow. */
+    body.compact .input-pill { transition: max-width 0.3s ease,
+                                           padding 0.3s ease; }
+
+    body.compact:not(.awaiting) .chat-input {
+      animation: composerSettle 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    @keyframes composerSettle {
+      from { transform: translateY(-14px); opacity: 0.6; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     body.compact .chat-messages,
-    body.compact .quick-prompts { animation-duration: 0.5s; }
+    body.compact .quick-prompts { animation-duration: 0.3s; }
 
     /* --- the snake -------------------------------------------------------
        A red segment that runs the perimeter on hover. Drawn as an SVG rect
@@ -239,7 +275,7 @@
       height: 100%;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.18s ease;
+      transition: opacity 0.12s ease;
     }
 
     body.compact .input-pill { position: relative; }
@@ -247,24 +283,29 @@
     body.compact .input-pill:focus-within .pill-snake { opacity: 0; }
 
     .pill-snake rect {
-      /* Sized here, not on the element. The rect needs to be two pixels inside
-         the box so the stroke is not clipped, and that is calc() - which an
-         SVG presentation attribute cannot express but a CSS geometry property
-         can. Without this the rect had no width at all and drew nothing, which
-         is why the outline never appeared. */
+      /* Sized here, not on the element. The rect must sit a pixel inside the
+         box so the stroke is not clipped, and that is calc() - which an SVG
+         presentation attribute cannot express but a CSS geometry property
+         can. */
       width: calc(100% - 2px);
       height: calc(100% - 2px);
       fill: none;
       stroke: #e60023;
       stroke-width: 1.6;
       stroke-linecap: round;
-      stroke-dasharray: 18 82;
-      animation: snake 2.1s linear infinite;
+      /* The outline draws itself on, once, and stays.
+         pathLength="100" makes the dash a percentage of the perimeter, so one
+         full-length dash pushed fully out of view is an undrawn border, and
+         easing the offset back to zero draws it from a point round to itself.
+         The previous version was a short dash looping forever, which is a
+         different thing entirely - a bead orbiting the box rather than the
+         box's own edge arriving. */
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      transition: stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    @keyframes snake {
-      to { stroke-dashoffset: -100; }
-    }
+    body.compact .input-pill:hover .pill-snake rect { stroke-dashoffset: 0; }
 
     /* Red caret, so the one part of the page you are acting on is the one
        part that is not grey. */
@@ -284,7 +325,11 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
-      background: transparent;
+      /* Barely tinted, and blurred. A blur says "this is in front" without
+         darkening the page to make the point, which is what the scrim did. */
+      background: rgba(255, 255, 255, 0.35);
+      -webkit-backdrop-filter: blur(7px);
+      backdrop-filter: blur(7px);
     }
 
     .disclaimer-card {
@@ -2138,6 +2183,13 @@
     }
 
     window.onload = function () {
+      // Both of these are skipped in compact mode. The greeting is a turn in
+      // the conversation that says nothing, and compact opens on an empty
+      // screen where a lone "Hi!" is the only thing in it. The standing
+      // disclaimer is redundant there too, because that skin gates the first
+      // question behind one that has to be accepted.
+      if (document.body.classList.contains("compact")) return;
+
       appendMessage("Hi! What can I help you with?", "bot");
       // Insert disclaimer right under the first bot message
       const chatMessages = document.querySelector(".chat-messages");
