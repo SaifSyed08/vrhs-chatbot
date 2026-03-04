@@ -74,8 +74,13 @@
       to { background-position: -216px -54px; }
     }
 
-    /* He stands on this, so it has to be something to stand on. */
-    .chat-input { position: relative; }
+    /* He stands on the composer pill, not on the row that contains it.
+       The row is flex:1 on the landing screen - nearly the whole height of
+       the window - so "bottom: 100%" of it put him a screenful above the
+       top edge, where the container's overflow clipped him out of
+       existence. The pill is the same modest height in both states, which
+       is what makes it a floor he can stand on. */
+    .input-pill { position: relative; }
 
     /* If the greeting and the standing disclaimer are already on screen when
        the skin is switched, they shrink rather than vanish - removing turns of
@@ -1528,7 +1533,8 @@
         // The mascot turns up if you ask after him. Fired on the question
         // rather than on the answer, so he is already walking while the model
         // is still thinking.
-        if (/mascots?/i.test(message) && window.summonRanger) {
+        if (/\bmascots?\b/i.test(message)
+            && window.summonRanger) {
           window.summonRanger();
         }
 
@@ -1795,7 +1801,7 @@
       // One at a time. Asking twice while he is still on screen should not
       // produce two of him walking through each other.
       if (busy) return;
-      const rail = document.querySelector(".chat-input");
+      const rail = document.querySelector(".input-pill");
       if (!rail) return;
       busy = true;
 
@@ -1809,7 +1815,7 @@
       // the trip makes sense on a phone and on a wide window. The duration is
       // derived from the distance to hold his speed constant - a fixed
       // duration would have him sprinting across a large screen.
-      const stop = Math.max(70, Math.round(rail.clientWidth * 0.3));
+      const stop = Math.max(60, Math.round(rail.clientWidth * 0.32));
       const speed = 46; // px per second, about right for the stride
       const walkMs = Math.round((stop + 40) / speed * 1000);
 
