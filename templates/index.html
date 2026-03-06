@@ -131,7 +131,9 @@
     }
     body.compact .chat-bubble { font-size: 0.86rem; padding: 10px 13px; }
     body.compact .source-pill,
-    body.compact .fb-reason { font-size: 0.68rem; padding: 2px 8px; }
+    body.compact .fb-reason,
+    body.compact .fb-input { font-size: 0.68rem; padding: 2px 8px; }
+    body.compact .fb-hint { font-size: 0.66rem; }
     body.compact .source-lead { font-size: 0.66rem; }
     body.compact .pill-tip { font-size: 0.68rem; max-width: 240px; }
 
@@ -309,6 +311,15 @@
       stroke-dashoffset: 100;
       transition: stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     }
+
+    /* rx and ry are set from script, not here, and the reason is worth
+       recording. rx="999" on a rect does not mean "as round as possible": rx
+       and ry are clamped independently, rx to half the width and ry to half
+       the height. On a composer 500px wide and 40px tall that gives corners
+       500 wide and 40 tall - four quarter-ellipses that meet in the middle,
+       which is an oval, not a pill. A pill needs rx == ry == half the height,
+       and the height changes between the two skins and again on focus, so the
+       only correct value is one measured at the time. */
 
     body.compact .input-pill:hover .pill-snake rect { stroke-dashoffset: 0; }
 
@@ -1034,8 +1045,11 @@
 
     .fb-input {
       font-family: inherit;
+      /* Matched to .fb-reason, which sits immediately beside it. It was a
+         size larger in both dimensions, so the row read as a text box with
+         some chips rather than one set of controls. */
       font-size: 0.78rem;
-      padding: 5px 10px;
+      padding: 4px 10px;
       /* Starts about as wide as its placeholder and grows with what is typed,
          so an empty box is a small invitation rather than a wide slot that
          looks like it expects an essay. Width is set in ch by the input
@@ -1253,7 +1267,7 @@
              whatever width the composer takes. -->
         <svg class="pill-snake" aria-hidden="true" focusable="false"
              preserveAspectRatio="none">
-          <rect x="1" y="1" rx="999" pathLength="100" />
+          <rect x="1" y="1" pathLength="100" />
         </svg>
         <input type="text" id="query" placeholder="Ask about VRHS..."
                autocomplete="off" aria-label="Ask a question" />
@@ -1503,7 +1517,7 @@
           if (!text) return;
           post(text);
           hint.className = "fb-hint show done";
-          hint.textContent = "Submitted ✓";
+          hint.textContent = "Submitted anonymously ✓";
           input.blur();
         });
 
@@ -1789,6 +1803,38 @@
       }
 
       </script>>
+
+<script>
+  // ===================================================================
+  // Keep the outline a pill.
+  // ===================================================================
+  // rx and ry on a <rect> are clamped independently - rx to half the width,
+  // ry to half the height - so a large value does not mean "fully rounded",
+  // it means an ellipse as wide as the box and as tall as the box. The only
+  // value that draws a pill is half the height, and the height changes
+  // between skins, on focus, and when the landing screen collapses. So it is
+  // measured rather than guessed, and re-measured whenever the box resizes.
+  (function () {
+    const pill = document.querySelector(".input-pill");
+    const rect = document.querySelector(".pill-snake rect");
+    if (!pill || !rect) return;
+
+    const fit = () => {
+      const r = Math.max(0, (pill.offsetHeight - 2) / 2);
+      rect.setAttribute("rx", r);
+      rect.setAttribute("ry", r);
+    };
+
+    fit();
+    if (window.ResizeObserver) {
+      new ResizeObserver(fit).observe(pill);
+    } else {
+      window.addEventListener("resize", fit);
+      pill.addEventListener("focusin", fit);
+      pill.addEventListener("focusout", fit);
+    }
+  })();
+  </script>
 
 <script>
   // ===================================================================
