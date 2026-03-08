@@ -44,9 +44,26 @@
        away from each frame's edge rather than thresholded, so the character's
        own dark outline and boots survive, and every frame is bottom-aligned on
        one baseline so he does not bob while walking. */
+    /* The strip he walks along, and the reason he does not appear from
+       nothing. It clips at its own edges, so he passes behind them the way a
+       figure walks off the side of a stage rather than fading out mid-air.
+       Cheaper than an overlay too: an occluding white block would have to
+       match whatever is behind it, and here there is a pill, a suggestion
+       strip and a page edge behind it depending on the skin. */
+    .ranger-stage {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 100%;
+      height: 56px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 40;
+    }
+
     .ranger {
       position: absolute;
-      bottom: 100%;
+      bottom: 0;
       width: 27px;
       height: 54px;
       background-image: url("/static/ranger.png");
@@ -1851,19 +1868,23 @@
       if (!rail) return;
       busy = true;
 
+      const stage = document.createElement("div");
+      stage.className = "ranger-stage";
+      stage.setAttribute("aria-hidden", "true");
+
       const el = document.createElement("div");
       el.className = "ranger walking";
-      el.style.left = "-40px";
-      el.setAttribute("aria-hidden", "true");
-      rail.appendChild(el);
+      el.style.left = "-34px";
+      stage.appendChild(el);
+      rail.appendChild(stage);
 
       // How far he walks is a share of the rail rather than a pixel count, so
       // the trip makes sense on a phone and on a wide window. The duration is
       // derived from the distance to hold his speed constant - a fixed
       // duration would have him sprinting across a large screen.
-      const stop = Math.max(60, Math.round(rail.clientWidth * 0.32));
-      const speed = 46; // px per second, about right for the stride
-      const walkMs = Math.round((stop + 40) / speed * 1000);
+      const stop = Math.max(44, Math.round(rail.clientWidth * 0.17));
+      const speed = 88; // px per second, matched to the stride at 0.72s a loop
+      const walkMs = Math.round((stop + 34) / speed * 1000);
 
       requestAnimationFrame(() => {
         el.style.transition = "left " + walkMs + "ms linear";
@@ -1874,14 +1895,14 @@
         el.classList.remove("waving");
         el.classList.add("walking", "leaving");
         el.style.transition = "left " + walkMs + "ms linear";
-        el.style.left = "-40px";
-        setTimeout(() => { el.remove(); busy = false; }, walkMs + 150);
+        el.style.left = "-34px";
+        setTimeout(() => { stage.remove(); busy = false; }, walkMs + 150);
       };
 
       const wave = () => {
         el.classList.remove("walking");
         el.classList.add("waving");
-        setTimeout(leave, 2200);
+        setTimeout(leave, 1500);
       };
 
       setTimeout(wave, walkMs + 80);
