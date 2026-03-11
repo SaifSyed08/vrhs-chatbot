@@ -31,6 +31,45 @@
        up instead of the suggestions running the full width of the window. */
     :root { --composer-width: 620px; }
 
+    /* Suggestions under the landing composer.
+       Only there: once a conversation exists the reader has context and the
+       suggestion strip already offers starting points, so a dropdown competing
+       with both would be noise. */
+    .suggest {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 30;
+      background: #fff;
+      border: 1px solid #eceef0;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.09);
+      overflow: hidden;
+    }
+
+    .suggest-item {
+      display: block;
+      width: 100%;
+      padding: 9px 16px;
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: 0.88rem;
+      color: #3c4043;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .suggest-item:hover,
+    .suggest-item.active { background: #f5f6f7; }
+
+    .suggest-item mark {
+      background: none;
+      color: #1f2225;
+      font-weight: 600;
+    }
+
     /* ===================================================================
        The ranger.
        ===================================================================
@@ -54,8 +93,10 @@
       position: absolute;
       left: 0;
       right: 0;
-      bottom: 100%;
-      height: 56px;
+      /* A hair above the pill, so his boots clear its outline instead of
+         being crossed by it. */
+      bottom: calc(100% + 3px);
+      height: 40px;
       overflow: hidden;
       pointer-events: none;
       z-index: 40;
@@ -64,10 +105,13 @@
     .ranger {
       position: absolute;
       bottom: 0;
-      width: 27px;
-      height: 54px;
+      /* Half the height he started at. At 54px he was as tall as the headline
+         he walks under and read as a character standing in the interface
+         rather than a small joke crossing it. */
+      width: 19px;
+      height: 38px;
       background-image: url("/static/ranger.png");
-      background-size: 216px 108px;
+      background-size: 152px 76px;
       background-repeat: no-repeat;
       /* Smoothing pixel art is the one thing that always looks wrong. */
       image-rendering: pixelated;
@@ -83,12 +127,12 @@
 
     @keyframes rangerWalk {
       from { background-position: 0 0; }
-      to { background-position: -216px 0; }
+      to { background-position: -152px 0; }
     }
 
     @keyframes rangerWave {
-      from { background-position: 0 -54px; }
-      to { background-position: -216px -54px; }
+      from { background-position: 0 -38px; }
+      to { background-position: -152px -38px; }
     }
 
     /* He stands on the composer pill, not on the row that contains it.
@@ -206,7 +250,7 @@
       display: block;
       width: 100%;
       max-width: 760px;
-      margin: 0 auto 26px auto;
+      margin: 0 auto 44px auto;
       padding: 0 8px;
       /* A display face, not the interface font. This is the one piece of
          type on the screen that is meant to be looked at rather than read
@@ -294,7 +338,10 @@
        set of numbers works at every width the box takes. */
     .pill-snake {
       position: absolute;
-      inset: 0;
+      /* Outside the pill's own edge rather than on it. Sharing the line made
+         it look like the border had simply changed colour; a couple of pixels
+         out reads as something drawn around the box. */
+      inset: -3px;
       width: 100%;
       height: 100%;
       pointer-events: none;
@@ -315,7 +362,7 @@
       height: calc(100% - 2px);
       fill: none;
       stroke: #e60023;
-      stroke-width: 1.6;
+      stroke-width: 1.1;
       stroke-linecap: round;
       /* The outline draws itself on, once, and stays.
          pathLength="100" makes the dash a percentage of the perimeter, so one
@@ -1045,7 +1092,15 @@
     .fb-reason:hover { border-color: #c9cdd2; color: #2c2f33; }
     .fb-reason.active { border-color: #c40020; color: #c40020; }
 
-    .fb-comment { display: flex; gap: 8px; align-items: center; }
+    /* Stacked, so the prompt and the confirmation sit under the box rather
+       than beside it - beside it they competed with the reason chips for the
+       same strip of row, and the row ran out of width first. */
+    .fb-comment {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: flex-start;
+    }
 
     /* Sits beside the box rather than under it: the prompt to press Enter and
        the confirmation that Enter worked belong in the same spot, because they
@@ -1060,29 +1115,30 @@
     .fb-hint.show { opacity: 1; }
     .fb-hint.done { color: #1e8e3e; }
 
+    /* A textarea, not an input, because the growth has to change direction.
+       It widens with what is typed until it reaches the width the row can
+       spare, and then goes down instead of on - which an <input> cannot do at
+       all, having one line and scrolling once it is full. */
     .fb-input {
       font-family: inherit;
-      /* Matched to .fb-reason, which sits immediately beside it. It was a
-         size larger in both dimensions, so the row read as a text box with
-         some chips rather than one set of controls. */
       font-size: 0.78rem;
-      padding: 4px 10px;
-      /* Starts about as wide as its placeholder and grows with what is typed,
-         so an empty box is a small invitation rather than a wide slot that
-         looks like it expects an essay. Width is set in ch by the input
-         handler; the +24px covers the horizontal padding, which counts toward
-         width under the border-box rule this page sets globally. */
-      width: calc(7ch + 24px);
-      /* Capped well short of the row. It shares a line with the thumbs and
-         three chips now, and a box that kept growing pushed them off the
-         edge. Longer comments scroll inside it. */
-      max-width: 220px;
-      transition: width 0.14s ease;
+      padding: 5px 11px;
+      width: calc(7ch + 26px);
+      max-width: 260px;
+      min-height: 27px;
+      max-height: 88px;
+      /* Not 999px any more. A pill radius on a box three lines tall is a
+         lozenge; 14px keeps the rounded feel at one line and stays sane at
+         four. */
       border: 1px solid #e0e3e6;
-      border-radius: 999px;
+      border-radius: 14px;
       outline: none;
       background: #fff;
       color: #2c2f33;
+      resize: none;
+      overflow-y: auto;
+      line-height: 1.4;
+      transition: width 0.16s ease, height 0.12s ease;
     }
     .fb-input:focus { border-color: #c40020; }
 
@@ -1420,8 +1476,8 @@
             <button class="fb-reason" data-reason="inaccurate">Inaccurate</button>
           </div>
           <div class="fb-comment">
-            <input type="text" class="fb-input" maxlength="1000"
-                   placeholder="Type..." />
+            <textarea class="fb-input" maxlength="1000" rows="1"
+                      placeholder="Type..."></textarea>
             <span class="fb-hint"></span>
           </div>
         `;
@@ -1511,9 +1567,14 @@
 
         // Grow to fit, within bounds: never narrower than the placeholder,
         // never wider than the conversation column.
+        // Grows along, then down. Width first, to the cap; once the text no
+        // longer fits on one line the height follows the content instead, to
+        // its own cap, after which it scrolls.
         const fit = () => {
-          const chars = Math.min(24, Math.max(7, input.value.length + 1));
-          input.style.width = "calc(" + chars + "ch + 24px)";
+          const chars = Math.min(26, Math.max(7, input.value.length + 1));
+          input.style.width = "calc(" + chars + "ch + 26px)";
+          input.style.height = "auto";
+          input.style.height = Math.min(88, input.scrollHeight) + "px";
         };
 
         input.addEventListener("input", () => {
@@ -1823,6 +1884,163 @@
 
 <script>
   // ===================================================================
+  // Landing suggestions.
+  // ===================================================================
+  // A short list of things this corpus can actually answer, matched as you
+  // type. Written against what ingest found rather than invented: every one of
+  // these has a page, a linked document or a spreadsheet row behind it, so a
+  // suggestion is a promise the bot can keep. Offering "when is prom" would be
+  // worse than offering nothing.
+  //
+  // Landing screen only. Once a conversation exists the reader has context,
+  // and the suggestion strip already offers openings.
+  (function () {
+    const QUESTIONS = [
+      "What time does school start?",
+      "What are the bell schedules for this year?",
+      "Is tomorrow an A day or B day?",
+      "Where do I find the school calendar?",
+      "How many hours do I owe and where do I check?",
+      "How do I make up attendance hours?",
+      "Where do I report an absence?",
+      "What is the student check-out policy?",
+      "How do I appeal an attendance decision?",
+      "What clubs and organizations are offered?",
+      "How do I start a new club?",
+      "Who sponsors the Aerospace Club?",
+      "When does the AI Club meet?",
+      "How do I sign up to volunteer?",
+      "How do I get a parking permit?",
+      "Where can I find bus information?",
+      "How do I find a teacher's email?",
+      "Who is the principal?",
+      "Where is the staff directory?",
+      "Where is the library website?",
+      "How do I log into Ranger Time?",
+      "How do I request a transcript?",
+      "When are the STAAR testing dates?",
+      "How do I register for AP tests?",
+      "When is the Saturday SAT test?",
+      "What resources are there for parents?",
+      "Where are the daily announcements?",
+      "What do seniors need to do before graduation?",
+      "How do I sign up for ACC classes?",
+      "Where is the attendance website?",
+      "What athletics does the school offer?",
+      "Where do I find athletic physical forms?",
+      "How do I contact the counseling office?",
+      "What is Ranger Camp?",
+      "Where do I drop off my student in the morning?",
+      "How do I report bullying?",
+      "What is on the school calendar this month?",
+      "Who do I contact about my schedule?",
+      "Where can I find the campus profile?",
+      "How do I access my STAAR scores?"
+    ];
+    const MAX = 3;
+
+    const pill = document.querySelector(".input-pill");
+    const box = document.getElementById("query");
+    if (!pill || !box) return;
+
+    let panel = null;
+    let items = [];
+    let cursor = -1;
+
+    const close = function () {
+      if (panel) { panel.remove(); panel = null; }
+      items = [];
+      cursor = -1;
+    };
+
+    const escapeHtml = function (t) {
+      return t.replace(/[&<>"']/g, function (ch) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;",
+                 '"': "&quot;", "'": "&#39;" }[ch];
+      });
+    };
+
+    const render = function (matches, typed) {
+      close();
+      if (!matches.length) return;
+
+      panel = document.createElement("div");
+      panel.className = "suggest";
+
+      matches.forEach(function (q) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "suggest-item";
+
+        // The typed run is marked rather than the whole line bolded, so it is
+        // obvious which part of the suggestion the reader supplied.
+        const at = q.toLowerCase().indexOf(typed);
+        b.innerHTML = at < 0
+          ? escapeHtml(q)
+          : escapeHtml(q.slice(0, at)) + "<mark>"
+            + escapeHtml(q.slice(at, at + typed.length)) + "</mark>"
+            + escapeHtml(q.slice(at + typed.length));
+
+        // mousedown, not click. The box blurs first on a click, and the panel
+        // is already gone by the time a click handler would run.
+        b.addEventListener("mousedown", function (e) {
+          e.preventDefault();
+          box.value = q;
+          close();
+          if (window.sendMessage) window.sendMessage();
+        });
+
+        panel.appendChild(b);
+        items.push(b);
+      });
+
+      pill.appendChild(panel);
+    };
+
+    const update = function () {
+      const typed = box.value.trim().toLowerCase();
+      const body = document.body;
+      if (!body.classList.contains("compact")
+          || !body.classList.contains("awaiting")
+          || typed.length < 2) {
+        close();
+        return;
+      }
+      // Substring anywhere, so "club" finds "How do I start a new club?" and
+      // not only the questions that happen to open with it.
+      const hits = QUESTIONS.filter(function (q) {
+        return q.toLowerCase().indexOf(typed) !== -1;
+      }).slice(0, MAX);
+      render(hits, typed);
+    };
+
+    const move = function (step) {
+      if (!items.length) return;
+      cursor = (cursor + step + items.length) % items.length;
+      items.forEach(function (b, i) {
+        b.classList.toggle("active", i === cursor);
+      });
+    };
+
+    box.addEventListener("input", update);
+    box.addEventListener("focus", update);
+    box.addEventListener("blur", function () { setTimeout(close, 120); });
+
+    box.addEventListener("keydown", function (e) {
+      if (!items.length) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+      else if (e.key === "Escape") { close(); }
+      else if (e.key === "Enter" && cursor >= 0) {
+        e.preventDefault();
+        items[cursor].dispatchEvent(new MouseEvent("mousedown"));
+      }
+    });
+  })();
+  </script>
+
+<script>
+  // ===================================================================
   // Keep the outline a pill.
   // ===================================================================
   // rx and ry on a <rect> are clamped independently - rx to half the width,
@@ -1874,7 +2092,7 @@
 
       const el = document.createElement("div");
       el.className = "ranger walking";
-      el.style.left = "-34px";
+      el.style.left = "-24px";
       stage.appendChild(el);
       rail.appendChild(stage);
 
@@ -1882,9 +2100,9 @@
       // the trip makes sense on a phone and on a wide window. The duration is
       // derived from the distance to hold his speed constant - a fixed
       // duration would have him sprinting across a large screen.
-      const stop = Math.max(44, Math.round(rail.clientWidth * 0.17));
-      const speed = 88; // px per second, matched to the stride at 0.72s a loop
-      const walkMs = Math.round((stop + 34) / speed * 1000);
+      const stop = Math.max(38, Math.round(rail.clientWidth * 0.16));
+      const speed = 76; // px per second, matched to the stride at 0.72s a loop
+      const walkMs = Math.round((stop + 24) / speed * 1000);
 
       requestAnimationFrame(() => {
         el.style.transition = "left " + walkMs + "ms linear";
@@ -1895,7 +2113,7 @@
         el.classList.remove("waving");
         el.classList.add("walking", "leaving");
         el.style.transition = "left " + walkMs + "ms linear";
-        el.style.left = "-34px";
+        el.style.left = "-24px";
         setTimeout(() => { stage.remove(); busy = false; }, walkMs + 150);
       };
 
