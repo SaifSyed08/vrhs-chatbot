@@ -45,28 +45,52 @@
       border: 1px solid #eceef0;
       border-radius: 12px;
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.09);
+      /* Height is set from script and eased, so going from three matches to
+         two slides shut rather than jumping. Hidden overflow is what lets a
+         partly-collapsed panel clip its last row instead of spilling. */
       overflow: hidden;
+      transition: height 0.19s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .suggest-item {
+    /* Every property the send button sets has to be undone here. These are
+       buttons inside .chat-input, so ".chat-input button { width: 38px;
+       height: 38px; border-radius: 50% }" was landing on them - which is why
+       each suggestion rendered as a small grey circle instead of a row. */
+    .chat-input .suggest-item {
       display: block;
       width: 100%;
+      height: auto;
+      flex: none;
       padding: 9px 16px;
       border: none;
-      background: none;
+      border-radius: 0;
+      background: #fff;
       font-family: inherit;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
+      line-height: 1.35;
       color: #3c4043;
       text-align: left;
+      white-space: normal;
       cursor: pointer;
+      transition: background-color 0.13s ease;
+      /* Staggered, so the list arrives as a list rather than as a block. */
+      animation: suggestIn 0.18s ease both;
     }
 
-    .suggest-item:hover,
-    .suggest-item.active { background: #f5f6f7; }
+    .chat-input .suggest-item:nth-child(2) { animation-delay: 0.045s; }
+    .chat-input .suggest-item:nth-child(3) { animation-delay: 0.09s; }
+
+    @keyframes suggestIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-input .suggest-item:hover,
+    .chat-input .suggest-item.active { background: #f1f2f4; }
 
     .suggest-item mark {
       background: none;
-      color: #1f2225;
+      color: #c40020;
       font-weight: 600;
     }
 
@@ -340,10 +364,12 @@
       position: absolute;
       /* Outside the pill's own edge rather than on it. Sharing the line made
          it look like the border had simply changed colour; a couple of pixels
-         out reads as something drawn around the box. */
+         out reads as something drawn around the box.
+         No width or height here on purpose: a percentage resolves against the
+         pill, not against this inset box, so setting both pinned the SVG to
+         the pill's size while inset moved its origin up and left - which is
+         exactly the shift it had. Letting inset size it is the fix. */
       inset: -3px;
-      width: 100%;
-      height: 100%;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.12s ease;
@@ -1960,12 +1986,30 @@
       });
     };
 
-    const render = function (matches, typed) {
-      close();
-      if (!matches.length) return;
+    const resize = function () {
+      if (!panel) return;
+      // Measured from the content and written back as an explicit height, so
+      // the transition has two numbers to move between. "auto" is not
+      // animatable.
+      panel.style.height = panel.scrollHeight + "px";
+    };
 
-      panel = document.createElement("div");
-      panel.className = "suggest";
+    const render = function (matches, typed) {
+      if (!matches.length) { close(); return; }
+
+      // The panel is reused across keystrokes rather than rebuilt. Removing
+      // and recreating it restarts the transition from nothing every time, so
+      // three matches becoming two would pop rather than slide.
+      const reused = !!panel;
+      if (!panel) {
+        panel = document.createElement("div");
+        panel.className = "suggest";
+        panel.style.height = "0px";
+        pill.appendChild(panel);
+      }
+      panel.textContent = "";
+      items = [];
+      cursor = -1;
 
       matches.forEach(function (q) {
         const b = document.createElement("button");
@@ -1985,16 +2029,27 @@
         // is already gone by the time a click handler would run.
         b.addEventListener("mousedown", function (e) {
           e.preventDefault();
+          // Fills the box; does not send. Picking a suggestion is choosing
+          // what to ask, not deciding to ask it - the reader may want to
+          // change a word first, and sending on the same click takes that
+          // away with no way back.
           box.value = q;
+          box.focus();
           close();
-          if (window.sendMessage) window.sendMessage();
+          if (window.updateSendState) window.updateSendState();
         });
 
         panel.appendChild(b);
         items.push(b);
       });
 
-      pill.appendChild(panel);
+      if (reused) {
+        resize();
+      } else {
+        // A fresh panel opens from nothing, which needs the browser to see the
+        // zero height before the real one.
+        requestAnimationFrame(resize);
+      }
     };
 
     const update = function () {
@@ -2032,6 +2087,9 @@
       else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
       else if (e.key === "Escape") { close(); }
       else if (e.key === "Enter" && cursor >= 0) {
+        // Enter on a highlighted suggestion fills the box, matching what a
+        // click does. A second Enter sends it, which is the same two steps a
+        // reader takes when typing the question out.
         e.preventDefault();
         items[cursor].dispatchEvent(new MouseEvent("mousedown"));
       }
