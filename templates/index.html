@@ -52,41 +52,47 @@
       transition: height 0.19s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Every property the send button sets has to be undone here. These are
-       buttons inside .chat-input, so ".chat-input button { width: 38px;
-       height: 38px; border-radius: 50% }" was landing on them - which is why
-       each suggestion rendered as a small grey circle instead of a row. */
-    .chat-input .suggest-item {
+    /* Rows, not buttons, and that is the fix rather than a preference.
+       These live inside .chat-input, where the send button is styled as
+       ".chat-input button { width: 38px; height: 38px; border-radius: 50% }"
+       and again as "body.compact .chat-input button { width: 30px }". The
+       second of those is more specific than any .suggest-item rule scoped
+       the same way, and compact mode is the only place suggestions appear -
+       so every row was being squashed back into a 30px grey circle no matter
+       what was written to undo it. A div cannot be reached by a selector
+       that ends in "button", so the whole class of collision goes away.
+       Nothing is lost: focus never leaves the input, the list is driven by
+       the arrow keys, and role="option" is what tells a screen reader what
+       these are. */
+    .suggest-item {
       display: block;
       width: 100%;
-      height: auto;
-      flex: none;
-      padding: 9px 16px;
-      border: none;
-      border-radius: 0;
-      background: #fff;
+      box-sizing: border-box;
+      padding: 10px 16px;
       font-family: inherit;
-      font-size: 0.86rem;
+      font-size: 0.88rem;
       line-height: 1.35;
       color: #3c4043;
       text-align: left;
-      white-space: normal;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       cursor: pointer;
       transition: background-color 0.13s ease;
       /* Staggered, so the list arrives as a list rather than as a block. */
       animation: suggestIn 0.18s ease both;
     }
 
-    .chat-input .suggest-item:nth-child(2) { animation-delay: 0.045s; }
-    .chat-input .suggest-item:nth-child(3) { animation-delay: 0.09s; }
+    .suggest-item:nth-child(2) { animation-delay: 0.045s; }
+    .suggest-item:nth-child(3) { animation-delay: 0.09s; }
 
     @keyframes suggestIn {
       from { opacity: 0; transform: translateY(-4px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .chat-input .suggest-item:hover,
-    .chat-input .suggest-item.active { background: #f1f2f4; }
+    .suggest-item:hover,
+    .suggest-item.active { background: #f1f2f4; }
 
     .suggest-item mark {
       background: none;
@@ -120,7 +126,7 @@
       /* A hair above the pill, so his boots clear its outline instead of
          being crossed by it. */
       bottom: calc(100% + 3px);
-      height: 40px;
+      height: 60px;
       overflow: hidden;
       pointer-events: none;
       z-index: 40;
@@ -129,13 +135,15 @@
     .ranger {
       position: absolute;
       bottom: 0;
-      /* Half the height he started at. At 54px he was as tall as the headline
-         he walks under and read as a character standing in the interface
-         rather than a small joke crossing it. */
-      width: 19px;
-      height: 38px;
+      /* 56px. He was 38 and read as a smudge - too small to see that he is
+         waving, which is the entire joke. Still shorter than the headline he
+         walks under, so he crosses the interface rather than standing in it.
+         The sheet is 8 columns by 2 rows, so a cell is an eighth of the
+         background width and half its height: 224/8 = 28, 112/2 = 56. */
+      width: 28px;
+      height: 56px;
       background-image: url("/static/ranger.png");
-      background-size: 152px 76px;
+      background-size: 224px 112px;
       background-repeat: no-repeat;
       /* Smoothing pixel art is the one thing that always looks wrong. */
       image-rendering: pixelated;
@@ -151,12 +159,12 @@
 
     @keyframes rangerWalk {
       from { background-position: 0 0; }
-      to { background-position: -152px 0; }
+      to { background-position: -224px 0; }
     }
 
     @keyframes rangerWave {
-      from { background-position: 0 -38px; }
-      to { background-position: -152px -38px; }
+      from { background-position: 0 -56px; }
+      to { background-position: -224px -56px; }
     }
 
     /* He stands on the composer pill, not on the row that contains it.
@@ -365,11 +373,17 @@
       /* Outside the pill's own edge rather than on it. Sharing the line made
          it look like the border had simply changed colour; a couple of pixels
          out reads as something drawn around the box.
-         No width or height here on purpose: a percentage resolves against the
-         pill, not against this inset box, so setting both pinned the SVG to
-         the pill's size while inset moved its origin up and left - which is
-         exactly the shift it had. Letting inset size it is the fix. */
-      inset: -3px;
+         Sized explicitly, and the reason matters. An <svg> is a replaced
+         element, so "inset: -3px" alone does not size it: width and height
+         resolve to the intrinsic 300x150 an SVG carries when it has no
+         width, height or viewBox, and the opposite insets are then dropped
+         as over-constrained. That is the tall narrow box it was drawing.
+         Percentages resolve against the pill, which is the containing block,
+         so the pill's size plus twice the outset is the box we want. */
+      top: -3px;
+      left: -3px;
+      width: calc(100% + 6px);
+      height: calc(100% + 6px);
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.12s ease;
@@ -2004,6 +2018,7 @@
       if (!panel) {
         panel = document.createElement("div");
         panel.className = "suggest";
+        panel.setAttribute("role", "listbox");
         panel.style.height = "0px";
         pill.appendChild(panel);
       }
@@ -2012,9 +2027,13 @@
       cursor = -1;
 
       matches.forEach(function (q) {
-        const b = document.createElement("button");
-        b.type = "button";
+        // A div, not a button. See the CSS note: ".chat-input button" and
+        // "body.compact .chat-input button" both reach anything shaped like a
+        // button in here and win on specificity.
+        const b = document.createElement("div");
         b.className = "suggest-item";
+        b.setAttribute("role", "option");
+        b.setAttribute("aria-selected", "false");
 
         // The typed run is marked rather than the whole line bolded, so it is
         // obvious which part of the suggestion the reader supplied.
@@ -2074,6 +2093,7 @@
       cursor = (cursor + step + items.length) % items.length;
       items.forEach(function (b, i) {
         b.classList.toggle("active", i === cursor);
+        b.setAttribute("aria-selected", i === cursor ? "true" : "false");
       });
     };
 
@@ -2113,7 +2133,10 @@
     if (!pill || !rect) return;
 
     const fit = () => {
-      const r = Math.max(0, (pill.offsetHeight - 2) / 2);
+      // The SVG box is the pill plus 3px of outset on each side, and the rect
+      // sits 1px inside that so its stroke is not clipped. So the rect is the
+      // pill's height plus four, and a pill's radius is half its height.
+      const r = Math.max(0, (pill.offsetHeight + 4) / 2);
       rect.setAttribute("rx", r);
       rect.setAttribute("ry", r);
     };
@@ -2150,7 +2173,9 @@
 
       const el = document.createElement("div");
       el.className = "ranger walking";
-      el.style.left = "-24px";
+      // Just off the edge - one sprite width plus a little, so the stage's
+      // clip hides him and no further.
+      el.style.left = "-36px";
       stage.appendChild(el);
       rail.appendChild(stage);
 
@@ -2158,9 +2183,14 @@
       // the trip makes sense on a phone and on a wide window. The duration is
       // derived from the distance to hold his speed constant - a fixed
       // duration would have him sprinting across a large screen.
-      const stop = Math.max(38, Math.round(rail.clientWidth * 0.16));
-      const speed = 76; // px per second, matched to the stride at 0.72s a loop
-      const walkMs = Math.round((stop + 24) / speed * 1000);
+      // A short entrance. At 16% of the rail he was still walking well after
+      // the reader had worked out what was happening; the wave is the part
+      // worth watching, so the trip to it should be brief.
+      const stop = Math.max(20, Math.round(rail.clientWidth * 0.07));
+      // Scaled with him: the stride covers more ground at 56px than it did at
+      // 38, and holding the old speed would have him shuffling in place.
+      const speed = 112; // px per second, matched to the stride at 0.72s a loop
+      const walkMs = Math.round((stop + 36) / speed * 1000);
 
       requestAnimationFrame(() => {
         el.style.transition = "left " + walkMs + "ms linear";
@@ -2171,7 +2201,7 @@
         el.classList.remove("waving");
         el.classList.add("walking", "leaving");
         el.style.transition = "left " + walkMs + "ms linear";
-        el.style.left = "-24px";
+        el.style.left = "-36px";
         setTimeout(() => { stage.remove(); busy = false; }, walkMs + 150);
       };
 
