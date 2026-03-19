@@ -18,6 +18,15 @@
 
     *, *::before, *::after { box-sizing: border-box; }
 
+    /* Selected text in the school's red rather than the browser's blue. The
+       default is the one saturated colour on the page that belongs to nobody,
+       and it turns up exactly when a reader is copying an answer out - which
+       is the moment the page is being taken seriously. Both spellings: the
+       unprefixed rule is ignored by Firefox, and a selector list containing
+       one it does not know would drop the other with it. */
+    ::selection { background: #e60023; color: #fff; }
+    ::-moz-selection { background: #e60023; color: #fff; }
+
     body {
       font-family: 'Public Sans', sans-serif;
       margin: 0;
@@ -1162,10 +1171,16 @@
     .fb-input {
       font-family: inherit;
       font-size: 0.78rem;
-      padding: 5px 11px;
-      width: calc(7ch + 26px);
+      /* Sized to sit level with the reason chips beside it, which are
+         4px/10px at the same font. It was 5px/11px with a 27px floor, which
+         put it two or three pixels above everything on the row - not much on
+         its own, and very visible next to three pills and two 28px buttons
+         all agreeing on a height. */
+      padding: 4px 11px;
+      line-height: 1.35;
+      width: var(--fb-rest);
       max-width: 260px;
-      min-height: 27px;
+      min-height: 25px;
       max-height: 88px;
       /* Not 999px any more. A pill radius on a box three lines tall is a
          lozenge; 14px keeps the rounded feel at one line and stays sane at
@@ -1181,6 +1196,14 @@
       transition: width 0.16s ease, height 0.12s ease;
     }
     .fb-input:focus { border-color: #c40020; }
+
+    /* The width it sits at before growing, and the point at which growing
+       starts. It began widening from the eighth character, so it moved under
+       the cursor while the first word was still being typed and never looked
+       settled. Holding a resting width until the text genuinely needs more
+       room means the growth reads as the box responding rather than
+       twitching. */
+    :root { --fb-rest: calc(13ch + 24px); }
 
     /* thumbs row */
 
@@ -1610,11 +1633,18 @@
         // Grows along, then down. Width first, to the cap; once the text no
         // longer fits on one line the height follows the content instead, to
         // its own cap, after which it scrolls.
+        // 13ch of resting width, so nothing moves until the text passes
+        // it; 26ch of cap, after which the height takes over.
+        const REST = 13, CAP = 26;
         const fit = () => {
-          const chars = Math.min(26, Math.max(7, input.value.length + 1));
-          input.style.width = "calc(" + chars + "ch + 26px)";
+          const chars = Math.min(CAP, Math.max(REST, input.value.length + 1));
+          input.style.width = "calc(" + chars + "ch + 24px)";
           input.style.height = "auto";
-          input.style.height = Math.min(88, input.scrollHeight) + "px";
+          // box-sizing is border-box here, so scrollHeight - which excludes
+          // the border - is two pixels short of the height the content needs
+          // and the box scrolls its own first line.
+          input.style.height =
+            Math.min(88, input.scrollHeight + 2) + "px";
         };
 
         input.addEventListener("input", () => {

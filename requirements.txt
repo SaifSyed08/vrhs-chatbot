@@ -23,3 +23,8 @@ httpx==0.28.1
 numpy==2.4.6
 requests==2.34.2
 beautifulsoup4==4.15.0
+
+# Windows has no system timezone database, so zoneinfo cannot resolve
+# America/Chicago there. feeds.py needs it to place calendar times, which
+# Google publishes in UTC.
+tzdata==2026.1

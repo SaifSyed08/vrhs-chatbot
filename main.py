@@ -15,6 +15,7 @@ import traceback
 from collections import OrderedDict, deque
 from urllib.parse import parse_qs, unquote, urlparse
 import config
+import feeds
 import gdocs
 import hallucination
 import corpus
@@ -393,6 +394,7 @@ def scrape_vrhs_pages():
 
     all_links = []
     all_embeds = []
+    feed_pages = []
 
     for url in urls:
         log.info(f"Scraping {url}...")
@@ -400,6 +402,17 @@ def scrape_vrhs_pages():
             soup = fetch(url)
             all_links.extend(page_links(soup, url))
             all_embeds.extend(page_embeds(soup, url))
+
+            # Kept before page_markdown, which decomposes <script> - and the
+            # home page writes its calendar iframe from script, so the URL
+            # only exists in the raw markup. Only pages that actually carry a
+            # feed are held, so this is a substring test rather than 40 copies
+            # of a 400 KB page.
+            markup = str(soup)
+            if ("calendar.google.com/calendar/embed" in markup
+                    or "parentsquare.com/schools/" in markup):
+                feed_pages.append((url, markup))
+
             combined_text = page_markdown(soup)
 
             words = combined_text.split()
@@ -465,6 +478,20 @@ def scrape_vrhs_pages():
                     # "Edit?usp=sharing". The title is right there at ingest.
                     "label": label,
                 })
+
+    # The calendar and the announcement feed, which are frames rather than
+    # content and so were invisible to a same-origin crawl. Between them they
+    # hold every date the school publishes - holidays, picture day, exam
+    # deadlines, board meetings - and the weekly Insider. See feeds.py.
+    if feed_pages:
+        try:
+            feed_chunks = feeds.read_feeds(feed_pages)
+        except Exception as e:
+            # Other people's servers. A calendar that will not load is not a
+            # reason to ship no corpus.
+            log.warning(f"feeds failed, continuing without them: {e}")
+            feed_chunks = []
+        chunks.extend(feed_chunks)
 
     # A page that yields nothing is a silent hole in the knowledge base: the
     # chatbot will confidently not know things the site actually documents.
@@ -1164,6 +1191,42 @@ def retrieval_query(question, history):
     return previous + " " + question
 
 
+def context_block(context, stats):
+    """The retrieved text, with a word about how well it actually matched.
+
+    Retrieval always fills its quotas. Ask "What is this?" cold and five
+    chunks come back exactly as they do for a real question - the best of them
+    scoring 0.758 against a 0.78 floor, which is to say nothing in the corpus
+    matched at all. The model was handed those five with no indication of that
+    and did the reasonable thing with them: took the first and described it.
+    The first was a row from the clubs spreadsheet, so a reader opening the
+    bot and typing "What is this?" was told about Roblox and Snacks, meeting
+    Wednesdays in room 2615.
+
+    The gate already knew. It measured the miss, marked the answer as having
+    no close match, and printed a notice under it - after the model had spent
+    a paragraph being specific. A notice under a confident wrong answer is not
+    the same as not giving one.
+
+    So the score travels with the context now. Only the bottom band says
+    anything: the middle band is where a lot of real questions live - "who is
+    the principal" scores 0.785 - and warning about those would trade this
+    problem for the over-refusal one, which is already the larger of the two.
+    """
+    if stats.get("top", 1.0) >= hallucination.SIMILARITY_WEAK:
+        return "Context:\n" + context
+
+    return (
+        "Nothing in the school pages closely matched this question. What "
+        "follows is the nearest text found and is probably about something "
+        "else. Do not answer from it unless it plainly addresses what was "
+        "asked. If the question is vague or missing its subject, such as "
+        "\"what is this\", ask what they would like to know rather than "
+        "guessing at a topic. Otherwise say you could not find it.\n\n"
+        "Nearest text:\n" + context
+    )
+
+
 @app.route("/ask", methods=["POST"])
 def ask():
     data = request.get_json()
@@ -1212,7 +1275,8 @@ def ask():
     messages = ([{"role": "system", "content": dated_prompt()}]
                 + history
                 + [{"role": "user",
-                    "content": f"Context:\n{context}\n\nQuestion: {question}"}])
+                    "content": (context_block(context, stats)
+                                + f"\n\nQuestion: {question}")}])
 
     def generate():
         answer = []
