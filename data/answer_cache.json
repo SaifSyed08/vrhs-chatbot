@@ -1,6 +1,6 @@
 {
-  "index_fingerprint": "6a4635fae84f75f4",
-  "generated_at": "2026-09-07T02:46:47",
+  "index_fingerprint": "a883b1d4dcf4cab2",
+  "generated_at": "2026-09-07T02:59:46",
   "model": "gpt-4.1",
   "variants_requested": 3,
   "entries": {
@@ -9,12 +9,12 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "To check how many hours you owe at Vista Ridge High School, you can use the \"Do I owe hours?\" form here: [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog).\n\nAdditionally, you can contact Joanna Norling or Micah Gillum in the Assistant Principal's office for information about your hours owed.\n\nIf you have any other questions, feel free to ask or visit the AP office for more details. Hope this helps!",
+          "answer": "To check how many hours you owe at Vista Ridge High School, you can use the \"Do I owe hours?\" online form: [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog).\n\nFor more details, you can visit the [Hours Owed page](https://vrhs.leanderisd.org/campus_information/hours-owed). If you need further assistance or an exact number of hours, reach out to your Assistant Principal or contact the AP office.\n\nLet me know if you need any help with the forms or have any more questions!",
           "sources": [
             {
               "url": "https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog",
               "label": "Do I owe hours?",
-              "score": 0.8433,
+              "score": 0.8432,
               "snippet": "Opens Google Doc"
             },
             {
@@ -27,16 +27,16 @@
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.843288104024278
+            "top": 0.8431765654631034
           }
         },
         {
-          "answer": "You can check how many hours you owe at Vista Ridge High School by visiting the \"Do I owe hours?\" form: [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog).\n\nIf you need further verification or have any questions, you can also reach out to Joanna Norling or Micah Gillum in the Assistant Principal's office. Hope this helps!",
+          "answer": "To check how many hours you owe at Vista Ridge High School, you can use the \"Do I owe hours?\" form found here: [Do I owe hours?](https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog).\n\nYou can also visit the [Hours Owed](https://vrhs.leanderisd.org/campus_information/hours-owed) page for more information. If you have further questions, you are encouraged to reach out to your Assistant Principal or check with the AP office.\n\nLet me know if you need help with anything else!",
           "sources": [
             {
               "url": "https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog",
               "label": "Do I owe hours?",
-              "score": 0.8433,
+              "score": 0.8432,
               "snippet": "Opens Google Doc"
             },
             {
@@ -49,7 +49,7 @@
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.843288104024278
+            "top": 0.8431765654631034
           }
         }
       ]
@@ -59,18 +59,18 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "The bell schedules for the 2026-2027 school year at Vista Ridge High School are as follows:\n\n**Regular School Day Bell Schedule (2026-2027):**\n- 1st/5th Period: 8:15-9:45\n- Ranger Time: 9:45-10:15\n- 2nd/6th Period: 10:21-11:51\n- 3rd/7th Period:  \n  - A Lunch: 11:51-12:23 (Lunch), 12:29-1:59 (Class)  \n  - B Lunch: 11:57-1:27 (Class), 1:27-1:59 (Lunch)\n- 4th/8th Period: 2:05-3:35\n\n**Half Day/Early Release Bell Schedule (for 12/18/26, 5/27/27):**\n- 1st/5th Period: 8:15-9:09\n- 2nd/6th Period: 9:15-10:15\n- 3rd/7th Period: 10:21-11:15\n- 4th/8th Period: 11:21-12:15\n\n**Late Start Bell Schedule (2026-2027):**\n- 1st/5th Period: 10:15-11:20\n- 2nd/6th Period: 11:26-12:35\n- 3rd/7th Period:  \n  - A Lunch: 12:36-1:06 (Lunch), 1:12-2:23 (Class)  \n  - B Lunch: 12:42-1:53 (Class), 1:52-2:23 (Lunch)\n- 4th/8th Period: 2:29-3:35\n\nYou can view these schedules directly at [2026-2027 Bell Schedules](https://vrhs.leanderisd.org/campus_information/26-27-bell-schedules).\n\nLet me know if you need the A/B calendar or any other specifics!",
+          "answer": "For the 2026-2027 school year at Vista Ridge High School, the bell schedules are as follows:\n\n**Regular School Day Bell Schedule:**\n- 1st/5th Period: 8:15\u20139:45\n- Ranger Time: 9:45\u201310:15\n- 2nd/6th Period: 10:21\u201311:51\n- 3rd/7th Period:\n  - A Lunch: 11:51\u201312:23 (Lunch), 12:29\u20131:59 (Class)\n  - B Lunch: 11:57\u20131:27 (Class), 1:27\u20131:59 (Lunch)\n- 4th/8th Period: 2:05\u20133:35\n\n**Half Day (Early Release) Bell Schedule (for 12/18/26 and 5/27/27):**\n- 1st/5th Period: 8:15\u20139:09\n- 2nd/6th Period: 9:15\u201310:15\n- 3rd/7th Period: 10:21\u201311:15\n- 4th/8th Period: 11:21\u201312:15\n\n**Late Start Bell Schedule:**\n- 1st/5th Period: 10:15\u201311:20\n- 2nd/6th Period: 11:26\u201312:35\n- 3rd/7th Period:\n  - A Lunch: 12:36\u20131:06 (Lunch), 1:12\u20132:23 (Class)\n  - B Lunch: 12:42\u20131:53 (Class), 1:52\u20132:23 (Lunch)\n- 4th/8th Period: 2:29\u20133:35\n\nYou can find all of these schedules and more details here: [2026-2027 Bell Schedules](https://vrhs.leanderisd.org/campus_information/26-27-bell-schedules).\n\nIf you need to know which schedule is used on a specific day, please refer to the [A/B Calendar (VRHS 2026-2027 Calendar)](https://drive.google.com/file/d/1n54NUIykpYtq3R8gz9i2-2K7F_Rokv4w/view?usp=drive_link).\n\nLet me know if you need help with anything else, Ranger!",
           "sources": [
             {
               "url": "https://vrhs.leanderisd.org/campus_information/26-27-bell-schedules",
               "label": "2026-2027 Bell Schedules",
-              "score": 0.8536,
+              "score": 0.8537,
               "snippet": "Opens the school site"
             },
             {
               "url": "https://docs.google.com/document/d/1Wd6J0PdPcQ6Yu1YUzUJgrrm7Upe2lWjcdZtj14Xicxo/edit?usp=sharing",
               "label": "Regular School Day Bell Schedule (2026-2027)",
-              "score": 0.8494,
+              "score": 0.8493,
               "snippet": "Vista Ridge High School Bell Schedule 2026-2027 1st/5th Period: 8:15-9:45 Ranger Time: 9:45-10:15 2nd/6th Peri..."
             },
             {
@@ -83,22 +83,22 @@
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8536253143357442
+            "top": 0.853746145787027
           }
         },
         {
-          "answer": "The 2026-2027 bell schedules for Vista Ridge High School are available here: [2026-2027 Bell Schedules](https://vrhs.leanderisd.org/campus_information/26-27-bell-schedules). Below are the details from the linked document for the current school year:\n\n**Regular School Day Bell Schedule (2026-2027):**\n- 1st/5th Period: 8:15-9:45\n- Ranger Time: 9:45-10:15\n- 2nd/6th Period: 10:21-11:51\n- 3rd/7th Period:\n  - A Lunch: 11:51-12:23 (Lunch) / 12:29-1:59 (Class)\n  - B Lunch: 11:57-1:27 (Class) / 1:27-1:59 (Lunch)\n- 4th/8th Period: 2:05-3:35\n\n**Half Day Bell Schedule (12/18/26, 5/27/27):**\n- 1st/5th Period: 8:15-9:09\n- 2nd/6th Period: 9:15-10:15\n- 3rd/7th Period: 10:21-11:15\n- 4th/8th Period: 11:21-12:15\n\n**Late Start Bell Schedule (2026-2027):**\n- 1st/5th Period: 10:15-11:20\n- 2nd/6th Period: 11:26-12:35\n- 3rd/7th Period:\n  - A Lunch: 12:36-1:06 (Lunch) / 1:12-2:23 (Class)\n  - B Lunch: 12:42-1:53 (Class) / 1:52-2:23 (Lunch)\n- 4th/8th Period: 2:29-3:35\n\nYou can find these schedules and more information at the link above. Have a great school year!",
+          "answer": "The bell schedule for the 2026-2027 school year at Vista Ridge High School is as follows:\n\n**Regular School Day Bell Schedule (2026-2027):**\n- 1st/5th Period: 8:15\u20139:45\n- Ranger Time: 9:45\u201310:15\n- 2nd/6th Period: 10:21\u201311:51\n- 3rd/7th Period:\n  - A Lunch: 11:51\u201312:23 (Lunch), 12:29\u20131:59 (Class)\n  - B Lunch: 11:57\u20131:27 (Class), 1:27\u20131:59 (Lunch)\n- 4th/8th Period: 2:05\u20133:35\n\n**Half Day/Early Release Bell Schedule (used on 12/18/26 and 5/27/27):**\n- 1st/5th Period: 8:15\u20139:09\n- 2nd/6th Period: 9:15\u201310:15\n- 3rd/7th Period: 10:21\u201311:15\n- 4th/8th Period: 11:21\u201312:15\n\n**Late Start Bell Schedule (2026-2027):**\n- 1st/5th Period: 10:15\u201311:20\n- 2nd/6th Period: 11:26\u201312:35\n- 3rd/7th Period:\n  - A Lunch: 12:36\u20131:06 (Lunch), 1:12\u20132:23 (Class)\n  - B Lunch: 12:42\u20131:53 (Class), 1:53\u20132:23 (Lunch)\n- 4th/8th Period: 2:29\u20133:35\n\nFor more details, you can view the full [2026-2027 Bell Schedules](https://vrhs.leanderisd.org/campus_information/26-27-bell-schedules). If you need help with lunch assignments or which bell schedule is in effect on a particular day, you can also check the [A/B Calendar (VRHS 2026-2027 Calendar)](https://drive.google.com/file/d/1n54NUIykpYtq3R8gz9i2-2K7F_Rokv4w/view?usp=drive_link).\n\nLet me know if you have any other questions\u2014go Rangers!",
           "sources": [
             {
               "url": "https://vrhs.leanderisd.org/campus_information/26-27-bell-schedules",
               "label": "2026-2027 Bell Schedules",
-              "score": 0.8536,
+              "score": 0.8537,
               "snippet": "Opens the school site"
             },
             {
               "url": "https://docs.google.com/document/d/1Wd6J0PdPcQ6Yu1YUzUJgrrm7Upe2lWjcdZtj14Xicxo/edit?usp=sharing",
               "label": "Regular School Day Bell Schedule (2026-2027)",
-              "score": 0.8494,
+              "score": 0.8493,
               "snippet": "Vista Ridge High School Bell Schedule 2026-2027 1st/5th Period: 8:15-9:45 Ranger Time: 9:45-10:15 2nd/6th Peri..."
             },
             {
@@ -111,7 +111,7 @@
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8536253143357442
+            "top": 0.853746145787027
           }
         }
       ]
@@ -121,7 +121,7 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "The specific contact for schedule questions is not provided in the available context. I recommend reaching out to the Vista Ridge High School front office or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) to find the appropriate staff member who can assist you with schedule-related inquiries. Let me know if there's anything else I can help with!",
+          "answer": "The context does not provide a specific contact for schedule questions at Vista Ridge High School. I recommend checking the [Staff Directory](https://vrhs.leanderisd.org/directory) or contacting the front office for assistance with your schedule. They'll be able to direct you to the right person. Good luck, and I hope you get your schedule sorted out!",
           "sources": [
             {
               "url": "https://docs.google.com/document/d/1Pp-ojotqsq1ugY4d63Gujsp3feJmbQVI/edit?usp=sharing&ouid=112233259534694375867&rtpof=true&sd=true",
@@ -132,7 +132,7 @@
             {
               "url": "https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog",
               "label": "Do I owe hours?",
-              "score": 0.7997,
+              "score": 0.7996,
               "snippet": "Opens Google Doc"
             },
             {
@@ -149,7 +149,7 @@
           }
         },
         {
-          "answer": "The specific contact for schedule questions is not listed in the context provided. I recommend reaching out to the front office or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) to find the appropriate staff member who can assist you with schedule inquiries. Let me know if you need help navigating the directory!",
+          "answer": "The specific contact for schedule questions is not listed in the provided context. I recommend checking the [Staff Directory](https://vrhs.leanderisd.org/directory) or reaching out to the front office for assistance with schedule-related inquiries. Good luck, and I hope you get your schedule sorted out soon!",
           "sources": [
             {
               "url": "https://docs.google.com/document/d/1Pp-ojotqsq1ugY4d63Gujsp3feJmbQVI/edit?usp=sharing&ouid=112233259534694375867&rtpof=true&sd=true",
@@ -160,7 +160,7 @@
             {
               "url": "https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog",
               "label": "Do I owe hours?",
-              "score": 0.7997,
+              "score": 0.7996,
               "snippet": "Opens Google Doc"
             },
             {
@@ -177,7 +177,7 @@
           }
         },
         {
-          "answer": "The specific contact for schedule questions is not provided in the available information. I recommend reaching out to the front office or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) for assistance with schedule-related inquiries. Let me know if there's anything else I can help with!",
+          "answer": "The context does not provide a specific contact for schedule-related questions at Vista Ridge High School. I recommend checking the [Staff Directory](https://vrhs.leanderisd.org/directory) or contacting the front office for assistance with your schedule. Let me know if there\u2019s anything else you need!",
           "sources": [
             {
               "url": "https://docs.google.com/document/d/1Pp-ojotqsq1ugY4d63Gujsp3feJmbQVI/edit?usp=sharing&ouid=112233259534694375867&rtpof=true&sd=true",
@@ -188,7 +188,7 @@
             {
               "url": "https://docs.google.com/forms/d/e/1FAIpQLScKzL8d2tlkAvVdw43rbaZUwUDGAS2PFTGppcAwfjH7sQyk1g/viewform?usp=dialog",
               "label": "Do I owe hours?",
-              "score": 0.7997,
+              "score": 0.7996,
               "snippet": "Opens Google Doc"
             },
             {
@@ -211,87 +211,87 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "You can find a teacher's email by visiting the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. The staff directory provides contact information for teachers and staff members. If you need any further help, feel free to ask!",
+          "answer": "You can find a teacher\u2019s email by going to the Vista Ridge High School [Staff Directory](https://vrhs.leanderisd.org/directory). This page lists staff names, departments, positions, phone numbers, and email addresses.\n\nIf you need help finding a specific teacher or have trouble accessing the directory, the front office can also assist you.\n\nLet me know if you need anything else!",
           "sources": [
             {
               "url": "https://docs.google.com/document/d/125Aui2XvL4HkOFQnnl7fwVx-xYct17-kKD47sNTq300/edit?usp=sharing",
               "label": "How to set up Home Acess Center (HAC)",
-              "score": 0.8147,
+              "score": 0.8146,
               "snippet": "Click \u201cContinue to Home Access Center\u201d STUDENT EMAIL: firstname.lastnameXX@k.12.leanderisd.org *XX= last two n..."
             },
             {
               "url": "https://docs.google.com/document/d/1mkzNhrC0mWc6UmHFjLUwXvzAKtkEWvh-tDNeCF1gMno/edit?usp=sharing",
               "label": "VRHS Resources One-Pager",
-              "score": 0.8031,
+              "score": 0.8032,
               "snippet": "Setting up a New Google Site handouts Submit this FORM to update or confirm your information is correct on the..."
             },
             {
               "url": "https://docs.google.com/spreadsheets/d/1dBlxUS80B339sWEHtQAWSTL_zgn5CB2i8LaFTkDds40/edit#gid=0",
               "label": "VRHS Staff Directory: Google Sheets Version",
-              "score": 0.7958,
+              "score": 0.7959,
               "snippet": "Teacher Phone: 512-570-1800 Email: emily.hernandez@leanderisd.org"
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8147108058003304
+            "top": 0.8146340262503716
           }
         },
         {
-          "answer": "You can find a teacher's email by checking the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. If you need to look up a specific teacher or if you have trouble finding the information, you can also contact the front office for assistance. Let me know if you need help with anything else!",
+          "answer": "You can find a teacher's email by checking the VRHS Staff Directory. The staff directory contains the names, departments, positions, phone numbers, and email addresses for teachers and staff at Vista Ridge High School.\n\nYou can access the Staff Directory through the VRHS website or directly via this [Staff Directory](https://vrhs.leanderisd.org/directory) link.\n\nIf you need help finding a specific teacher or have trouble accessing the directory, the front office can also assist you. Let me know if you need anything else!",
           "sources": [
             {
               "url": "https://docs.google.com/document/d/125Aui2XvL4HkOFQnnl7fwVx-xYct17-kKD47sNTq300/edit?usp=sharing",
               "label": "How to set up Home Acess Center (HAC)",
-              "score": 0.8147,
+              "score": 0.8146,
               "snippet": "Click \u201cContinue to Home Access Center\u201d STUDENT EMAIL: firstname.lastnameXX@k.12.leanderisd.org *XX= last two n..."
             },
             {
               "url": "https://docs.google.com/document/d/1mkzNhrC0mWc6UmHFjLUwXvzAKtkEWvh-tDNeCF1gMno/edit?usp=sharing",
               "label": "VRHS Resources One-Pager",
-              "score": 0.8031,
+              "score": 0.8032,
               "snippet": "Setting up a New Google Site handouts Submit this FORM to update or confirm your information is correct on the..."
             },
             {
               "url": "https://docs.google.com/spreadsheets/d/1dBlxUS80B339sWEHtQAWSTL_zgn5CB2i8LaFTkDds40/edit#gid=0",
               "label": "VRHS Staff Directory: Google Sheets Version",
-              "score": 0.7958,
+              "score": 0.7959,
               "snippet": "Teacher Phone: 512-570-1800 Email: emily.hernandez@leanderisd.org"
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8147108058003304
+            "top": 0.8146340262503716
           }
         },
         {
-          "answer": "You can find a teacher's email by checking the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. If you need further assistance, the front office can also help you. Let me know if you need help with anything else!",
+          "answer": "You can find a teacher's email by visiting the [Staff Directory](https://vrhs.leanderisd.org/directory) on the Vista Ridge High School website. The directory lists staff names, departments, positions, phone numbers, and email addresses.\n\nIf you need more help or can't find the teacher you're looking for, the front office can assist you as well.\n\nLet me know if you need anything else!",
           "sources": [
             {
               "url": "https://docs.google.com/document/d/125Aui2XvL4HkOFQnnl7fwVx-xYct17-kKD47sNTq300/edit?usp=sharing",
               "label": "How to set up Home Acess Center (HAC)",
-              "score": 0.8147,
+              "score": 0.8146,
               "snippet": "Click \u201cContinue to Home Access Center\u201d STUDENT EMAIL: firstname.lastnameXX@k.12.leanderisd.org *XX= last two n..."
             },
             {
               "url": "https://docs.google.com/document/d/1mkzNhrC0mWc6UmHFjLUwXvzAKtkEWvh-tDNeCF1gMno/edit?usp=sharing",
               "label": "VRHS Resources One-Pager",
-              "score": 0.8031,
+              "score": 0.8032,
               "snippet": "Setting up a New Google Site handouts Submit this FORM to update or confirm your information is correct on the..."
             },
             {
               "url": "https://docs.google.com/spreadsheets/d/1dBlxUS80B339sWEHtQAWSTL_zgn5CB2i8LaFTkDds40/edit#gid=0",
               "label": "VRHS Staff Directory: Google Sheets Version",
-              "score": 0.7958,
+              "score": 0.7959,
               "snippet": "Teacher Phone: 512-570-1800 Email: emily.hernandez@leanderisd.org"
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8147108058003304
+            "top": 0.8146340262503716
           }
         }
       ]
@@ -301,12 +301,12 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "To sign up to volunteer at Vista Ridge High School, you need to register using the district's volunteer application. You can start the process here: [Register to Volunteer](https://www.leanderisd.org/volunteerapplication). For more general information about volunteering at Vista Ridge, visit the [Become a Volunteer](https://vrhs.leanderisd.org/volunteer) page.\n\nIf you have any further questions, feel free to contact the front office or check the [Staff Directory](https://vrhs.leanderisd.org/directory). Good luck and thank you for your interest in volunteering!",
+          "answer": "To sign up to volunteer at Vista Ridge High School, you need to register using the district's volunteer application. You can find more information and access the registration link here: [Register to Volunteer](https://www.leanderisd.org/volunteerapplication).\n\nIf you\u2019d like to learn more about becoming a volunteer specifically at Vista Ridge, you can visit this page: [Become a Volunteer](https://vrhs.leanderisd.org/volunteer).\n\nIf you have further questions, feel free to reach out to the front office or check with the school staff. Thank you for your interest in helping the Vista Ridge Rangers community!",
           "sources": [
             {
               "url": "https://vrhs.leanderisd.org/volunteer",
               "label": "Become a Volunteer",
-              "score": 0.8499,
+              "score": 0.8498,
               "snippet": "Opens the school site"
             },
             {
@@ -319,69 +319,29 @@
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8498576412292607
-          }
-        }
-      ]
-    },
-    "what is on the school calendar this month?": {
-      "question": "What is on the school calendar this month?",
-      "origin": "fixture",
-      "variants": [
-        {
-          "answer": "Here are the events listed on the Vista Ridge High School campus calendar for February 2027:\n\n- Thursday, February 11 at 6:15 PM: LISD Board Meeting (Linda Lippe Instructional Materials Center, Rooms B1001.01 and B1001.02, 1775 W New Hope Dr bldg b, Cedar Park, TX 78613, USA)\n- Friday, February 12: Staff Development/Student Holiday\n- Monday, February 15: Student/Staff Holiday\n- Tuesday, February 16: Student/Staff Holiday\n- Thursday, February 25 at 6:15 PM: LISD Board Meeting (Linda Lippe Instructional Materials Center, Rooms B1001.01 and B1001.02, 1775 W New Hope Dr bldg b, Cedar Park, TX 78613, USA)\n\nIf you\u2019re looking for more detailed daily or school-specific events, you might find additional information on the [February Announcements](https://docs.google.com/document/d/1-uYN0TlFNJm51PPgRrlta8VLVTTHM0KdV819CyUZ09M/edit?usp=sharing). Have a great month!",
-          "sources": [
-            {
-              "url": "https://docs.google.com/document/d/1-uYN0TlFNJm51PPgRrlta8VLVTTHM0KdV819CyUZ09M/edit?usp=sharing",
-              "label": "February Announcements",
-              "score": 0.8328,
-              "snippet": "Opens Google Doc"
-            },
-            {
-              "url": "https://drive.google.com/file/d/1n54NUIykpYtq3R8gz9i2-2K7F_Rokv4w/view?usp=drive_link",
-              "label": "A/B Calendar (VRHS 2026-2027 Calendar)",
-              "score": 0.8325,
-              "snippet": "Opens Google Drive file"
-            },
-            {
-              "url": "https://vrhs.leanderisd.org",
-              "label": "LISD Website - Campus Calendar",
-              "score": 0.827,
-              "snippet": "Events on the LISD Website - Campus Calendar for February 2027: Thursday, February 11 at 6:15 PM: LISD Board M..."
-            }
-          ],
-          "notice": [],
-          "retrieval": {
-            "level": "solid",
-            "top": 0.8327960532164103
+            "top": 0.8497840936851301
           }
         },
         {
-          "answer": "According to the context provided from the LISD Website - Campus Calendar for February 2027, here are the events happening this month:\n\n- Thursday, February 11 at 6:15 PM: LISD Board Meeting (Linda Lippe Instructional Materials Center, Rooms B1001.01 and B1001.02, 1775 W New Hope Dr bldg b, Cedar Park, TX 78613, USA)\n- Friday, February 12: Staff Development/Student Holiday\n- Monday, February 15: Student/Staff Holiday\n- Tuesday, February 16: Student/Staff Holiday\n- Thursday, February 25 at 6:15 PM: LISD Board Meeting (Linda Lippe Instructional Materials Center, Rooms B1001.01 and B1001.02, 1775 W New Hope Dr bldg b, Cedar Park, TX 78613, USA)\n\nYou can also review additional announcements for February here: [February Announcements](https://docs.google.com/document/d/1-uYN0TlFNJm51PPgRrlta8VLVTTHM0KdV819CyUZ09M/edit?usp=sharing).\n\nLet me know if you need information about a specific event or date!",
+          "answer": "To sign up to volunteer at Vista Ridge High School, you need to complete the volunteer registration process. You can begin by visiting the following link: [Register to Volunteer](https://www.leanderisd.org/volunteerapplication).\n\nFor more information about volunteering opportunities at Vista Ridge, you can also visit the school's volunteer page: [Become a Volunteer](https://vrhs.leanderisd.org/volunteer).\n\nLet me know if you need help with anything else, and thank you for your interest in helping out the Vista Ridge Rangers!",
           "sources": [
             {
-              "url": "https://docs.google.com/document/d/1-uYN0TlFNJm51PPgRrlta8VLVTTHM0KdV819CyUZ09M/edit?usp=sharing",
-              "label": "February Announcements",
-              "score": 0.8328,
-              "snippet": "Opens Google Doc"
+              "url": "https://vrhs.leanderisd.org/volunteer",
+              "label": "Become a Volunteer",
+              "score": 0.8498,
+              "snippet": "Opens the school site"
             },
             {
-              "url": "https://drive.google.com/file/d/1n54NUIykpYtq3R8gz9i2-2K7F_Rokv4w/view?usp=drive_link",
-              "label": "A/B Calendar (VRHS 2026-2027 Calendar)",
-              "score": 0.8325,
-              "snippet": "Opens Google Drive file"
-            },
-            {
-              "url": "https://vrhs.leanderisd.org",
-              "label": "LISD Website - Campus Calendar",
-              "score": 0.827,
-              "snippet": "Events on the LISD Website - Campus Calendar for February 2027: Thursday, February 11 at 6:15 PM: LISD Board M..."
+              "url": "https://www.leanderisd.org/volunteerapplication",
+              "label": "Register to Volunteer",
+              "score": 0.8487,
+              "snippet": "Opens the district site"
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8327960532164103
+            "top": 0.8497840936851301
           }
         }
       ]
@@ -391,47 +351,25 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "Vista Ridge High School provides a parent resources page, which you can view here: [Resources](https://vrhs.leanderisd.org/parent_resources).\n\nAdditionally, there is a dedicated page for Technology Support for Parents, available here: [Technology Support for Parents](https://www.leanderisd.org/tech_support).\n\nIf you are looking for something specific that you do not see on those pages, I recommend reaching out to the front office or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) for further assistance. Let me know if you have any specific needs or questions!",
+          "answer": "Vista Ridge High School offers a variety of resources for parents. Here are some key options:\n\n- [Parent Resources](https://vrhs.leanderisd.org/parent_resources): This page collects resources specifically aimed at parents.\n- [Technology Support for Parents](https://www.leanderisd.org/tech_support): Assistance for parents with technology-related issues.\n- [Home Access Center](https://www.leanderisd.org/homeaccess): To view student grades, attendance, etc.\n- [REMIND Support](https://www.leanderisd.org/remindsupport_studentsparents/): Help with the Remind communication platform.\n- [PTA Clothes Closet](https://www.leanderisd.org/clothescloset): Clothing assistance for families in need.\n- [Transportation Department](https://www.leanderisd.org/transportation/): Bus and transportation information.\n- [Meals: Pay Online](https://www.leanderisd.org/mealsonline/): Manage school meal payments.\n- [Mental Health](https://www.leanderisd.org/mentalhealth/): Mental health resources.\n- [Parent/Student Handbook & Dress Code](https://www.leanderisd.org/handbooks): School policies and dress code information.\n- [Volunteer Opportunities](https://vrhs.leanderisd.org/volunteer): Information on how to volunteer at VRHS.\n- [Naviance Family Connection](https://student.naviance.com/vrhs): College and career planning tools.\n- [Student Health Information](https://www.leanderisd.org/health): Health and wellness information.\n\nYou can explore more by starting at the school\u2019s [Resources](https://vrhs.leanderisd.org/parent_resources) page. If you are looking for something specific that isn't listed here, please check the [Staff Directory](https://vrhs.leanderisd.org/directory) or contact the front office for assistance.\n\nLet me know if you\u2019re searching for a particular type of resource\u2014I\u2019m happy to help!",
           "sources": [
             {
               "url": "https://vrhs.leanderisd.org/parent_resources",
               "label": "Resources",
-              "score": 0.827,
+              "score": 0.8268,
               "snippet": "Opens the school site"
             },
             {
               "url": "https://www.leanderisd.org/tech_support",
               "label": "Technology Support for Parents",
-              "score": 0.82,
+              "score": 0.8201,
               "snippet": "Opens the district site"
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8269959531254936
-          }
-        },
-        {
-          "answer": "For parents at Vista Ridge High School, there are a couple of helpful resources available:\n\n- The [Resources](https://vrhs.leanderisd.org/parent_resources) page provides general information and support specifically for parents.\n- The [Technology Support for Parents](https://www.leanderisd.org/tech_support) page offers technology-related support to help parents with digital tools and issues.\n\nIf you need information not covered by these links, I recommend contacting the school directly or checking the [Staff Directory](https://vrhs.leanderisd.org/directory) for the appropriate contact. Let me know if you need help finding anything specific!",
-          "sources": [
-            {
-              "url": "https://vrhs.leanderisd.org/parent_resources",
-              "label": "Resources",
-              "score": 0.827,
-              "snippet": "Opens the school site"
-            },
-            {
-              "url": "https://www.leanderisd.org/tech_support",
-              "label": "Technology Support for Parents",
-              "score": 0.82,
-              "snippet": "Opens the district site"
-            }
-          ],
-          "notice": [],
-          "retrieval": {
-            "level": "solid",
-            "top": 0.8269959531254936
+            "top": 0.8268382760217181
           }
         }
       ]
@@ -441,7 +379,7 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "Here is the student check-out policy for Vista Ridge High School for the 2026-2027 school year:\n\n- Parents/guardians must come to the office, provide a photo ID, and check their student out in person.\n- Phone calls for leaving early are NOT accepted for student protection.\n- Students must sign in/out at the Attendance Window when they leave/return.\n- Due to the high volume of requests, parents/guardians should arrive at least 20 minutes BEFORE the time they need their student released.\n- In-person early check outs after 2:45 pm will not be granted. After 2:45 pm, you must wait for your student to be dismissed at the normal time.\n- Emails for early dismissal (sent before 10:30 AM) can be used to check students out at any time later in the day. These emails must include the student\u2019s full legal name, ID#, grade, exact dismissal time, and reason for dismissal.\n- FOLLOW-UP NOTES documenting the reason for the absence are REQUIRED for excusing the absence created by early check-outs.\n\nFor full step-by-step instructions, please visit: [How To Check Your Student Out Early](https://sites.google.com/leanderisd.org/vrhsattendance/student-sign-out).\n\nIf you need information not listed here, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if you need further assistance!",
+          "answer": "Here is the current student check-out policy at Vista Ridge High School for the 2026-2027 school year:\n\n- Parents/guardians must come to the office in person with a photo ID to check their student out early. Phone calls for early dismissal are not accepted for student safety.\n- Students must sign in/out at the Attendance Window when leaving or returning to campus.\n- If using email or notes for early dismissal:\n  - Notes/emails should include the student's full legal name, ID number, grade, exact dismissal time, and reason for dismissal.\n  - Emails sent before 10:30 AM can be used for student check-out at any time later that day.\n  - After the absence, follow-up notes documenting the reason for early check-out are required to excuse the absence.\n- Please arrive at least 20 minutes before you need your student to be released due to high request volume.\n- In-person early check-outs are not allowed after 2:45 PM. After this time, you must wait for regular dismissal.\n- All students must sign out when leaving and sign back in if they return.\n\nFor a complete overview, visit: [How To Check Your Student Out Early](https://sites.google.com/leanderisd.org/vrhsattendance/student-sign-out).\n\nLet me know if you need any more details!",
           "sources": [
             {
               "url": "https://www.parentsquare.com/feeds/85213309",
@@ -458,14 +396,14 @@
             {
               "url": "https://sites.google.com/leanderisd.org/vrhsattendance/student-sign-out",
               "label": "How To Check Your Student Out Early",
-              "score": 0.8355,
+              "score": 0.8356,
               "snippet": "Opens Google Site"
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.843642160712345
+            "top": 0.8435858028981936
           }
         }
       ]
@@ -475,12 +413,12 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "I'm sorry, but I do not have specific information about the designated drop-off location for students in the morning at Vista Ridge High School. For guidance on where to drop off your student, please contact the front office or check with staff listed in the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if there\u2019s anything else I can help with!",
+          "answer": "I'm sorry, but I do not have information about the specific location for morning student drop-off at Vista Ridge High School. For details about drop-off procedures or locations, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory) for assistance. Let me know if you have any other questions!",
           "sources": [
             {
               "url": "https://vrhs.leanderisd.org",
               "label": "Vista Ridge High School",
-              "score": 0.8269,
+              "score": 0.8238,
               "snippet": "In conclusion: Send a parent note with your student in the morning for them to bring to the Attendance Office ..."
             },
             {
@@ -488,21 +426,27 @@
               "label": "Vista Ridge Insider - September 4, 2026",
               "score": 0.8213,
               "snippet": "Due to the high volume of requests, please arrive at least 20 minutes BEFORE you need your student to be relea..."
+            },
+            {
+              "url": "https://www.parentsquare.com/feeds/84705391",
+              "label": "Vista Ridge Insider - August 21, 2026",
+              "score": 0.8084,
+              "snippet": "After 2:45 please wait for your student to be dismissed at the normal time."
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8269030040141719
+            "top": 0.8238304281311386
           }
         },
         {
-          "answer": "I'm sorry, but I do not have information about the specific location or procedure for morning student drop-off at Vista Ridge High School. For details on where to drop off your student, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory) for further assistance. Have a great day!",
+          "answer": "I do not have information about the specific location for morning drop-off at Vista Ridge High School. For details about drop-off procedures or the correct location, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory) for further assistance.\n\nLet me know if there's anything else I can help you with!",
           "sources": [
             {
               "url": "https://vrhs.leanderisd.org",
               "label": "Vista Ridge High School",
-              "score": 0.8269,
+              "score": 0.8238,
               "snippet": "In conclusion: Send a parent note with your student in the morning for them to bring to the Attendance Office ..."
             },
             {
@@ -510,21 +454,27 @@
               "label": "Vista Ridge Insider - September 4, 2026",
               "score": 0.8213,
               "snippet": "Due to the high volume of requests, please arrive at least 20 minutes BEFORE you need your student to be relea..."
+            },
+            {
+              "url": "https://www.parentsquare.com/feeds/84705391",
+              "label": "Vista Ridge Insider - August 21, 2026",
+              "score": 0.8084,
+              "snippet": "After 2:45 please wait for your student to be dismissed at the normal time."
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8269030040141719
+            "top": 0.8238304281311386
           }
         },
         {
-          "answer": "I'm sorry, but I do not have information on the specific location for student drop-off in the morning at Vista Ridge High School. For this information, please contact the front office or check with someone listed in the [Staff Directory](https://vrhs.leanderisd.org/directory). Let me know if there's anything else I can help with!",
+          "answer": "I'm sorry, but I do not have specific information on where to drop off your student in the morning at Vista Ridge High School. For details about morning drop-off locations or procedures, please contact the front office or refer to the [Staff Directory](https://vrhs.leanderisd.org/directory) for assistance.\n\nLet me know if there\u2019s anything else I can help with!",
           "sources": [
             {
               "url": "https://vrhs.leanderisd.org",
               "label": "Vista Ridge High School",
-              "score": 0.8269,
+              "score": 0.8238,
               "snippet": "In conclusion: Send a parent note with your student in the morning for them to bring to the Attendance Office ..."
             },
             {
@@ -532,12 +482,80 @@
               "label": "Vista Ridge Insider - September 4, 2026",
               "score": 0.8213,
               "snippet": "Due to the high volume of requests, please arrive at least 20 minutes BEFORE you need your student to be relea..."
+            },
+            {
+              "url": "https://www.parentsquare.com/feeds/84705391",
+              "label": "Vista Ridge Insider - August 21, 2026",
+              "score": 0.8084,
+              "snippet": "After 2:45 please wait for your student to be dismissed at the normal time."
             }
           ],
           "notice": [],
           "retrieval": {
             "level": "solid",
-            "top": 0.8269030040141719
+            "top": 0.8238304281311386
+          }
+        }
+      ]
+    },
+    "where do i report an absence?": {
+      "question": "Where do I report an absence?",
+      "origin": "fixture",
+      "variants": [
+        {
+          "answer": "You can report a student absence at Vista Ridge High School in one of these ways:\n\n- Submit an absence note or medical documentation by email from the parent/guardian's email address on file to VRHSattendance@leanderisd.org.\n- Hand deliver the note to the Attendance Office.\n\nAbsent notes should be received within two days after the student returns to VRHS. Please note that phone calls are not accepted for absence reporting.\n\nIf you need more details about attendance, you can also visit the [Absence for students](https://www.leanderisd.org/attendance) page.\n\nLet me know if you have any more questions!",
+          "sources": [
+            {
+              "url": "https://docs.google.com/document/d/1mkzNhrC0mWc6UmHFjLUwXvzAKtkEWvh-tDNeCF1gMno/edit?usp=sharing",
+              "label": "VRHS Resources One-Pager",
+              "score": 0.8399,
+              "snippet": "The faculty or staff member will submit the absence in Red Rover Absence Management through Launchpad, using r..."
+            },
+            {
+              "url": "https://www.parentsquare.com/feeds/85213309",
+              "label": "Vista Ridge Insider - August 28, 2026",
+              "score": 0.832,
+              "snippet": "Please follow the procedure above this section after your student's absence has occurred."
+            },
+            {
+              "url": "https://www.parentsquare.com/feeds/86257561",
+              "label": "Vista Ridge Insider - September 4, 2026",
+              "score": 0.8306,
+              "snippet": "For Routine Absences: Absence notes or medical documentation can be submitted, via email, from the parent/guar..."
+            }
+          ],
+          "notice": [],
+          "retrieval": {
+            "level": "solid",
+            "top": 0.8398656017170864
+          }
+        },
+        {
+          "answer": "To report a student absence at Vista Ridge High School, you have two main options:\n\n1. **Email**: Send an absence note or medical documentation from the parent/guardian's email address that is on file to VRHSattendance@leanderisd.org.\n2. **In Person**: Hand deliver an absence note or medical documentation to the Attendance Office.\n\nPhone calls are not accepted for reporting absences. Absence notes should be received within two days after the student returns to VRHS.\n\nFor more information, you can also visit the [Absence for students](https://www.leanderisd.org/attendance) page.\n\nLet me know if you need help with anything else!",
+          "sources": [
+            {
+              "url": "https://docs.google.com/document/d/1mkzNhrC0mWc6UmHFjLUwXvzAKtkEWvh-tDNeCF1gMno/edit?usp=sharing",
+              "label": "VRHS Resources One-Pager",
+              "score": 0.8399,
+              "snippet": "The faculty or staff member will submit the absence in Red Rover Absence Management through Launchpad, using r..."
+            },
+            {
+              "url": "https://www.parentsquare.com/feeds/85213309",
+              "label": "Vista Ridge Insider - August 28, 2026",
+              "score": 0.832,
+              "snippet": "Please follow the procedure above this section after your student's absence has occurred."
+            },
+            {
+              "url": "https://www.parentsquare.com/feeds/86257561",
+              "label": "Vista Ridge Insider - September 4, 2026",
+              "score": 0.8306,
+              "snippet": "For Routine Absences: Absence notes or medical documentation can be submitted, via email, from the parent/guar..."
+            }
+          ],
+          "notice": [],
+          "retrieval": {
+            "level": "solid",
+            "top": 0.8398656017170864
           }
         }
       ]
@@ -547,12 +565,58 @@
       "origin": "fixture",
       "variants": [
         {
-          "answer": "To start a new club at Vista Ridge High School, you'll need to complete the official request process. Here are the steps based on the information available:\n\n1. Download and fill out the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).\n2. Submit the club request electronically using the [club request packet form](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog).\n3. Make sure to also have your parent or guardian complete the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog).\n\nIf you need more information or have any questions during the process, you can contact the front office or check the [Staff Directory](https://vrhs.leanderisd.org/directory) for assistance.\n\nGood luck starting your new club!",
+          "answer": "To start a new club at Vista Ridge High School, you\u2019ll need to complete the club/organization request process. Here\u2019s how you can get started:\n\n1. Access the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy) to review the guidelines and requirements.\n2. Fill out the [club request packet](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog) online form with the necessary details about your proposed club.\n3. Make sure your parent or guardian completes the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog).\n\nIf you have specific questions or need additional guidance, you can contact the school directly or reach out to a staff member through the [Staff Directory](https://vrhs.leanderisd.org/directory).\n\nGood luck starting your new club, and go Rangers!",
           "sources": [],
           "notice": [],
           "retrieval": {
             "level": "solid",
             "top": 0.8430454791880901
+          }
+        },
+        {
+          "answer": "To start a new club at Vista Ridge High School, you'll need to complete the following steps:\n\n1. Access and review the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).\n2. Fill out the [club request packet form](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog).\n3. Have your parent or guardian complete the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog).\n\nIf you have questions or need more guidance, I recommend reaching out to the front office or checking the [Staff Directory](https://vrhs.leanderisd.org/directory). Good luck with starting your new club!",
+          "sources": [],
+          "notice": [],
+          "retrieval": {
+            "level": "solid",
+            "top": 0.8430454791880901
+          }
+        },
+        {
+          "answer": "To start a new club at Vista Ridge High School, you'll need to complete the official request process. Here are the steps:\n\n1. Access and fill out the [new club/organization request packet](https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy).\n2. Submit your request using the official [club request packet form](https://docs.google.com/forms/d/e/1FAIpQLSfUHFkxnE59hUt7lz6eDlHG6sNp4Bx14o2VKGETAA-FTKBVVw/viewform?usp=dialog).\n3. Make sure to also have a parent complete the [VRHS Parent Club Permission Form](https://docs.google.com/forms/d/e/1FAIpQLSeV_IbwuHeO7O9gEoJpCi7QZCSE7rbiydSLyIS0lX4hEmtSlQ/viewform?usp=dialog).\n\nIf you have any questions or need further guidance, you can ask a staff member for help, or check the [Staff Directory](https://vrhs.leanderisd.org/directory).\n\nBest of luck starting your new club, and Go Rangers!",
+          "sources": [],
+          "notice": [],
+          "retrieval": {
+            "level": "solid",
+            "top": 0.8430454791880901
+          }
+        }
+      ]
+    },
+    "what clubs and organizations are offered?": {
+      "question": "What clubs and organizations are offered?",
+      "origin": "fixture",
+      "variants": [
+        {
+          "answer": "Vista Ridge High School offers a variety of clubs and organizations. Here are some of them, as listed in the [Clubs & Organizations](https://vrhs.leanderisd.org/campus_information/clubs) section:\n\n- **National Technical Honor Society**\n  - Focus: Career-focused workshops (resume writing, mock interviews), leadership programs, community service, and recognition events.\n  - Open to: Anyone enrolled in a CTE program.\n  - Sponsor: Miguel Valenzuela (miguel.valenzuela@leanderisd.org)\n  - Meets: During Ranger Time in room C407.\n\n- **Students in Medicine**\n  - Focus: Mini lessons on medical topics (such as vaccines) and performing labs (like electrophoresis).\n  - Sponsor: Jacob Hoffman (jacob.hoffman@leanderisd.org)\n  - Meets: After school, days to be announced.\n\n- **STEM Competition Club**\n  - Focus: Organizes meetings and tutoring for STEM competitions including USAPhO, USACO, USABO, and more, as well as volunteering in elementary and middle schools.\n  - Sponsor: Vanessa Ramirez (vanessa.ramirez@leanderisd.org)\n  - Meets: B-Day Ranger Times in room 2623.\n\nFor more clubs and the most up-to-date list\u2014including new clubs and organizations\u2014please check the [Clubs & Organizations](https://vrhs.leanderisd.org/campus_information/clubs) page. If you have questions about a specific club, you can also search or reach out via the [Staff Directory](https://vrhs.leanderisd.org/directory) or visit the front office for help.\n\nLet me know if there\u2019s a specific type of club you\u2019re interested in!",
+          "sources": [
+            {
+              "url": "https://vrhs.leanderisd.org/campus_information/clubs",
+              "label": "Clubs & Organizations",
+              "score": 0.8272,
+              "snippet": "Opens the school site"
+            },
+            {
+              "url": "https://docs.google.com/spreadsheets/d/1Y4dH0xP7yj5TshBoHbrqlNPuwkLjaBUxXK33hcYQt8M/htmlembed",
+              "label": "Clubs",
+              "score": 0.8236,
+              "snippet": "Website / Google Classroom: hjuwvwjt Sponsor(s): Miguel Valenzuela Sponsor(s) Email: miguel.valenzuela@leander..."
+            }
+          ],
+          "notice": [],
+          "retrieval": {
+            "level": "solid",
+            "top": 0.8271674366533177
           }
         }
       ]

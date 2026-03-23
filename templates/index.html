@@ -808,10 +808,14 @@
       transition: opacity 0.4s ease;
     }
 
+    /* Hidden until script decides. It used to be display:flex with the
+       show/hide logic commented out, so it appeared on every load in both
+       skins - including the compact one, which has its own gate on the first
+       question and does not need a second notice in front of it. */
     .disclaimer-overlay {
       position: fixed;
       inset: 0;
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       z-index: 2000;
@@ -827,6 +831,8 @@
         background 0.6s ease,
         backdrop-filter 0.6s ease;
     }
+
+    .disclaimer-overlay.shown { display: flex; }
 
     .disclaimer-overlay.closing {
       opacity: 0;
@@ -1192,10 +1198,24 @@
       color: #2c2f33;
       resize: none;
       overflow-y: auto;
+      /* No stepper arrows. Windows draws a classic scrollbar inside the
+         textarea once the text passes four lines, arrow buttons and all,
+         which on a 25px control reads as a number spinner someone attached to
+         a comment box. Thin bar, no buttons. */
+      scrollbar-width: thin;
+      scrollbar-color: #d3d7db transparent;
       line-height: 1.4;
       transition: width 0.16s ease, height 0.12s ease;
     }
     .fb-input:focus { border-color: #c40020; }
+
+    .fb-input::-webkit-scrollbar { width: 6px; }
+    .fb-input::-webkit-scrollbar-button { display: none; height: 0; }
+    .fb-input::-webkit-scrollbar-track { background: transparent; }
+    .fb-input::-webkit-scrollbar-thumb {
+      background: #d3d7db;
+      border-radius: 3px;
+    }
 
     /* The width it sits at before growing, and the point at which growing
        starts. It began widening from the eighth character, so it moved under
@@ -1332,7 +1352,7 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 </head>
-<body>
+<body{% if compact %} class="compact awaiting"{% endif %}>
   <div class="chat-container">
     <div class="chat-header">
       <span>Ask Your Questions Here!</span>
@@ -1695,7 +1715,9 @@
         // The mascot turns up if you ask after him. Fired on the question
         // rather than on the answer, so he is already walking while the model
         // is still thinking.
-        if (/\bmascots?\b/i.test(message)
+        // "go rangers" as well as "mascot" - it is the thing a student
+        // would actually type, and the mascot IS the Ranger.
+        if (/\bmascots?\b|\bgo+\s+rangers\b/i.test(message)
             && window.summonRanger) {
           window.summonRanger();
         }
@@ -2275,6 +2297,9 @@
         body.classList.add("awaiting");
       } else {
         body.classList.remove("awaiting");
+        // First arrival in the classic skin is the first time its standing
+        // notice is due. On /widget that is the only way it is ever due.
+        if (window.showStandingDisclaimer) window.showStandingDisclaimer();
       }
     }, true);
 
@@ -2486,12 +2511,26 @@
   const overlay = document.getElementById("disclaimerOverlay");
   const dismissBtn = document.getElementById("disclaimerBtn");
 
-  /* If user has already accepted, don't show the modal
-  if (localStorage.getItem("vrhsDisclaimerAccepted") === "true") {
-    overlay.style.display = "none";
-  } else {
-    overlay.style.display = "flex";
-  } */ // UNCOMMENT THIS TO ENABLE DISCLAIMER KIND OF 
+  // Shown for the classic skin, once. Two conditions, and both matter:
+  //
+  //   * Not in compact. That skin gates the first question behind its own
+  //     "Before you ask" card, and stacking a second notice in front of an
+  //     empty screen is how a reader learns to dismiss notices unread. The
+  //     widget route opens in compact, so this never fires there on load -
+  //     only if somebody presses 2 and lands in the classic interface.
+  //   * Not already accepted. The accept is remembered, which is the whole
+  //     point of asking; re-asking every visit is a cookie banner.
+  //
+  // Called rather than run inline, because the other place it has to happen
+  // is the moment the reader switches out of compact for the first time.
+  let disclaimerShown = false;
+  window.showStandingDisclaimer = function () {
+    if (disclaimerShown) return;
+    if (document.body.classList.contains("compact")) return;
+    if (localStorage.getItem("vrhsDisclaimerAccepted") === "true") return;
+    disclaimerShown = true;
+    overlay.classList.add("shown");
+  };
 
   dismissBtn.addEventListener("click", () => {
     // start closing animation
@@ -2598,6 +2637,8 @@
       // disclaimer is redundant there too, because that skin gates the first
       // question behind one that has to be accepted.
       if (document.body.classList.contains("compact")) return;
+
+      if (window.showStandingDisclaimer) window.showStandingDisclaimer();
 
       appendMessage("Hi! What can I help you with?", "bot");
       // Insert disclaimer right under the first bot message

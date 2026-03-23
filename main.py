@@ -51,6 +51,13 @@ SYSTEM_PROMPT = (
     "[Staff Directory](https://vrhs.leanderisd.org/directory) or the front "
     "office. A short honest answer is better than a confident wrong one."
     "\n\n"
+    "The school mascot is the Ranger. Students, staff and teams are the "
+    "Vista Ridge Rangers, which is why the flexible period is called "
+    "Ranger Time and the summer orientation is called Ranger Camp. This "
+    "is the one fact here that does not come from the context, because "
+    "it is on every page of the site as branding and in none of them as "
+    "a sentence."
+    "\n\n"
     "Only cite links as [label](url) if they appear in the context. Never "
     "construct a URL yourself, even when the address looks predictable. If a "
     "question is unclear, ask a clarifying question. End your replies on a "
@@ -82,7 +89,11 @@ def dated_prompt():
         f"same time, and some still describe an earlier year. When the context "
         f"names a school year, say which year it refers to instead of "
         f"presenting it as current, and if only an older year is available, "
-        f"say that the current one was not found."
+        f"say that the current one was not found. A page or document named "
+        f"for a graduating class - \"Seniors {school_year(today)[5:]}\", "
+        f"\"Class of {school_year(today)[5:]}\" - is about the students "
+        f"graduating at the end of this school year, so treat it as "
+        f"current rather than as a past year."
     )
 
 
@@ -293,6 +304,28 @@ def page_embeds(soup, source):
     return found
 
 
+def page_title(soup, url):
+    """A short name for the page, for prefixing its chunks.
+
+    Worth the few lines because of what it fixes. The seniors page says
+    "graduation date Saturday, May 29th at 10am" and never says which
+    year - the year is in the page title, "Seniors 2027", and in its URL.
+    Chunked without either, the model saw an undated date, correctly
+    declined to call it current, and told a reader asking about
+    graduation that it only had last year's information. It had this
+    year's. It just could not tell.
+
+    Google Sites titles every page "Vista Ridge High School - Something",
+    so the common half goes; what is left is the part that distinguishes
+    one page from another, which is the part worth repeating.
+    """
+    raw = ""
+    if soup.title and soup.title.string:
+        raw = " ".join(soup.title.string.split())
+    raw = re.sub(r"^Vista Ridge High School\s*[-|]\s*", "", raw).strip()
+    return raw or source_label(url)
+
+
 def page_markdown(soup):
     """Page text with links inline as [label](url), rather than appended.
 
@@ -413,13 +446,19 @@ def scrape_vrhs_pages():
                     or "parentsquare.com/schools/" in markup):
                 feed_pages.append((url, markup))
 
+            title = page_title(soup, url)
             combined_text = page_markdown(soup)
 
             words = combined_text.split()
             for i in range(0, len(words), 150):
                 chunk_text = " ".join(words[i:i + 150])
                 if chunk_text:
-                    chunks.append({"text": chunk_text, "source": url})
+                    # The page name on every chunk, not only the first. A
+                    # window from the middle of a page otherwise arrives with
+                    # no idea what page it came from - see page_title.
+                    chunks.append({"text": f"{title}. {chunk_text}",
+                                   "source": url,
+                                   "label": title})
         except Exception as e:
             log.warning(f"Failed to scrape {url}: {e}")
 
@@ -1093,7 +1132,24 @@ def health():
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("index.html", compact=False)
+
+
+@app.route("/widget")
+def widget():
+    """The compact skin, for embedding in a page that has its own header.
+
+    Same application, same template, different opening state: no title bar, no
+    greeting turn, and the landing composer rather than a conversation.
+    Pressing 2 still switches, so this is a default and not a second build -
+    one template means a fix to the composer is a fix in both places.
+
+    Not /embed, which is taken by the route that rebuilds the vector index.
+    Serving a chat page there would mean anyone loading the widget by its
+    obvious name triggered a full re-scrape and a few thousand embedding calls
+    instead.
+    """
+    return render_template("index.html", compact=True)
 
 
 @app.route("/report", methods=["POST"])
