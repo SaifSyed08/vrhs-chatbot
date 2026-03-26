@@ -27,6 +27,14 @@ log = logging.getLogger("vrhs")
 
 app = Flask(__name__)
 
+# Every route parses its body into memory before any field-level truncation
+# runs, so the [:500] and [:1000] caps in /feedback protect the store and not
+# the process. Unset, a single 200 MB POST is parsed in full on an instance
+# with 512 MB to its name. 256 KB is far above anything the client sends - the
+# largest legitimate body is /ask with six turns of history, capped at 1200
+# characters each, so about 8 KB.
+app.config["MAX_CONTENT_LENGTH"] = 256 * 1024
+
 # Marks the end of the answer stream; everything after it is a JSON block
 # carrying the verification notice and the source pages.
 META_SENTINEL = ":::meta"
@@ -1432,11 +1440,102 @@ def handle_unexpected(error):
 _issue_times = deque()
 _issue_lock = threading.Lock()
 
+# data/feedback.json is read, appended to and rewritten on every rating.
+_feedback_lock = threading.Lock()
+
 REASON_LABEL = {
     "not_found": "not-found",
     "not_up_to_date": "out-of-date",
     "inaccurate": "inaccurate",
 }
+
+# Written once per process, after the first time GitHub is asked.
+_repo_private = {"known": False, "value": False}
+_repo_lock = threading.Lock()
+
+
+def repo_is_private():
+    """Whether the issue destination is private. Unknown counts as public.
+
+    This gates whether a reader's own words are allowed to leave the server,
+    so it is a real check against GitHub rather than a setting somebody
+    remembers to flip. A setting is a claim; this is the answer.
+
+    Failing closed matters more than being right. If the API is unreachable,
+    or the token cannot see the repository, the honest reading is that we do
+    not know where this text is about to be published - and the safe response
+    to not knowing is to publish nothing.
+    """
+    if not config.GITHUB_TOKEN:
+        return False
+
+    with _repo_lock:
+        if _repo_private["known"]:
+            return _repo_private["value"]
+
+    private = False
+    try:
+        import requests
+        response = requests.get(
+            "https://api.github.com/repos/" + config.GITHUB_REPO,
+            headers={"Authorization": "Bearer " + config.GITHUB_TOKEN,
+                     "Accept": "application/vnd.github+json"},
+            timeout=10)
+        if response.status_code == 200:
+            private = bool(response.json().get("private"))
+        else:
+            log.warning("[feedback] could not read %s (%s) - treating it as "
+                        "public and withholding reader text",
+                        config.GITHUB_REPO, response.status_code)
+    except Exception as e:
+        log.warning("[feedback] could not check whether %s is private (%s) - "
+                    "treating it as public", config.GITHUB_REPO, e)
+
+    with _repo_lock:
+        _repo_private.update({"known": True, "value": private})
+
+    log.info("[feedback] issue destination %s is %s", config.GITHUB_REPO,
+             "private" if private else "PUBLIC - reader text withheld")
+    return private
+
+
+# Characters that do not survive being read by a person: the C0 range, and the
+# invisible formatting marks that let text lie about which way it reads.
+_INVISIBLE = re.compile(
+    "[" + "".join(chr(c) for c in range(32) if c not in (9, 10, 13))
+    + chr(127) + "-" + chr(159)
+    + chr(0x200B) + "-" + chr(0x200F)
+    + chr(0x202A) + "-" + chr(0x202E)
+    + chr(0x2066) + "-" + chr(0x2069)
+    + chr(0xFEFF) + "]")
+
+
+def quoted_safely(text, limit=1000):
+    """Reader text as an inert code block, whatever they typed.
+
+    Two problems, one answer. The body used to be built by concatenation, so
+    what a reader typed arrived as live Markdown in a repository they have
+    nothing to do with: "@someone" in a comment sends that person a real
+    notification, "#12" cross-links onto an unrelated issue, and a link
+    renders as a link. GitHub linkifies none of that inside a fence.
+
+    The fence is longer than any run of backticks in the text, because a
+    reader who types three of them would otherwise close it early and get
+    exactly the live Markdown this is here to prevent.
+    """
+    clean = _INVISIBLE.sub("", text or "").strip()
+    if not clean:
+        return None
+    if len(clean) > limit:
+        clean = clean[:limit] + " [truncated]"
+
+    longest = 0
+    run = 0
+    for ch in clean:
+        run = run + 1 if ch == "`" else 0
+        longest = max(longest, run)
+    fence = "`" * max(3, longest + 1)
+    return fence + chr(10) + clean + chr(10) + fence
 
 
 def issue_allowed():
@@ -1469,20 +1568,57 @@ def file_issue(entry):
         log.warning("[feedback] issue rate limit reached, not filing")
         return
 
-    question = entry.get("question") or "(no question recorded)"
     reason = entry.get("reason")
     labels = ["user-feedback"]
     if reason in REASON_LABEL:
         labels.append(REASON_LABEL[reason])
 
-    body = [
-        "A reader marked this answer unhelpful.",
-        "",
-        "**Question**",
-        "> " + question.replace(chr(10), " "),
+    # The question and the comment are the only two fields a reader writes,
+    # and they are the only two that can carry a name, a student id, or a
+    # sentence about a specific teacher. Everything else here is a number this
+    # server produced.
+    #
+    # So they travel only to a private tracker. The box says the rating is
+    # anonymous, and it is - nothing identifies who sent it - but a fourteen
+    # year old typing "I am Maya in 3rd period and it gave me the wrong
+    # counsellor" has identified themselves, and "anonymous" will not read to
+    # them as "and also world-readable and indexed". Withholding is the only
+    # version of this that keeps the promise the interface makes.
+    private = repo_is_private()
+    question = quoted_safely(entry.get("question"), 500)
+    comment = quoted_safely(entry.get("comment"), 1000)
+
+    if private:
+        title = "Feedback: " + (entry.get("question") or "")[:80].replace(
+            chr(10), " ").strip()
+        written = [
+            "**Question**",
+            question or "_(not recorded)_",
+            "",
+            "**Comment**",
+            comment or "_(none)_",
+        ]
+    else:
+        # Deliberately close to useless. An issue that cannot say what was
+        # asked is hard to act on, and that is the pressure pointing at a
+        # private tracker rather than a paragraph in a README asking nicely.
+        title = "Feedback: %s (%s)" % (
+            reason or "no reason given", entry.get("retrieval_level"))
+        written = [
+            "**Reader text withheld.** `%s` is public, and the question and "
+            "comment are the two fields a reader writes - they can name a "
+            "student, a teacher or an email address, and an issue here is "
+            "world-readable and indexed."
+            % config.GITHUB_REPO,
+            "",
+            "Point `VRHS_GITHUB_REPO` at a private repository to receive "
+            "them. Until then they are in the server log and in "
+            "data/feedback.json only.",
+        ]
+
+    body = ["A reader marked this answer unhelpful.", ""] + written + [
         "",
         "**Reason given:** " + (reason or "none selected"),
-        "**Comment:** " + (entry.get("comment") or "none"),
         "",
         "**Retrieval at the time**",
         "- level: `%s`" % entry.get("retrieval_level"),
@@ -1502,7 +1638,7 @@ def file_issue(entry):
                     "Accept": "application/vnd.github+json",
                 },
                 json={
-                    "title": "Feedback: " + question[:80],
+                    "title": title[:120] or "Feedback",
                     "body": chr(10).join(body),
                     "labels": labels,
                 },
@@ -1544,17 +1680,30 @@ def submit_feedback():
         "timestamp": datetime.datetime.now().isoformat(),
     }
 
+    # Under a lock, because this is read-modify-write and the server runs
+    # eight threads. Two ratings landing together lost one of them, or
+    # interleaved into a file that no longer parsed - at which point the
+    # except below treats the whole history as absent and the next write
+    # replaces it with a single entry. A silent reset is the worst shape a
+    # data-loss bug can take, because nothing ever reports it.
     os.makedirs("data", exist_ok=True)
     path = "data/feedback.json"
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            entries = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        entries = []
+    with _feedback_lock:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                entries = json.load(f)
+            if not isinstance(entries, list):
+                entries = []
+        except (FileNotFoundError, json.JSONDecodeError):
+            entries = []
 
-    entries.append(entry)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(entries, f, indent=2)
+        entries.append(entry)
+        # Written beside and renamed, so an interrupted write leaves the old
+        # file rather than half of a new one.
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(entries, f, indent=2)
+        os.replace(tmp, path)
 
     # Fired after the file write, so a GitHub outage cannot lose the record.
     file_issue(entry)

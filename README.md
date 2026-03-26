@@ -519,6 +519,35 @@ retrieval score attached it says why, and the two failures need different fixes:
 | Thumbs-down, retrieval solid | Right page found, answer still poor | Prompt or chunking problem |
 | Thumbs-down on a flagged answer | The layer already caught it | Working as intended |
 
+### Where the feedback goes, and why it needs a private repo
+
+Render's filesystem is ephemeral, so `data/feedback.json` is wiped on every
+restart and redeploy. To keep ratings, set `VRHS_GITHUB_TOKEN` to a
+fine-grained token with **Issues: read and write** on one repository, and each
+thumbs-down opens an issue there. A thumbs-up does not: it needs no triage, and
+filing one would bury the ones that do.
+
+Point `VRHS_GITHUB_REPO` at a **private** repository. The question and the
+comment are the only two fields a reader writes, and they are the only two that
+can carry a name, a student id or a sentence about a named teacher. The server
+checks the destination against the GitHub API before it files anything, and if
+the repository is public — or if the check fails, or the token cannot see it —
+it withholds both and files the diagnostics alone. That is deliberately close to
+useless, because an unusable issue is better pressure toward a private tracker
+than a paragraph here asking nicely.
+
+Both fields travel inside a code fence, so an `@name` a reader types cannot
+notify a real person and a `#12` cannot cross-link onto an unrelated issue. The
+fence grows longer than any run of backticks in the text, and invisible
+characters — the C0 range, zero-width marks, the bidirectional overrides — are
+stripped first.
+
+`/feedback` is public and unauthenticated, so it is capped at
+`VRHS_GITHUB_ISSUES_PER_HOUR` issues an hour (12 by default). Past the cap
+ratings still reach the log and the file. Request bodies are capped at 256 KB
+across the whole app: field truncation happens after parsing, so without that
+limit a single large POST is read into memory in full.
+
 ## What changed and what it bought
 
 | Change | Measured effect |

@@ -1162,8 +1162,12 @@
        are the two halves of one exchange. */
     .fb-hint {
       font-size: 0.74rem;
+      line-height: 1.35;
       color: #9aa0a6;
-      white-space: nowrap;
+      /* Was nowrap, which was fine for "enter to submit" and would have run
+         the caution beside it off the end of the row. Bounded to the box it
+         sits under instead. */
+      max-width: 260px;
       opacity: 0;
       transition: opacity 0.15s ease;
     }
@@ -1671,7 +1675,12 @@
           fit();
           if (input.value.trim()) {
             hint.className = "fb-hint show";
-            hint.textContent = "enter to submit";
+            // The caution belongs here and not in a notice somewhere: this is
+            // the one moment a reader is actually writing, and it is the last
+            // moment before the text leaves the browser. Telling someone
+            // afterwards that their comment was published is not a warning.
+            hint.textContent = "enter to submit — please don't include "
+              + "names or other personal details";
           } else {
             hint.className = "fb-hint";
             hint.textContent = "";
