@@ -135,7 +135,7 @@
       /* A hair above the pill, so his boots clear its outline instead of
          being crossed by it. */
       bottom: calc(100% + 3px);
-      height: 60px;
+      height: 76px;
       overflow: hidden;
       pointer-events: none;
       z-index: 40;
@@ -144,15 +144,14 @@
     .ranger {
       position: absolute;
       bottom: 0;
-      /* 56px. He was 38 and read as a smudge - too small to see that he is
-         waving, which is the entire joke. Still shorter than the headline he
-         walks under, so he crosses the interface rather than standing in it.
-         The sheet is 8 columns by 2 rows, so a cell is an eighth of the
-         background width and half its height: 224/8 = 28, 112/2 = 56. */
-      width: 28px;
-      height: 56px;
+      /* 72px, from 56, from 38. The sheet is 8 columns by 2 rows, so a
+         cell is an eighth of the background width and half its height:
+         288/8 = 36, 144/2 = 72. Still shorter than the headline he walks
+         under, so he crosses the interface rather than standing in it. */
+      width: 36px;
+      height: 72px;
       background-image: url("/static/ranger.png");
-      background-size: 224px 112px;
+      background-size: 288px 144px;
       background-repeat: no-repeat;
       /* Smoothing pixel art is the one thing that always looks wrong. */
       image-rendering: pixelated;
@@ -168,12 +167,12 @@
 
     @keyframes rangerWalk {
       from { background-position: 0 0; }
-      to { background-position: -224px 0; }
+      to { background-position: -288px 0; }
     }
 
     @keyframes rangerWave {
-      from { background-position: 0 -56px; }
-      to { background-position: -224px -56px; }
+      from { background-position: 0 -72px; }
+      to { background-position: -288px -72px; }
     }
 
     /* He stands on the composer pill, not on the row that contains it.
@@ -859,10 +858,15 @@
         opacity 0.7s ease;
     }
 
+    /* Scoped to the overlay. ".disclaimer-card" is the class on both cards
+       - the classic overlay's and compact's - so this was also squeezing the
+       compact card to 70% of a 360px screen. That leaves about 190px of
+       content for two buttons that need 210px, so they wrapped, and a wrapped
+       button with a 999px radius is a tall oval. */
     @media (max-width: 500px) {
-      .disclaimer-card {
-        padding: 40px 30px;
-        max-width: 70%;
+      .disclaimer-overlay .disclaimer-card {
+        padding: 32px 24px;
+        max-width: min(92vw, 400px);
       }
     }
     
@@ -1351,6 +1355,61 @@
 
     .verify-line { margin: 1px 0; }
 
+    /* ===================================================================
+       Phones.
+       ===================================================================
+       One block rather than a tweak next to each rule, because these are all
+       the same class of problem: something sized for a cursor and 1000px of
+       width, met by a thumb and 360px.
+       */
+    @media (max-width: 720px) {
+      /* iOS zooms the page when a focused field is under 16px, and it does
+         not zoom back out afterwards. That is the whole of the "tapping the
+         box zooms in" report, and it is also the whole of "oddly can pan to
+         the right": once the visual viewport is scaled past the layout
+         viewport, the page pans, and no amount of overflow:hidden on a
+         document that is not itself overflowing will stop it.
+         Every field, because it only takes one to trigger it. */
+      .chat-input input,
+      .input-pill:focus-within input,
+      body.compact .chat-input input,
+      body.compact.awaiting .chat-input input,
+      .fb-input,
+      #reportDescription {
+        font-size: 16px;
+      }
+
+      /* Belt and braces on the pan. Nothing should reach past the viewport,
+         but a single wide element inside a scroll container is a cheap way to
+         reintroduce it, and this costs nothing. */
+      html, body { max-width: 100%; overflow-x: hidden; }
+      .chat-container { max-width: 100vw; }
+
+      /* Stacked, full width, one line each. Side by side they did not fit,
+         and the wrap is what made Cancel a circle. */
+      .disclaimer-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+      }
+      .disclaimer-actions button {
+        width: 100%;
+        white-space: nowrap;
+        padding: 11px 16px;
+      }
+      /* The arrow slides in on hover, which a phone does not have. Reserving
+         room for it just makes the label sit off-centre. */
+      .disclaimer-actions .accept { padding-right: 16px; }
+
+      /* The classic overlay's single button. Full width already; this only
+         stops a long label breaking across two lines. */
+      .disclaimer-button { white-space: nowrap; }
+
+      .disclaimer-icon img { width: 64px; height: 64px; }
+      .disclaimer-card p { font-size: 0.98rem; }
+
+      /* No cursor to follow, so the hover panel has nowhere sensible to be. */
+      .pill-tip { display: none; }
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -2038,6 +2097,10 @@
       "Where can I find the campus profile?",
       "How do I access my STAAR scores?"
     ];
+    // Shared with the placeholder cycler below, which wants the same promise:
+    // everything offered has a page, a document or a spreadsheet row behind
+    // it, so a suggestion is something the bot can actually answer.
+    window.VRHS_QUESTIONS = QUESTIONS;
     const MAX = 3;
 
     const pill = document.querySelector(".input-pill");
@@ -2180,6 +2243,109 @@
 
 <script>
   // ===================================================================
+  // Questions typing themselves into the placeholder on hover.
+  // ===================================================================
+  // An empty box with "Ask about VRHS..." in it tells you that you may ask
+  // and nothing about what is worth asking. Hovering it types a real question
+  // out, holds it long enough to read, deletes it and starts the next - so
+  // the composer answers "like what?" without a strip of chips under it
+  // taking up room, and without saying anything when nobody is looking at it.
+  //
+  // Only while the box is empty and unfocused. Once there is a cursor in it
+  // the placeholder is behind live text and moving it is noise; once there is
+  // a value the placeholder is not visible at all.
+  (function () {
+    const pill = document.querySelector(".input-pill");
+    const box = document.getElementById("query");
+    if (!pill || !box) return;
+
+    const RESTING = box.getAttribute("placeholder") || "Ask about VRHS...";
+    const TYPE_MS = 42;      // per character going on
+    const ERASE_MS = 22;     // and coming off, faster - nobody reads a delete
+    const HOLD_MS = 1500;    // long enough to read a question of ten words
+    const GAP_MS = 260;
+
+    // A phone has no hover, and a browser that emulates one fires it on tap -
+    // at which point the field is about to be focused anyway. Reduced motion
+    // is a request not to animate text, which this very much is.
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const coarse = window.matchMedia("(pointer: coarse)");
+
+    let timer = null;
+    let running = false;
+    let order = [];
+    let at = 0;
+
+    const shuffled = function () {
+      const list = (window.VRHS_QUESTIONS || []).slice();
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = list[i]; list[i] = list[j]; list[j] = t;
+      }
+      return list;
+    };
+
+    const stop = function () {
+      running = false;
+      clearTimeout(timer);
+      timer = null;
+      box.setAttribute("placeholder", RESTING);
+    };
+
+    // Guarded on every tick rather than only at the start: focus and typing
+    // can happen mid-word, and the cycle has to give the box back immediately
+    // when they do.
+    const allowed = function () {
+      return running && !box.value && document.activeElement !== box;
+    };
+
+    const type = function (text, i) {
+      if (!allowed()) { stop(); return; }
+      box.setAttribute("placeholder", text.slice(0, i));
+      if (i < text.length) {
+        timer = setTimeout(function () { type(text, i + 1); }, TYPE_MS);
+      } else {
+        timer = setTimeout(function () { erase(text, text.length); }, HOLD_MS);
+      }
+    };
+
+    const erase = function (text, i) {
+      if (!allowed()) { stop(); return; }
+      box.setAttribute("placeholder", text.slice(0, i));
+      if (i > 0) {
+        timer = setTimeout(function () { erase(text, i - 1); }, ERASE_MS);
+      } else {
+        at = (at + 1) % order.length;
+        timer = setTimeout(next, GAP_MS);
+      }
+    };
+
+    const next = function () {
+      if (!allowed()) { stop(); return; }
+      if (!order.length) { stop(); return; }
+      type(order[at], 0);
+    };
+
+    const start = function () {
+      if (running) return;
+      if (still.matches || coarse.matches) return;
+      if (box.value || document.activeElement === box) return;
+      order = shuffled();
+      if (!order.length) return;
+      at = 0;
+      running = true;
+      next();
+    };
+
+    pill.addEventListener("mouseenter", start);
+    pill.addEventListener("mouseleave", stop);
+    box.addEventListener("focus", stop);
+    box.addEventListener("input", stop);
+  })();
+  </script>
+
+<script>
+  // ===================================================================
   // Keep the outline a pill.
   // ===================================================================
   // rx and ry on a <rect> are clamped independently - rx to half the width,
@@ -2236,7 +2402,7 @@
       el.className = "ranger walking";
       // Just off the edge - one sprite width plus a little, so the stage's
       // clip hides him and no further.
-      el.style.left = "-36px";
+      el.style.left = "-46px";
       stage.appendChild(el);
       rail.appendChild(stage);
 
@@ -2248,10 +2414,14 @@
       // the reader had worked out what was happening; the wave is the part
       // worth watching, so the trip to it should be brief.
       const stop = Math.max(20, Math.round(rail.clientWidth * 0.07));
-      // Scaled with him: the stride covers more ground at 56px than it did at
-      // 38, and holding the old speed would have him shuffling in place.
-      const speed = 112; // px per second, matched to the stride at 0.72s a loop
-      const walkMs = Math.round((stop + 36) / speed * 1000);
+      // Slower on a phone. Speed is in pixels and the rail is a third as
+      // wide there, so the same number crosses the visible strip in a
+      // fraction of the time and he registers as a flicker rather than as a
+      // character. The walk cycle is 0.72s whatever the screen, so at 112
+      // px/s on a 360px rail he was off again before finishing two strides.
+      const narrow = window.matchMedia("(max-width: 720px)").matches;
+      const speed = narrow ? 64 : 112; // px/s, matched to the stride
+      const walkMs = Math.round((stop + 46) / speed * 1000);
 
       requestAnimationFrame(() => {
         el.style.transition = "left " + walkMs + "ms linear";
@@ -2262,7 +2432,7 @@
         el.classList.remove("waving");
         el.classList.add("walking", "leaving");
         el.style.transition = "left " + walkMs + "ms linear";
-        el.style.left = "-36px";
+        el.style.left = "-46px";
         setTimeout(() => { stage.remove(); busy = false; }, walkMs + 150);
       };
 
