@@ -1140,7 +1140,12 @@
     .fb-reason {
       font-family: inherit;
       font-size: 0.78rem;
-      padding: 4px 10px;
+      /* Explicit line-height, not "normal". The chips and the comment box are
+         the same font at the same size and were still different heights,
+         because a textarea and a button disagree about what "normal" means -
+         so both now state the number, and 18 + 6 + 2 is 26 either way. */
+      line-height: 18px;
+      padding: 3px 10px;
       border: 1px solid #e0e3e6;
       border-radius: 999px;
       background: #fff;
@@ -1185,16 +1190,17 @@
     .fb-input {
       font-family: inherit;
       font-size: 0.78rem;
-      /* Sized to sit level with the reason chips beside it, which are
-         4px/10px at the same font. It was 5px/11px with a 27px floor, which
-         put it two or three pixels above everything on the row - not much on
-         its own, and very visible next to three pills and two 28px buttons
-         all agreeing on a height. */
-      padding: 4px 11px;
-      line-height: 1.35;
+      /* Exactly the chips' box: 18px of line, 3px of padding either side,
+         1px of border. A ratio line-height was the last of the difference -
+         0.78rem x 1.35 is 16.85px against the chips' ~15, which is three
+         pixels of extra height on a control 26 tall, and it read as a
+         different size rather than as a rounding error. */
+      line-height: 18px;
+      padding: 3px 11px;
       width: var(--fb-rest);
       max-width: 260px;
-      min-height: 25px;
+      height: var(--fb-row);
+      min-height: var(--fb-row);
       max-height: 88px;
       /* Not 999px any more. A pill radius on a box three lines tall is a
          lozenge; 14px keeps the rounded feel at one line and stays sane at
@@ -1231,7 +1237,12 @@
        settled. Holding a resting width until the text genuinely needs more
        room means the growth reads as the box responding rather than
        twitching. */
-    :root { --fb-rest: calc(13ch + 24px); }
+    :root {
+      --fb-rest: calc(13ch + 24px);
+      /* The height of one row of feedback controls. 18px line + 3px padding
+         top and bottom + 1px border top and bottom. */
+      --fb-row: 26px;
+    }
 
     /* thumbs row */
 
@@ -1725,9 +1736,11 @@
           input.style.height = "auto";
           // box-sizing is border-box here, so scrollHeight - which excludes
           // the border - is two pixels short of the height the content needs
-          // and the box scrolls its own first line.
+          // and the box scrolls its own first line. Floored at one row so a
+          // single line matches the chips exactly rather than landing a pixel
+          // either side of them.
           input.style.height =
-            Math.min(88, input.scrollHeight + 2) + "px";
+            Math.max(26, Math.min(88, input.scrollHeight + 2)) + "px";
         };
 
         input.addEventListener("input", () => {
@@ -2008,7 +2021,17 @@
           msgContainer.appendChild(card);
         }
         msgContainer.scrollTop = msgContainer.scrollHeight;
-        if (firstBotMessageShown) {
+        // Every answer, including the first.
+        //
+        // This was guarded on firstBotMessageShown, which is set by
+        // appendMessage - and the only bot message that goes through
+        // appendMessage is the greeting, which the classic skin prints on
+        // load. So in the classic skin the flag was already true by the time
+        // anyone asked anything and the guard did nothing, while compact
+        // skips the greeting entirely, left the flag false, and dropped the
+        // rating control from the first real answer. The one skin the guard
+        // affected is the one where it was wrong.
+        {
           const fb = createFeedbackElement();
           fb.appendChild(fb.panel);
           footer.appendChild(fb);
@@ -2031,9 +2054,6 @@
             el.addEventListener("mouseleave", () => reveal(false));
             el.addEventListener("focusin", () => reveal(true));
           });
-        } else {
-          firstBotMessageShown = true;
-          msgContainer.appendChild(footer);
         }
 
 
@@ -2245,36 +2265,75 @@
   // ===================================================================
   // Questions typing themselves into the placeholder on hover.
   // ===================================================================
-  // An empty box with "Ask about VRHS..." in it tells you that you may ask
-  // and nothing about what is worth asking. Hovering it types a real question
-  // out, holds it long enough to read, deletes it and starts the next - so
-  // the composer answers "like what?" without a strip of chips under it
-  // taking up room, and without saying anything when nobody is looking at it.
+  // An empty box saying "Ask about VRHS..." tells you that you may ask and
+  // nothing about what is worth asking. Hovering it clears its own prompt a
+  // character at a time, types a real question out, holds it long enough to
+  // read, and moves to the next - so the composer answers "like what?"
+  // without a strip of chips under it taking up room, and says nothing at all
+  // while nobody is looking at it.
+  //
+  // The resting text is erased rather than swapped. Cutting straight to the
+  // first question makes the box look like it reloaded; erasing what was
+  // already there makes the same two seconds read as one continuous thing
+  // being retyped, which is what it is.
   //
   // Only while the box is empty and unfocused. Once there is a cursor in it
-  // the placeholder is behind live text and moving it is noise; once there is
-  // a value the placeholder is not visible at all.
+  // the placeholder sits behind live text and moving it is noise; once there
+  // is a value the placeholder is not visible at all.
   (function () {
     const pill = document.querySelector(".input-pill");
     const box = document.getElementById("query");
     if (!pill || !box) return;
 
     const RESTING = box.getAttribute("placeholder") || "Ask about VRHS...";
+    const CARET = "|";
     const TYPE_MS = 42;      // per character going on
     const ERASE_MS = 22;     // and coming off, faster - nobody reads a delete
-    const HOLD_MS = 1500;    // long enough to read a question of ten words
-    const GAP_MS = 260;
+    const HOLD_MS = 1600;    // long enough to read a question of ten words
+    const GAP_MS = 220;
+    const BLINK_MS = 530;
 
-    // A phone has no hover, and a browser that emulates one fires it on tap -
+    // A phone has no hover, and a browser that emulates one fires it on tap,
     // at which point the field is about to be focused anyway. Reduced motion
     // is a request not to animate text, which this very much is.
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     const coarse = window.matchMedia("(pointer: coarse)");
 
     let timer = null;
+    let blinker = null;
     let running = false;
     let order = [];
     let at = 0;
+    let text = "";        // what is currently written, without the caret
+    let caretOn = true;
+
+    const paint = function () {
+      box.setAttribute("placeholder", text + (caretOn ? CARET : " "));
+    };
+
+    // Solid while characters are moving, blinking while the question sits
+    // there being read. That is what a real cursor does, and a caret that
+    // blinks through its own typing reads as a flicker instead.
+    const blink = function (on) {
+      clearInterval(blinker);
+      blinker = null;
+      caretOn = true;
+      if (on) {
+        blinker = setInterval(function () {
+          caretOn = !caretOn;
+          paint();
+        }, BLINK_MS);
+      }
+    };
+
+    const stop = function () {
+      running = false;
+      clearTimeout(timer);
+      clearInterval(blinker);
+      timer = null;
+      blinker = null;
+      box.setAttribute("placeholder", RESTING);
+    };
 
     const shuffled = function () {
       const list = (window.VRHS_QUESTIONS || []).slice();
@@ -2285,45 +2344,57 @@
       return list;
     };
 
-    const stop = function () {
-      running = false;
-      clearTimeout(timer);
-      timer = null;
-      box.setAttribute("placeholder", RESTING);
-    };
-
-    // Guarded on every tick rather than only at the start: focus and typing
-    // can happen mid-word, and the cycle has to give the box back immediately
-    // when they do.
+    // Checked on every tick rather than only at the start: focus and typing
+    // can happen mid-word, and the cycle has to give the box back the moment
+    // they do.
     const allowed = function () {
       return running && !box.value && document.activeElement !== box;
     };
 
-    const type = function (text, i) {
-      if (!allowed()) { stop(); return; }
-      box.setAttribute("placeholder", text.slice(0, i));
-      if (i < text.length) {
-        timer = setTimeout(function () { type(text, i + 1); }, TYPE_MS);
+    const step = function () {
+      if (!allowed()) { stop(); return false; }
+      return true;
+    };
+
+    const eraseTo = function (target, whenDone) {
+      if (!step()) return;
+      if (text.length > target.length || text.slice(0, target.length) !== target) {
+        text = text.slice(0, -1);
+        paint();
+        timer = setTimeout(function () { eraseTo(target, whenDone); },
+                           ERASE_MS);
       } else {
-        timer = setTimeout(function () { erase(text, text.length); }, HOLD_MS);
+        whenDone();
       }
     };
 
-    const erase = function (text, i) {
-      if (!allowed()) { stop(); return; }
-      box.setAttribute("placeholder", text.slice(0, i));
-      if (i > 0) {
-        timer = setTimeout(function () { erase(text, i - 1); }, ERASE_MS);
+    const typeTo = function (target, whenDone) {
+      if (!step()) return;
+      if (text.length < target.length) {
+        text = target.slice(0, text.length + 1);
+        paint();
+        timer = setTimeout(function () { typeTo(target, whenDone); }, TYPE_MS);
       } else {
-        at = (at + 1) % order.length;
-        timer = setTimeout(next, GAP_MS);
+        whenDone();
       }
     };
 
-    const next = function () {
-      if (!allowed()) { stop(); return; }
-      if (!order.length) { stop(); return; }
-      type(order[at], 0);
+    const cycle = function () {
+      if (!step()) return;
+      const question = order[at];
+      blink(false);
+      typeTo(question, function () {
+        if (!step()) return;
+        blink(true);
+        timer = setTimeout(function () {
+          if (!step()) return;
+          blink(false);
+          eraseTo("", function () {
+            at = (at + 1) % order.length;
+            timer = setTimeout(cycle, GAP_MS);
+          });
+        }, HOLD_MS);
+      });
     };
 
     const start = function () {
@@ -2334,7 +2405,13 @@
       if (!order.length) return;
       at = 0;
       running = true;
-      next();
+      // Begin from what is already on screen, and take it off.
+      text = RESTING;
+      caretOn = true;
+      blink(false);
+      eraseTo("", function () {
+        timer = setTimeout(cycle, GAP_MS);
+      });
     };
 
     pill.addEventListener("mouseenter", start);
@@ -2638,7 +2715,6 @@
     }, true);
   });
 
-  let firstBotMessageShown = false;
 
   // Kept so a thumbs rating can be filed against the question that produced it
   // and the checks that ran on it, rather than as a bare vote.
@@ -2676,9 +2752,6 @@
     // rating collected through it was discarded. The real one is built in the
     // streaming path, where the retrieval diagnostics the rating has to be
     // filed against actually exist.
-    if (sender === "bot" && !firstBotMessageShown) {
-      firstBotMessageShown = true;
-    }
 
     // Auto-scroll
     msgContainer.scrollTop = msgContainer.scrollHeight;

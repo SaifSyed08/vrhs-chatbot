@@ -16,6 +16,7 @@ from collections import OrderedDict, deque
 from urllib.parse import parse_qs, unquote, urlparse
 import config
 import feeds
+import livesearch
 import gdocs
 import hallucination
 import corpus
@@ -1027,8 +1028,15 @@ def get_relevant_context(query):
     # The standard-score margin has to be computed here, while similarities to
     # every chunk are still in hand - it cannot be recovered from the top 3.
     spread = float(sims.std())
+    # The best chunk that is not a bare link. A link chunk's entire text is
+    # the label and the URL, so it matches any question naming its topic and
+    # answers none of them; this is the number that says whether the corpus
+    # holds an answer rather than a pointer. Diagnostic only - the gate and
+    # the notices still run off "top", which is calibrated.
+    prose_sims = sims[[i for i in range(len(docs)) if not is_link[i]]]
     stats = {
         "top": float(sims.max()),
+        "top_prose": float(prose_sims.max()) if len(prose_sims) else 0.0,
         "mean": float(sims.mean()),
         "z": float((sims.max() - sims.mean()) / spread) if spread else None,
         "n": int(sims.size),
@@ -1255,7 +1263,7 @@ def retrieval_query(question, history):
     return previous + " " + question
 
 
-def context_block(context, stats):
+def context_block(context, stats, live=None, live_leads=True):
     """The retrieved text, with a word about how well it actually matched.
 
     Retrieval always fills its quotas. Ask "What is this?" cold and five
@@ -1277,6 +1285,45 @@ def context_block(context, stats):
     the principal" scores 0.785 - and warning about those would trade this
     problem for the over-refusal one, which is already the larger of the two.
     """
+    if live and not live_leads:
+        # The corpus had something and the district site had something too,
+        # and the order is the instruction. Someone asking a question at their
+        # own school should be answered from their own school's pages wherever
+        # those pages say anything: that is where the specific, current,
+        # campus-level version of an answer lives, and the district page is
+        # the general one. So the district passages go last and are labelled
+        # as what they are.
+        nl = chr(10)
+        extra = (nl + nl).join(
+            "From %s (%s):" % (chunk["label"], chunk["url"]) + nl
+            + chunk["text"] for chunk in live)
+        return ("Context:" + nl + context + nl + nl
+                + "The passages below are from the Leander ISD district site. "
+                  "They were found because the school's own pages matched "
+                  "this question only loosely. Prefer the context above "
+                  "wherever it answers the question; use these only for what "
+                  "it does not cover, and say when an answer comes from the "
+                  "district site rather than from Vista Ridge's own pages."
+                + nl + nl + extra)
+
+    if live:
+        # The corpus missed and the district site did not. Labelled as a
+        # separate source rather than merged into one block: a reader
+        # should be told when an answer did not come from their own
+        # school's pages, and the model can only say so if it knows.
+        found = ("\n\n").join(
+            "From %s (%s):" % (chunk["label"], chunk["url"])
+            + "\n" + chunk["text"]
+            for chunk in live)
+        return (
+            "Nothing on the school's own pages matched this question, "
+            "so the Leander ISD district site was searched and the "
+            "passages below were found. Answer from them if they cover "
+            "it, and say the answer comes from the district site rather "
+            "than from Vista Ridge's own pages. If they do not cover "
+            "it, say you could not find it."
+            "\n\n" + found)
+
     if stats.get("top", 1.0) >= hallucination.SIMILARITY_WEAK:
         return "Context:\n" + context
 
@@ -1326,6 +1373,62 @@ def ask():
     context, stats, sources = get_relevant_context(
         retrieval_query(question, history))
 
+    # Nothing in the corpus came close, so before refusing, look on the
+    # district's own sites. Only here: this is several seconds of somebody
+    # else's servers on the path of a question a reader is waiting for, and it
+    # is worth them exactly when the alternative is "I could not find that".
+    # See livesearch.py.
+    live = []
+    if stats.get("top_prose", 1.0) < config.LIVE_TRIGGER:
+        try:
+            live = livesearch.lookup(question, embed_texts)
+        except Exception as e:
+            log.warning("[live] fallback failed, refusing as before: %s", e)
+            live = []
+
+    # Whether the district passages are the answer or a supplement to it.
+    # The trigger is loose on purpose - it has to be, because no threshold
+    # separates a question the corpus can answer from one it cannot - so a
+    # lookup that fires while the corpus still holds something must not be
+    # able to take that something away. Replacing only when the corpus scored
+    # below its own gate is what makes a false trigger cost time and nothing
+    # else.
+    live_leads = bool(live) and (stats.get("top", 1.0)
+                                 < hallucination.SIMILARITY_WEAK)
+
+    if live:
+        # The verifier grounds claims against the context it is handed, so the
+        # passages have to be in it - otherwise every sentence drawn from them
+        # comes back unsupported and the answer is flagged for being correct.
+        # With the label and the URL, not bare text. find_ungrounded_links
+        # checks every link in the answer against the context, so a district
+        # URL the model quite correctly cited came back as "Link not found on
+        # the school site" - a fabrication warning on the one link that was
+        # definitely real.
+        gap = chr(10) + chr(10)
+        context = context + gap + gap.join(
+            "From %s (%s): %s" % (chunk["label"], chunk["url"], chunk["text"])
+            for chunk in live)
+
+        found = [{"url": chunk["url"], "label": chunk["label"],
+                  "score": chunk["score"],
+                  "snippet": best_sentence({"text": chunk["text"]}, question)}
+                 for chunk in live]
+        # Leading, so the district pages are the sources. Supplementing, so
+        # they go after the school's own and only if there is room.
+        sources = found if live_leads else sources + found
+
+        seen, unique = set(), []
+        for source in sources:
+            if source["url"] in seen:
+                continue
+            seen.add(source["url"])
+            unique.append(source)
+        sources = unique[:MAX_SOURCES]
+
+        log.info("[live] %d passage(s), %s", len(live),
+                 "leading" if live_leads else "supplementing the corpus")
+
     # If no KB yet, just send that and stop.
     if context.startswith("No knowledge base"):
         return jsonify({"answer": context})
@@ -1339,7 +1442,8 @@ def ask():
     messages = ([{"role": "system", "content": dated_prompt()}]
                 + history
                 + [{"role": "user",
-                    "content": (context_block(context, stats)
+                    "content": (context_block(context, stats, live,
+                                              live_leads)
                                 + f"\n\nQuestion: {question}")}])
 
     def generate():
@@ -1364,7 +1468,8 @@ def ask():
         # the last token. A failed check appends a warning rather than
         # retracting what the user has already read.
         verdict = hallucination.verify_answer(client, "".join(answer), context,
-                                              stats, question)
+                                              stats, question,
+                                              from_live=bool(live))
         # The notice can say "check the sources below" only if there will be
         # sources below. They are withheld when the gate says the corpus does
         # not cover the question.

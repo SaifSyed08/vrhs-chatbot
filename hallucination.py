@@ -87,6 +87,9 @@ class Verdict:
         # retrieval-level caution, which exists to flag misplaced confidence
         # and has nothing to say about an answer that claimed nothing.
         self.declined = False
+        # Set when the answer's context came from livesearch rather than from
+        # the index, which changes which caution is the honest one.
+        self.from_live = False
         # Whether the reader will be shown any sources at all. The
         # unsupported-claim notice tells them to check the sources below, and
         # there is nothing below when retrieval came up empty.
@@ -136,7 +139,17 @@ class Verdict:
         # worry twice, and the second is implied by the first - if retrieval
         # found nothing close, of course the details may not line up. One line
         # gets read; two get skipped.
-        if not self.declined and self.retrieval_level == "none":
+        # An answer built from the district site is not a weak answer, and
+        # the retrieval warning measures the wrong corpus: the school's own
+        # pages matched poorly, which is why the fallback ran at all. Saying
+        # "no close match, so this may not be right" over text that was gated
+        # harder than the corpus is a caution that misleads. What a reader
+        # needs to know here is where it came from - which is also the one
+        # thing they cannot tell from an answer that reads like any other.
+        if self.from_live:
+            points.append("Drawn from the Leander ISD district site linked "
+                          "below, not from Vista Ridge's own pages.")
+        elif not self.declined and self.retrieval_level == "none":
             points.append("Your query had no close match on the school's "
                           "pages, so this may not be right.")
         elif not self.declined and self.retrieval_level == "weak":
@@ -575,9 +588,11 @@ def answer_declined(client, question, answer):
     return parsed.get("verdict") == "declined"
 
 
-def verify_answer(client, answer, context, stats, question=None):
+def verify_answer(client, answer, context, stats, question=None,
+                  from_live=False):
     """Run every check over one answer and return a Verdict."""
     verdict = Verdict()
+    verdict.from_live = bool(from_live)
     verdict.retrieval_top, verdict.retrieval_level = score_retrieval(stats)
     verdict.retrieval_z = (stats or {}).get("z")  # diagnostic only
     verdict.bad_links = find_ungrounded_links(answer, context)

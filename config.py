@@ -135,6 +135,37 @@ GITHUB_REPO = os.getenv("VRHS_GITHUB_REPO", "SaifSyed08/vrhs-chatbot")
 GITHUB_ISSUES_PER_HOUR = _int("VRHS_GITHUB_ISSUES_PER_HOUR", 12)
 
 
+# === Live fallback ===
+
+# When the retrieval gate says nothing in the corpus came close, look the
+# question up on the district's own sites before refusing. See livesearch.py
+# for why this is a reranked site search rather than the model's web-search
+# tool: the tool is $25 per thousand calls and this is about three thousandths
+# of a cent, and the whole design is that an embedding decides relevance
+# because WordPress search does not have any.
+#
+# Set VRHS_LIVE_SEARCH=0 to turn it off. It only ever runs on questions that
+# would otherwise be refused, so switching it off costs answers, not accuracy.
+LIVE_SEARCH = os.getenv("VRHS_LIVE_SEARCH", "1") not in ("0", "false", "False")
+
+# When to bother looking, measured against the best chunk that is not a bare
+# link. Link chunks are excluded because their whole text is "Topic at VRHS:
+# [Topic](url)" - they score 0.82 on any question that mentions the topic and
+# contain no answer to it, so gating on them asks "do we have a pointer" when
+# the question is "do we have an answer". Every district question tried scored
+# above the retrieval gate on a link chunk alone, which would have left this
+# whole path dead.
+#
+# 0.80 from measurement, not taste. Over twelve questions the corpus answers
+# and five it does not, the two non-link distributions overlap between 0.774
+# and 0.832 and no threshold separates them cleanly. 0.80 catches four of the
+# five misses and fires on two of the twelve it did not need to - and a
+# needless fire costs latency only, never the answer, because a lookup that
+# runs while the corpus still has something appends to it rather than
+# replacing it.
+LIVE_TRIGGER = _float("VRHS_LIVE_TRIGGER", 0.80)
+
+
 # === Serving ===
 
 # Render supplies PORT and expects the process to bind to it. This was

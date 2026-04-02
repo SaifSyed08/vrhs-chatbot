@@ -503,6 +503,68 @@ That is the next thing to fix, and it is worth saying that it was invisible
 until this harness existed. Every metric in this repo before it measured
 whether the bot says false things. None measured whether it says anything.
 
+## When the corpus has nothing: the district fallback
+
+Over-refusal is the largest measured quality defect, and most of it is one
+shape - the answer exists, on `leanderisd.org` rather than on
+`vrhs.leanderisd.org`. The crawl is same-domain by necessity, so district-level
+answers are permanently out of reach of an index built from the school site.
+
+`livesearch.py` searches the two district WordPress sites when the corpus comes
+up short, reranks the results with the embedding model, and gates the passages
+before any of them reach the prompt.
+
+**Not the model's web-search tool.** That is $25 per thousand calls on a
+non-reasoning model - 2.5 cents each time, roughly ten times the cost of the
+answer it would be attached to. This is one embedding call over a page of
+titles, about three thousandths of a cent.
+
+**The rerank is the design.** WordPress `?s=` is keyword matching with no
+notion of relevance: it answers "homecoming" with a story about an elementary
+principal and "graduation" with board briefs from two years ago. Handing those
+to the model would launder noise into an answer that looks sourced. Titles are
+embedded and ranked against the question, only the best two pages are fetched,
+and their text is gated at 0.85 - above the corpus gate, because these pages
+are raw and still carry the district's navigation, which drags unrelated text
+upward.
+
+### What it actually costs, measured over sixteen questions
+
+| | |
+| --- | --- |
+| Fires on | 4 of 16 (25%) |
+| Produced a usable answer | 1 of those 4 |
+| Median latency, all questions | 3.4 s |
+| p90 / max | 6.9 s / 7.4 s |
+| Before the budget was tightened | 9.6 s / 10.0 s |
+
+The one payoff was a question about the new state law on phones in class,
+which the corpus cannot answer and which now answers correctly from a district
+news article, labelled as such.
+
+### Why the trigger is loose, and why that is safe
+
+The trigger is the best chunk that is **not a bare link**. Link chunks read
+`Topic at VRHS: [Topic](url)`, so they score above 0.82 on any question naming
+their topic and answer none of them; gating on them asks "do we have a
+pointer" when the question is "do we have an answer". Every district question
+tried scored above the retrieval gate on a link chunk alone, which would have
+left this path dead code.
+
+There is no threshold that separates cleanly. Over twelve questions the corpus
+answers and five it does not, the two non-link distributions overlap between
+0.774 and 0.832. 0.80 catches four of the five misses and fires on two of the
+twelve it need not have.
+
+That is tolerable only because a needless fire cannot cost an answer. District
+passages **replace** the context solely when the corpus scored below its own
+gate; otherwise they are appended after it, labelled, with the model told to
+prefer the school's own pages. A false trigger costs seconds, never accuracy.
+
+Set `VRHS_LIVE_SEARCH=0` to switch it off, or `VRHS_LIVE_TRIGGER` to move the
+line. It only ever runs on questions that would otherwise be refused or
+answered from a bare link.
+
 ## Feedback loop
 
 Every answer carries a thumbs rating, and a thumbs-down opens three reasons:
