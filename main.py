@@ -1106,6 +1106,22 @@ def health():
         "chunks": len(docs) if docs else 0,
         "sources": len({d["source"] for d in docs}) if docs else 0,
         "working_directory": os.getcwd(),
+        # Where a thumbs-down goes, and whether the reader's own words are
+        # allowed to travel with it. This block exists because the answer to
+        # "why is my feedback not arriving" was a setting nothing reported:
+        # the token was set and issues were being filed correctly, into the
+        # repository the default points at, which is not the one the token had
+        # been granted access to. A destination that cannot be read back is a
+        # destination nobody can debug.
+        "feedback": {
+            "token_present": bool(config.GITHUB_TOKEN),
+            "repo": config.GITHUB_REPO,
+            "repo_private": (repo_is_private() if config.GITHUB_TOKEN
+                             else None),
+            "reader_text_sent": (bool(config.GITHUB_TOKEN)
+                                 and repo_is_private()),
+            "issues_per_hour": config.GITHUB_ISSUES_PER_HOUR,
+        },
         "data_writable": os.access("data", os.W_OK) if os.path.isdir("data")
                          else None,
         # Hit rate is the thing to watch: it is what says whether skipping the
@@ -1733,6 +1749,17 @@ def file_issue(entry):
         "_Filed automatically by the chatbot's /feedback endpoint._",
     ]
 
+    # Filed on this request rather than on a background thread, and the
+    # reason is a rating that vanished. Render's free tier suspends an
+    # instance as soon as it has finished responding; a daemon thread started
+    # just before the response can be killed before it has made its call, and
+    # nothing anywhere reports that. A rating sent to a service that had spun
+    # down - which is most of them, on a bot asked a question every few
+    # minutes - was simply lost.
+    #
+    # The cost of doing it inline is a few hundred milliseconds on /feedback,
+    # which nobody is waiting on: the interface has already drawn the tick.
+    # That is the entire budget this was protecting.
     def send():
         try:
             import requests
@@ -1757,7 +1784,7 @@ def file_issue(entry):
         except Exception as e:
             log.warning("[feedback] could not file issue: %s", e)
 
-    threading.Thread(target=send, name="file-issue", daemon=True).start()
+    send()
 
 
 @app.route("/feedback", methods=["POST"])

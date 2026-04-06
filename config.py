@@ -80,9 +80,23 @@ GRADER_MODEL = os.getenv("VRHS_GRADER_MODEL", "gpt-4o-mini")
 
 EMBEDDINGS_PATH = os.getenv("VRHS_EMBEDDINGS", "data/vrhs_embeddings.json")
 
-# Three prose chunks carry the explanation, two link chunks carry somewhere to
+# Five prose chunks carry the explanation, two link chunks carry somewhere to
 # go. See get_relevant_context for why these are separate quotas.
-PROSE_SLOTS = _int("VRHS_PROSE_SLOTS", 3)
+#
+# Three until eval/question_set.py was written, and the number was right for
+# the corpus it was chosen on: 279 chunks, nearly all of them page prose. The
+# corpus is 797 now and most of it is rows - one per club, one per sport, one
+# per spreadsheet entry - so three slots is three rows, and any question whose
+# answer is a list could not be answered from them however well it retrieved.
+# "What athletics does the school offer?" retrieved the sports correctly and
+# then said it did not have a list, because it had three of them.
+#
+# Measured on the forty questions the interface suggests: five fixes that
+# question outright and lengthens the answers to "what do seniors need to do"
+# and "what clubs are offered". Seven adds nothing either could use, so the
+# extra tokens buy nothing. The cost of five over three is about 400 input
+# tokens a question, which is a tenth of a cent per hundred questions.
+PROSE_SLOTS = _int("VRHS_PROSE_SLOTS", 5)
 LINK_SLOTS = _int("VRHS_LINK_SLOTS", 2)
 
 # Calibrated in eval/retrieval_eval.py. See hallucination.py for the full

@@ -503,6 +503,73 @@ That is the next thing to fix, and it is worth saying that it was invisible
 until this harness existed. Every metric in this repo before it measured
 whether the bot says false things. None measured whether it says anything.
 
+## Testing the questions the interface promises
+
+The landing composer suggests forty questions and cycles them through the
+placeholder. Every one is a promise: the interface put it in front of a
+reader, so the bot had better answer it. Nothing checked that until
+`eval/question_set.py`, and the list had been written by reading what ingest
+found - a reasonable way to guess, not a way to know.
+
+**No answer key**, deliberately. Writing down the right answers would fail for
+the reason the project exists: they change. A bell time moves, a club changes
+room, graduation rolls over, and a fixture that was right in March starts
+failing the bot for being correct. So it grades against evidence gathered
+fresh each run - the answer against the context actually retrieved, and, when
+the bot fails, a second pass that reads the linked documents and searches the
+district site to say whether the answer was reachable at all. That is the
+difference between "the site does not say" and "the bot could not find what
+the site says", and only the second is a bug here.
+
+Questions are parsed out of `templates/index.html`, so the eval cannot drift
+from what the interface offers.
+
+| | before | after |
+| --- | --- | --- |
+| Answered | 85% | **95%** |
+| Deflected to a link | 10% | 5% |
+| Refused | 5% | 0% |
+| A claim not in the retrieved context | 5% | **0%** |
+
+### What the first run found
+
+**Three prose slots was too few.** The number was right for the corpus it was
+chosen on - 279 chunks, nearly all page prose. The corpus is 797 now and most
+of it is rows: one per club, one per sport, one per spreadsheet entry. Three
+slots is three rows, so any question whose answer is a list could not be
+answered however well it retrieved. "What athletics does the school offer?"
+retrieved the sports correctly and then said it had no list, because it had
+three of them. Five fixes it; seven adds nothing.
+
+**Five of the forty were promises the site cannot keep.** The A/B day, the
+Saturday SAT date, ACC signup, morning drop-off and Ranger Camp are absent
+from every page, document and feed the crawl reaches. "What is Ranger Camp?"
+was the worst of them - answered with a confident generic description the
+corpus does not contain, which is the exact failure the grounding layer exists
+to prevent. All five are replaced with questions run through the same path
+first. Nothing dated goes in the list: "When is picture day?" answers
+correctly today and becomes a broken promise on the twelfth.
+
+**The eval was measuring its own noise.** Neither the generator nor the judges
+were pinned, and two questions looked like regressions on the slot change
+until temperature was set to zero and both turned out to produce identical
+answers at three slots and at five. The judge also had a rubric bug: it marked
+"where is the staff directory" as a deflection for answering with a link, when
+a link is precisely what was asked for. Production still answers at the
+default temperature - varied phrasing is worth having there - but the eval
+does not.
+
+### What is left
+
+Two questions still deflect, and both are the same shape: the right chunk is
+in the corpus but ranks below the cut. "Who do I contact about my schedule?"
+wants a counsellor list keyed by surname, which sits at rank 11 with a cosine
+of 0.777 against a top of 0.802. No amount of quota fixes that - "who do I
+contact about my schedule" simply does not embed near "Students with last
+names A-Co". It needs either a stronger embedding model, which means
+re-embedding and recalibrating the gate, or hybrid keyword-and-vector
+retrieval.
+
 ## When the corpus has nothing: the district fallback
 
 Over-refusal is the largest measured quality defect, and most of it is one

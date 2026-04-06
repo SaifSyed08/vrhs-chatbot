@@ -2072,13 +2072,26 @@
   // suggestion is a promise the bot can keep. Offering "when is prom" would be
   // worse than offering nothing.
   //
+  // Checked rather than assumed, by eval/question_set.py, which reads this
+  // list and runs every question through the real answer path. Five of the
+  // original forty turned out to be promises the site cannot keep - the A/B
+  // day, the Saturday SAT date, ACC signup, morning drop-off and Ranger Camp
+  // are all absent from every page, document and feed the crawl reaches, and
+  // "What is Ranger Camp?" was being answered with a confident description
+  // the corpus does not contain. They are replaced with five that were run
+  // through the same path first.
+  //
+  // Nothing dated goes in here. "When is picture day?" answers correctly
+  // today and becomes a broken promise on the twelfth, which is the same bug
+  // arriving slowly.
+  //
   // Landing screen only. Once a conversation exists the reader has context,
   // and the suggestion strip already offers openings.
   (function () {
     const QUESTIONS = [
       "What time does school start?",
       "What are the bell schedules for this year?",
-      "Is tomorrow an A day or B day?",
+      "What is the late start bell schedule?",
       "Where do I find the school calendar?",
       "How many hours do I owe and where do I check?",
       "How do I make up attendance hours?",
@@ -2100,17 +2113,17 @@
       "How do I request a transcript?",
       "When are the STAAR testing dates?",
       "How do I register for AP tests?",
-      "When is the Saturday SAT test?",
+      "How do I contact the attendance office?",
       "What resources are there for parents?",
       "Where are the daily announcements?",
       "What do seniors need to do before graduation?",
-      "How do I sign up for ACC classes?",
+      "How do I order a cap and gown?",
       "Where is the attendance website?",
       "What athletics does the school offer?",
       "Where do I find athletic physical forms?",
       "How do I contact the counseling office?",
-      "What is Ranger Camp?",
-      "Where do I drop off my student in the morning?",
+      "What is Ranger Time?",
+      "What time does the school day end?",
       "How do I report bullying?",
       "What is on the school calendar this month?",
       "Who do I contact about my schedule?",
