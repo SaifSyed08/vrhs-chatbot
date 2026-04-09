@@ -460,14 +460,63 @@ def keep_real_claims(client, claims):
 
 
 # Words too common to carry evidence either way.
+# Words that cannot distinguish a true claim from an invented one, and so
+# should not count when asking whether the source already contains a claim's
+# material.
+#
+# The second block was added after measurement. A model rewriting a source in
+# its own voice reaches for framing words constantly and a source almost never
+# contains them: the clubs spreadsheet says "Meeting Day(s): Wednesday",
+# and the answer says "the club meets on Wednesdays in room C417 - reach out
+# to the sponsor". Every discriminating token there is in the source - the
+# club, the day, the number - and the claim was flagged as a fabrication on
+# "meets", "room" and "reach".
+#
+# Nothing here can carry a fact on its own. Anything that can - a name, a
+# number, a place, a subject - is absent from this list on purpose, and every
+# token containing a digit is required to match exactly regardless.
 STOPWORDS = frozenset("""a an and are as at be by can do does for from has have
 how i if in is it its me my no not of on or our so that the their them there
 these they this to was we were what when where which who will with you your
-also please more some any all be been being at into over under""".split())
+also please more some any all be been being at into over under
+meets meet meeting held holds hold reach contact contacting email emailing
+provides provide provided offers offer offered located room rooms available
+information details further additional regarding via using use follow listed
+list find get need make take here general typically usually often should
+must could would sponsor sponsors student students school year time day
+""".split())
 
 # How much of a claim's substance has to be findable in the source before the
 # flag is treated as a mistake by the grader.
-SUPPORT_THRESHOLD = 0.9
+# 0.85, from 0.9, and only because every digit now has to match exactly - the
+# check above is what pays for the looser ratio here. At 0.9 with no stemming
+# three claims that were plainly drawn from the context were flagged as
+# fabrications, each on one ordinary verb the model had chosen while
+# paraphrasing: "Graduation is SCHEDULED for Saturday, May 29th" against a
+# source reading "graduation date Saturday, May 29th", "FILLING out the FAFSA"
+# against "Fill out the FAFSA", "order it THROUGH Herff Jones" against "order
+# from Herff Jones". 0.89, 0.80, 0.89 - all of them the same non-error.
+SUPPORT_THRESHOLD = 0.85
+
+
+def stem(word):
+    """A crude suffix strip, so paraphrase does not read as fabrication.
+
+    Not linguistics - a handful of English inflections, applied to both sides
+    so they cancel. The point is that "scheduled" and "schedule", "filling"
+    and "fill", are the same word for the purpose of asking whether the source
+    already contains the material. A model rewriting a source sentence in its
+    own voice changes tense and number constantly, and counting each of those
+    as a missing word is how a verbatim claim ends up one token short of
+    supported.
+
+    Deliberately not a word list. A list of verbs to ignore would need
+    extending every time a model picked a new one; morphology is a rule.
+    """
+    for suffix in ("ing", "ed", "es", "s"):
+        if len(word) > len(suffix) + 2 and word.endswith(suffix):
+            return word[:-len(suffix)]
+    return word
 
 
 def lexically_supported(claim, context):
@@ -493,12 +542,21 @@ def lexically_supported(claim, context):
     check out after 2:45" against a source saying they may - still reaches the
     reader as a flag, because that is a real failure this cannot detect.
     """
-    words = {w for w in re.findall(r"[a-z0-9]+", claim.lower())
+    words = {stem(w) for w in re.findall(r"[a-z0-9]+", claim.lower())
              if w not in STOPWORDS and len(w) > 2}
     if len(words) < 3:
         return False
 
-    haystack = set(re.findall(r"[a-z0-9]+", context.lower()))
+    haystack = {stem(w) for w in re.findall(r"[a-z0-9]+", context.lower())}
+
+    # Anything with a digit in it has to be there exactly. Dates, times, room
+    # numbers and phone numbers are what an invented detail is made of and
+    # what sends somebody to the wrong place at the wrong time, so the
+    # relaxation below is not allowed to reach them.
+    for word in words:
+        if any(ch.isdigit() for ch in word) and word not in haystack:
+            return False
+
     found = sum(1 for w in words if w in haystack)
     return found / len(words) >= SUPPORT_THRESHOLD
 
