@@ -1,0 +1,30 @@
+#!/bin/sh
+# Reject any commit that credits an AI.
+#
+# GitHub builds its contributor list from commit trailers as well as from the
+# author field, so a single "Co-Authored-By: Claude" anywhere in the history
+# puts a second face in the sidebar - and it survives, because that list is
+# served from a cache that does not notice a rewrite for a long time. Cleaning
+# it up afterwards means rewriting history, force-pushing, and then waiting on
+# a cache nobody can purge on demand.
+#
+# Cheaper to never let one through.
+#
+# Enabled with:  git config core.hooksPath .githooks
+# Checked into the repository rather than left in .git/hooks so it survives a
+# fresh clone.
+
+msg_file="$1"
+
+if grep -Eiq '^[[:space:]]*(co-authored-by|signed-off-by).*(claude|anthropic|copilot|chatgpt|openai|gemini|cursor)' "$msg_file"; then
+  echo "commit-msg: refusing an AI co-author trailer." >&2
+  echo "  Commits in this repository are authored by SaifSyed08 alone." >&2
+  exit 1
+fi
+
+if grep -Eiq '(generated with|created with|co-created with|written by)[[:space:]]*\[?(claude|anthropic|copilot|chatgpt|openai|gemini|cursor)' "$msg_file"; then
+  echo "commit-msg: refusing an AI attribution line in the message body." >&2
+  exit 1
+fi
+
+exit 0
