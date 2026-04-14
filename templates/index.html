@@ -688,7 +688,14 @@
     }
 
     .input-pill:focus-within input { font-size: 0.98rem; }
-    .chat-input input::placeholder { color: #a8adb3; }
+    .chat-input input::placeholder {
+      color: #a8adb3;
+      /* So the cycled question can be faded out and the resting prompt faded
+         back in. Placeholder text cannot be transitioned, but its colour can,
+         and that is the whole trick. */
+      transition: color 0.15s ease;
+    }
+    .chat-input input.ph-fade::placeholder { color: transparent; }
 
     .chat-input button {
       display: flex;
@@ -1291,6 +1298,21 @@
 
     .pill-tip.show { opacity: 1; transform: translateY(0); }
 
+    /* Sits on the last line of the text rather than on its own row, so a
+       one-line panel stays one line. */
+    .tip-arrow {
+      display: inline-block;
+      width: 0.78em;
+      height: 0.78em;
+      margin-left: 5px;
+      vertical-align: -1px;
+      fill: none;
+      stroke: #9aa0a6;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     .source-pills {
       display: flex;
       flex-wrap: wrap;
@@ -1502,8 +1524,17 @@
         <input type="text" id="query" placeholder="Ask about VRHS..."
                autocomplete="off" aria-label="Ask a question" />
         <button onclick="sendMessage()" id="submitButton" aria-label="Send">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="white"/>
+          <!-- An arrow up rather than a paper plane. The plane is a
+               filled glyph pointing sideways on a round button, which reads
+               as play more than as send, and it sat visually off-centre
+               because its mass is all on the left. An up arrow is what a
+               composer means by send now, it is symmetrical in a circle, and
+               it is the same stroke weight as the arrow in the hover panel -
+               one going up to send, one going out to leave. -->
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+               stroke="white" stroke-width="2.4" stroke-linecap="round"
+               stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 19V5M12 5L5.5 11.5M12 5l6.5 6.5"/>
           </svg>
         </button>
       </div>
@@ -1533,12 +1564,32 @@
       // inside an answer. Appended to the body rather than to the element it
       // describes: as a child it inherits the message list's clipping, and
       // fixed positioning only escapes that from the top of the document.
-      function attachTip(el, text) {
+      function attachTip(el, text, external) {
         const tip = document.createElement("span");
         tip.className = "pill-tip";
         // textContent, not innerHTML. This is text scraped off the web and
-        // must never be parsed as markup.
+        // must never be parsed as markup - which is also why the arrow below
+        // is appended as its own element rather than concatenated into the
+        // string.
         tip.textContent = text;
+
+        if (external) {
+          // The panel already says "Opens the district site", and a reader
+          // skimming it takes the words in after the shape. An arrow leaving
+          // the box is the shape every other interface uses for "this leaves
+          // the page", and it is legible before the sentence is.
+          const arrow = document.createElementNS(
+            "http://www.w3.org/2000/svg", "svg");
+          arrow.setAttribute("class", "tip-arrow");
+          arrow.setAttribute("viewBox", "0 0 24 24");
+          arrow.setAttribute("aria-hidden", "true");
+          const path = document.createElementNS(
+            "http://www.w3.org/2000/svg", "path");
+          path.setAttribute("d", "M7 17L17 7M17 7H9M17 7V15");
+          arrow.appendChild(path);
+          tip.appendChild(arrow);
+        }
+
         document.body.appendChild(tip);
 
         const place = (e) => {
@@ -1656,6 +1707,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               question: context.question,
+              answer: context.answer || null,
               rating: rating,
               reason: reason,
               comment: comment || null,
@@ -1945,7 +1997,7 @@
         // been parsed.
         bubble.querySelectorAll("a[href]").forEach(a => {
           const where = describeLink(a.getAttribute("href"));
-          if (where) attachTip(a, where);
+          if (where) attachTip(a, where, true);
         });
 
         // 4) source pills and the verification notice
@@ -1959,6 +2011,14 @@
         }
         lastAnswerMeta = {
           question: message,
+          // The answer itself, so a thumbs-down can be read rather than
+          // guessed at. "This was wrong" is not actionable without the thing
+          // that was wrong: the same question retrieves differently as the
+          // corpus is rebuilt, so reproducing a complaint from the question
+          // alone often produces a different answer than the one somebody
+          // objected to. innerText, so the markup and the source pills stay
+          // out of it.
+          answer: bubble.innerText,
           notice: meta.notice || [],
           retrieval: meta.retrieval || {}
         };
@@ -1996,7 +2056,10 @@
             pill.rel = "noopener";
             pill.innerText = src.label;
 
-            if (src.snippet) attachTip(pill, src.snippet);
+            // The snippet is a quotation from the page, not a description
+            // of where the pill goes - but the pill is still a link out, so
+            // it carries the arrow too.
+            if (src.snippet) attachTip(pill, src.snippet, true);
 
             row.appendChild(pill);
           });
@@ -2159,10 +2222,28 @@
 
     const resize = function () {
       if (!panel) return;
+
       // Measured from the content and written back as an explicit height, so
       // the transition has two numbers to move between. "auto" is not
       // animatable.
-      panel.style.height = panel.scrollHeight + "px";
+      //
+      // The height has to come off before the content can be measured, and
+      // that is the whole of the bug this fixes. scrollHeight is defined as
+      // the larger of the content and the element's own box, so a panel
+      // standing at three rows and asked to measure two rows of content
+      // returned the three-row height it already had. It could grow and it
+      // could not shrink - which is exactly "it only gets a little shorter",
+      // the little being whatever the last row's overflow happened to add.
+      const from = panel.style.height;
+      panel.style.height = "auto";
+      const to = panel.scrollHeight;
+
+      // Put the old height back and force the browser to lay out at it, or
+      // the two writes collapse into one frame, the transition has nothing to
+      // start from, and the panel jumps.
+      panel.style.height = from;
+      void panel.offsetHeight;
+      panel.style.height = to + "px";
     };
 
     const render = function (matches, typed) {
@@ -2339,13 +2420,37 @@
       }
     };
 
+    // Faded, not swapped. Moving the pointer from the composer to the
+    // composer - hovering it, then clicking into it - used to replace a
+    // half-typed question with "Ask about VRHS..." between one frame and the
+    // next, which reads as a glitch rather than as the animation ending. The
+    // text still cannot be transitioned; its colour can, so it goes out,
+    // changes while invisible, and comes back.
+    let fading = null;
+
     const stop = function () {
       running = false;
       clearTimeout(timer);
       clearInterval(blinker);
       timer = null;
       blinker = null;
-      box.setAttribute("placeholder", RESTING);
+
+      const current = box.getAttribute("placeholder");
+      if (current === RESTING) return;
+
+      clearTimeout(fading);
+      box.classList.add("ph-fade");
+      fading = setTimeout(function () {
+        box.setAttribute("placeholder", RESTING);
+        box.classList.remove("ph-fade");
+      }, 150);
+    };
+
+    // A new cycle must not arrive mid-fade wearing the faded class.
+    const unfade = function () {
+      clearTimeout(fading);
+      fading = null;
+      box.classList.remove("ph-fade");
     };
 
     const shuffled = function () {
@@ -2416,6 +2521,7 @@
       if (box.value || document.activeElement === box) return;
       order = shuffled();
       if (!order.length) return;
+      unfade();
       at = 0;
       running = true;
       // Begin from what is already on screen, and take it off.

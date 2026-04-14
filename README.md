@@ -503,6 +503,33 @@ That is the next thing to fix, and it is worth saying that it was invisible
 until this harness existed. Every metric in this repo before it measured
 whether the bot says false things. None measured whether it says anything.
 
+## Looking at the page
+
+Every interface bug in this repository was found by somebody opening it and
+saying so. Not one was visible in the source, because none of them were in the
+rule I had written - they were in the cascade around it, or in a DOM API
+behaving as specified rather than as assumed:
+
+| Symptom | Cause |
+| --- | --- |
+| Hover outline drawn tall and narrow | An `<svg>` is a replaced element, so `inset` cannot size it; width and height fell back to the intrinsic 300x150 |
+| Outline an oval, not a pill | `rx` and `ry` clamp independently, to half the width and half the height |
+| Suggestions rendered as grey circles | `body.compact .chat-input button` is more specific than `.chat-input .suggest-item` |
+| Panel barely shrank when matches fell | `scrollHeight` is the larger of content and the element's own box, so a three-row panel measuring two rows of content returned three rows |
+
+`eval/ui_smoke.js` renders the page in Chrome and asserts fourteen of these.
+It stubs `/ask`, so it needs no key and no credit, and it takes about fifteen
+seconds:
+
+    npm install puppeteer-core
+    python -c "import main; main.app.run(port=8082)" &
+    node eval/ui_smoke.js
+
+It measures rather than eyeballs: the panel's height against the sum of its
+rows, the outline's box against the composer's plus its offset, `rx` against
+half the height, the placeholder's computed colour mid-fade. Where a number is
+wrong it prints both.
+
 ## Testing the questions the interface promises
 
 The landing composer suggests forty questions and cycles them through the

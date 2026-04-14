@@ -1749,6 +1749,10 @@ def file_issue(entry):
     private = repo_is_private()
     question = quoted_safely(entry.get("question"), 500)
     comment = quoted_safely(entry.get("comment"), 1000)
+    # Fenced like the rest. It is the bot's own text rather than the reader's,
+    # but it is written in response to them and routinely quotes them back, so
+    # it travels under the same rule.
+    answer = quoted_safely(entry.get("answer"), 3000)
 
     if private:
         title = "Feedback: " + (entry.get("question") or "")[:80].replace(
@@ -1756,6 +1760,9 @@ def file_issue(entry):
         written = [
             "**Question**",
             question or "_(not recorded)_",
+            "",
+            "**What the bot answered**",
+            answer or "_(not recorded)_",
             "",
             "**Comment**",
             comment or "_(none)_",
@@ -1767,10 +1774,9 @@ def file_issue(entry):
         title = "Feedback: %s (%s)" % (
             reason or "no reason given", entry.get("retrieval_level"))
         written = [
-            "**Reader text withheld.** `%s` is public, and the question and "
-            "comment are the two fields a reader writes - they can name a "
-            "student, a teacher or an email address, and an issue here is "
-            "world-readable and indexed."
+            "**Reader text withheld.** `%s` is public. The question, the "
+            "answer and the comment can all name a student, a teacher or an "
+            "email address, and an issue here is world-readable and indexed."
             % config.GITHUB_REPO,
             "",
             "Point `VRHS_GITHUB_REPO` at a private repository to receive "
@@ -1847,6 +1853,10 @@ def submit_feedback():
         # which of three buckets an answer failed in; a sentence says what
         # actually went wrong, and that is the part worth reading.
         "comment": (data.get("comment") or "")[:1000] or None,
+        # What the bot actually said. Capped well above a normal answer so a
+        # long one is not cut mid-sentence, and well below anything that
+        # could be used to push a payload through the endpoint.
+        "answer": (data.get("answer") or "")[:4000] or None,
         "retrieval_top": data.get("retrieval_top"),
         "retrieval_level": data.get("retrieval_level"),
         "flagged": bool(data.get("flagged")),
