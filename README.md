@@ -517,13 +517,16 @@ behaving as specified rather than as assumed:
 | Suggestions rendered as grey circles | `body.compact .chat-input button` is more specific than `.chat-input .suggest-item` |
 | Panel barely shrank when matches fell | `scrollHeight` is the larger of content and the element's own box, so a three-row panel measuring two rows of content returned three rows |
 
-`eval/ui_smoke.js` renders the page in Chrome and asserts fourteen of these.
+`eval/ui_smoke.js` renders the page in Chrome and asserts sixteen of
+these; `eval/ui_mobile.js` drives both skins at 390x844 with touch and
+asserts thirty-one more - the ones that only go wrong on a phone.
 It stubs `/ask`, so it needs no key and no credit, and it takes about fifteen
 seconds:
 
     npm install puppeteer-core
     python -c "import main; main.app.run(port=8082)" &
     node eval/ui_smoke.js
+    BASE=http://127.0.0.1:8082 node eval/ui_mobile.js
 
 It measures rather than eyeballs: the panel's height against the sum of its
 rows, the outline's box against the composer's plus its offset, `rx` against

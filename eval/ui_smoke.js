@@ -141,35 +141,46 @@ function check(name, pass, detail) {
         Math.abs(snake.rx - (snake.pillH + 4) / 2) <= 1,
         `rx=${snake.rx} ry=${snake.ry}`);
 
-  // === the placeholder crossfades rather than snapping ===================
+  // === the placeholder =====================================================
+  // On a fresh page, because the checks above type into the box - and typing
+  // is the reader taking the field, after which nothing animates it again.
+  // That is the behaviour, so the test has to respect it rather than measure
+  // through it.
   console.log("\nplaceholder");
-  await page.evaluate(() => {
-    const b = document.getElementById("query");
-    b.value = "";
-    b.blur();
-    b.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await page.hover(".input-pill");
-  await sleep(1500);
-  const cycling = await page.evaluate(() =>
+  const RESTING = "Try asking here…";
+  await page.goto(URL, { waitUntil: "networkidle2" });
+  await sleep(500);
+  const atRest = await page.evaluate(() =>
     document.getElementById("query").getAttribute("placeholder"));
+  check("starts in English", atRest === RESTING, JSON.stringify(atRest));
+
+  // Idle and in view for long enough, and it rotates through four languages.
+  await sleep(5200);
+  const other = await page.evaluate(() =>
+    document.getElementById("query").getAttribute("placeholder"));
+  check("cycles languages when left alone", other !== RESTING,
+        JSON.stringify(other));
+
   await page.click("#query");
   await sleep(45);
   const mid = await page.evaluate(() => {
     const q = document.getElementById("query");
-    return {
-      faded: q.classList.contains("ph-fade"),
-      colour: getComputedStyle(q, "::placeholder").color,
-    };
+    return { faded: q.classList.contains("ph-fade"),
+             colour: getComputedStyle(q, "::placeholder").color };
   });
-  await sleep(320);
+  check("it fades rather than snapping", mid.faded, mid.colour);
+
+  await sleep(420);
   const settled = await page.evaluate(() =>
     document.getElementById("query").getAttribute("placeholder"));
-  check("a question types itself in on hover",
-        cycling && cycling !== "Ask about VRHS...", JSON.stringify(cycling));
-  check("it fades rather than snapping", mid.faded, mid.colour);
-  check("it settles back to the resting prompt",
-        settled === "Ask about VRHS...", JSON.stringify(settled));
+  check("settles back to English on focus", settled === RESTING,
+        JSON.stringify(settled));
+
+  await sleep(5200);
+  const stopped = await page.evaluate(() =>
+    document.getElementById("query").getAttribute("placeholder"));
+  check("and stays stopped once touched", stopped === RESTING,
+        JSON.stringify(stopped));
 
   // === the send button ===================================================
   console.log("\ncomposer");

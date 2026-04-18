@@ -6,7 +6,12 @@
   <title>VRHS Chatbot</title>
   <!-- Inline so there is no extra request and no 404 in the console. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'%3EVR%3C/text%3E%3C/svg%3E" />
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Two families, one request. Roboto Condensed is only used by the
+       composer: a narrow face fits more of a question on a phone before it
+       scrolls, and the placeholder cycles through Hindi and Chinese, where
+       the extra room matters. Latin only - the CJK and Devanagari glyphs fall
+       through to the system face per glyph, which is correct and free. -->
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Roboto+Condensed:wght@400;500&display=swap" rel="stylesheet">
   <style>
     /* The app is a fixed frame: only the message list scrolls, never the page
        behind it. Previously the container was 90vh inside a margined body, so
@@ -321,7 +326,7 @@
 
     body.compact.awaiting .input-pill {
       max-width: 560px;
-      padding: 10px 10px 10px 18px;
+      padding: 10px 14px 10px 18px;
     }
 
     /* The default composer grows when it takes focus and the landing one did
@@ -329,7 +334,7 @@
        than an input. */
     body.compact.awaiting .input-pill:focus-within {
       max-width: 720px;
-      padding: 13px 13px 13px 22px;
+      padding: 13px 17px 13px 22px;
     }
 
     body.compact.awaiting .chat-input input { font-size: 1.05rem; }
@@ -398,7 +403,8 @@
     }
 
     body.compact .input-pill { position: relative; }
-    body.compact .input-pill:hover .pill-snake { opacity: 1; }
+    /* The :hover half of this now lives in a (hover: hover) block near the
+       end of the sheet, with a tap-driven equivalent beside it. */
     body.compact .input-pill:focus-within .pill-snake { opacity: 0; }
 
     .pill-snake rect {
@@ -433,7 +439,8 @@
        and the height changes between the two skins and again on focus, so the
        only correct value is one measured at the time. */
 
-    body.compact .input-pill:hover .pill-snake rect { stroke-dashoffset: 0; }
+    /* Draw-on lives with the hover rule it belongs to, at the end of the
+       sheet. */
 
     /* Red caret, so the one part of the page you are acting on is the one
        part that is not grey. */
@@ -453,6 +460,8 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
+      opacity: 0;
+      transition: opacity 0.26s ease;
       /* Barely tinted, and blurred. A blur says "this is in front" without
          darkening the page to make the point, which is what the scrim did. */
       background: rgba(255, 255, 255, 0.35);
@@ -468,8 +477,14 @@
       border: 1px solid #eceef0;
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.20),
                   0 2px 8px rgba(0, 0, 0, 0.08);
-      animation: settleIn 0.22s ease both;
+      transform: translateY(14px) scale(0.985);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.24s ease;
+      opacity: 0;
     }
+
+    .disclaimer.open { opacity: 1; }
+    .disclaimer.open .disclaimer-card { transform: none; opacity: 1; }
 
     .disclaimer-card h3 {
       margin: 0 0 10px 0;
@@ -593,6 +608,23 @@
     .chat-messages::-webkit-scrollbar { width: 0; height: 0; }
     .chat-messages { scrollbar-width: none; -ms-overflow-style: none; }
 
+    /* A markdown heading in an answer. marked.parseInline does not render
+       block markup at all, so "### Bell schedules" arrived as those literal
+       characters; renderInline turns the line into one of these instead.
+       Deliberately restrained - an <h3> inside a chat bubble is louder than
+       anything a two-paragraph answer needs, and the job here is to mark a
+       lead-in, not to open a document. */
+    .answer-h {
+      display: inline-block;
+      margin: 8px 0 1px 0;
+      font-weight: 600;
+      font-size: 0.97em;
+      color: #1f2225;
+      letter-spacing: -0.005em;
+    }
+    .chat-bubble > span:first-child .answer-h { margin-top: 0; }
+    .answer-h[data-level="1"], .answer-h[data-level="2"] { font-size: 1.02em; }
+
     .chat-bubble {
       padding: 13px 17px;
       margin: 10px 0;
@@ -655,7 +687,10 @@
       gap: 6px;
       width: 100%;
       max-width: var(--composer-width);
-      padding: 5px 5px 5px 8px;
+      /* More on the right than the left, so the send button sits inside the
+         pill rather than against its edge. A round button flush to a round
+         corner reads as part of the border. */
+      padding: 5px 9px 5px 8px;
       border: 1.5px solid #e0e3e6;
       border-radius: 999px;
       background-color: #fafbfc;
@@ -667,7 +702,7 @@
 
     .input-pill:focus-within {
       max-width: 730px;
-      padding: 7px 7px 7px 12px;
+      padding: 7px 11px 7px 12px;
       background-color: #fff;
       /* an outline, not a glow */
       border-color: #e60023;
@@ -680,7 +715,14 @@
       border: none;
       border-radius: 999px;
       outline: none;
-      font-family: 'Public Sans', sans-serif;
+      /* Condensed, and only here. Public Sans stays everywhere else - this is
+         the one control whose content is unpredictable in length and often in
+         script, and a narrow face buys a couple of words before it scrolls.
+         The fallbacks matter: Devanagari and Han have no Roboto Condensed
+         cut, so those glyphs come from the system face. */
+      font-family: 'Roboto Condensed', 'Public Sans', 'Segoe UI',
+                   sans-serif;
+      letter-spacing: 0.002em;
       font-size: 0.95rem;
       color: #2c2f33;
       background-color: transparent;
@@ -818,32 +860,37 @@
        show/hide logic commented out, so it appeared on every load in both
        skins - including the compact one, which has its own gate on the first
        question and does not need a second notice in front of it. */
+    /* Always laid out, never display-toggled. Switching display cancels a
+       transition outright, which is why this used to appear fully formed and
+       vanish the same way; visibility can be transitioned, so it is what
+       takes the element out of reach once the fade has finished. The zero
+       delay on the way in and the full delay on the way out is the whole
+       trick. */
     .disclaimer-overlay {
       position: fixed;
       inset: 0;
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       z-index: 2000;
+      padding: 20px;
 
-      /* starting state */
-      background: rgba(0,0,0,0.45);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.45);
+      -webkit-backdrop-filter: blur(2px);
       backdrop-filter: blur(2px);
-      opacity: 1;
-
-      /* animate these on close */
-      transition:
-        opacity 0.6s ease,
-        background 0.6s ease,
-        backdrop-filter 0.6s ease;
+      transition: opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                  visibility 0s linear 0.32s;
     }
 
-    .disclaimer-overlay.shown { display: flex; }
-
-    .disclaimer-overlay.closing {
-      opacity: 0;
-      background: rgba(0,0,0,0);
-      backdrop-filter: blur(0px);
+    .disclaimer-overlay.shown {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                  visibility 0s linear 0s;
     }
 
     .disclaimer-card {
@@ -877,9 +924,19 @@
       }
     }
     
-    .disclaimer-overlay.closing .disclaimer-card {
-      transform: translateY(325px); /* swipe down */
+    /* The card arrives from just below and leaves the same way, rather
+       than being flung 325px down the screen - a long throw on a phone is
+       most of a second of nothing happening. */
+    .disclaimer-overlay .disclaimer-card {
+      transform: translateY(16px) scale(0.985);
       opacity: 0;
+      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.28s ease;
+    }
+
+    .disclaimer-overlay.shown .disclaimer-card {
+      transform: none;
+      opacity: 1;
     }
 
     .disclaimer-card p {
@@ -903,18 +960,34 @@
       border-radius: 50%; /* optional if your icon is circular */
     }
 
+    /* Centred properly rather than nudged. A button lays its text out on a
+       line box, and Public Sans leaves more room above the cap height than
+       below the baseline, so "I understand" sat high inside symmetric
+       padding - visibly, at 1.05rem on a phone. Making the button a flex
+       container centres the line box itself, and line-height:1 stops the
+       font's own leading reintroducing the gap. min-height rather than
+       vertical padding keeps the target a comfortable size without depending
+       on the text metrics at all. */
     .disclaimer-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4em;
+      min-height: 48px;
       background: #e60023;
       color: white;
       border: none;
-      padding: 12px 16px;
+      padding: 0 18px;
+      font-family: 'Public Sans', sans-serif;
       font-size: 1.05rem;
-      width: 100%; 
+      line-height: 1;
+      width: 100%;
       border-radius: 24px;
       cursor: pointer;
       font-weight: 600;
-      transition: 0.2s ease;
+      transition: filter 0.2s ease, transform 0.12s ease;
     }
+    .disclaimer-button:active { transform: scale(0.985); }
 
     .disclaimer-button:hover {
       filter: brightness(1.1);
@@ -1129,20 +1202,91 @@
     .fb-btn.active { color: #5f6368; }
     .fb-btn.active svg path { fill: currentColor; }
 
-    /* [hidden] sets display:none at low specificity, so a class rule setting
-       display:flex silently beats it - which is why the reason chips were
-       showing before anyone had rated anything. */
+    /* A popover, anchored to the button that opens it and parented to the
+       body rather than to the footer.
+       .chat-messages scrolls, which makes it a clipping context: a panel
+       positioned inside it gets cut off at the edge of the conversation
+       exactly when the answer being rated is the last one on screen, which
+       is almost always. Fixed positioning off the body is the only place it
+       can be sure of having room, and it is what .pill-tip already does.
+       [hidden] sets display:none at low specificity, so a class rule setting
+       display:flex silently beats it - which is why the reason chips once
+       showed before anyone had rated anything. */
     .fb-panel[hidden] { display: none; }
 
     .fb-panel {
+      position: fixed;
+      z-index: 220;
       display: flex;
-      flex-wrap: nowrap;
-      align-items: center;
-      gap: 5px;
-      margin-left: 4px;
+      flex-direction: column;
+      gap: 9px;
+      width: 268px;
+      max-width: calc(100vw - 24px);
+      padding: 12px;
+      border: 1px solid #e7e9ec;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.13),
+                  0 2px 6px rgba(0, 0, 0, 0.06);
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+      transform-origin: top right;
+      transition: opacity 0.16s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .fb-panel.open { opacity: 1; transform: none; }
+
+    .fb-title {
+      font-size: 0.74rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: #9aa0a6;
     }
 
     .fb-reasons { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* One row, full width, and a real target. The submit sits apart from the
+       chips so that choosing a reason and sending it are visibly two steps -
+       which they have to be now that a comment can be typed between them. */
+    .fb-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 1px;
+    }
+
+    .fb-send {
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      line-height: 18px;
+      padding: 5px 14px;
+      min-height: 30px;
+      border: 1px solid #e60023;
+      border-radius: 999px;
+      background: #e60023;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.16s ease, border-color 0.16s ease,
+                  color 0.16s ease, opacity 0.16s ease;
+    }
+    .fb-send:hover { background: #c40020; border-color: #c40020; }
+    .fb-send:disabled {
+      background: #f1f2f4;
+      border-color: #e7e9ec;
+      color: #a8adb3;
+      cursor: default;
+    }
+    /* The confirmation is the button, not a line of text somewhere else.
+       Green, briefly, then the whole panel leaves. */
+    .fb-send.done,
+    .fb-send.done:hover {
+      background: #1e8e3e;
+      border-color: #1e8e3e;
+      color: #fff;
+      cursor: default;
+    }
 
     .fb-reason {
       font-family: inherit;
@@ -1170,14 +1314,14 @@
       display: flex;
       flex-direction: column;
       gap: 3px;
-      align-items: flex-start;
+      align-items: stretch;
     }
 
     /* Sits beside the box rather than under it: the prompt to press Enter and
        the confirmation that Enter worked belong in the same spot, because they
        are the two halves of one exchange. */
     .fb-hint {
-      font-size: 0.74rem;
+      font-size: 0.72rem;
       line-height: 1.35;
       color: #9aa0a6;
       /* Was nowrap, which was fine for "enter to submit" and would have run
@@ -1203,12 +1347,14 @@
          pixels of extra height on a control 26 tall, and it read as a
          different size rather than as a rounding error. */
       line-height: 18px;
-      padding: 3px 11px;
-      width: var(--fb-rest);
-      max-width: 260px;
-      height: var(--fb-row);
-      min-height: var(--fb-row);
-      max-height: 88px;
+      padding: 6px 11px;
+      /* Full width of the popover now, rather than a pill that grew with
+         what was typed. The growing pill existed because the row it sat in
+         had no room; a panel has room. */
+      width: 100%;
+      max-width: 100%;
+      min-height: 62px;
+      max-height: 120px;
       /* Not 999px any more. A pill radius on a box three lines tall is a
          lozenge; 14px keeps the rounded feel at one line and stays sane at
          four. */
@@ -1442,7 +1588,75 @@
 
       /* No cursor to follow, so the hover panel has nowhere sensible to be. */
       .pill-tip { display: none; }
+
+      /* The suggestion row lined up 16px further left than the composer it
+         sits above, because .chat-input carries horizontal padding and
+         .quick-prompts carried none. Same inset, so the two share an edge. */
+      /* Both selectors, because "body.compact .quick-prompts" sets the
+         padding shorthand back to zero and outranks a bare class - so the
+         compact skin kept its prompts hard against the screen edge while the
+         default skin was fixed. Same inset in both, and each row already sits
+         at the origin its own composer does, so one number lines up two
+         different layouts. */
+      .quick-prompts,
+      body.compact .quick-prompts {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      /* Less air under the headline. Vertically centred in a tall flex row,
+         44px of margin plus the centring pushed the composer well down the
+         screen and left the two reading as unrelated. */
+      body.compact.awaiting .landing-title {
+        margin-bottom: 18px;
+        font-size: clamp(1.6rem, 7.4vw, 2.2rem);
+      }
+
+      /* A smaller resting composer that grows into the normal one. Only the
+         padding and the nudge move: width is already 100% of the row, so
+         nothing here can reflow the page. */
+      body.compact.awaiting .chat-input { padding: 0 16px; }
+
+      body.compact.awaiting .input-pill {
+        padding: 4px 8px 4px 14px;
+        transform: translateY(0);
+        transition: padding 0.28s cubic-bezier(0.33, 0.9, 0.35, 1),
+                    transform 0.28s cubic-bezier(0.33, 0.9, 0.35, 1),
+                    border-color 0.2s ease,
+                    background-color 0.2s ease;
+      }
+      body.compact.awaiting .chat-input input { padding: 8px 10px; }
+
+      body.compact.awaiting .input-pill:focus-within {
+        padding: 10px 12px 10px 18px;
+        /* Down a little as it grows. The composer is centred in the row, so
+           growing it alone expands it evenly about its middle and the whole
+           thing appears to inflate; drifting down at the same time reads as
+           the field coming forward to be typed in. */
+        transform: translateY(10px);
+      }
+      body.compact.awaiting .input-pill:focus-within input {
+        padding: 11px 12px;
+      }
     }
+
+    /* The travelling outline follows a cursor, and a phone has none. Hover is
+       scoped to devices that have one, and touch gets the same thing on tap -
+       see the pointerdown handler. Without the media query a tap on a phone
+       fires a synthetic hover that sticks until the next tap somewhere else,
+       so the outline would light up and stay lit. */
+    @media (hover: hover) and (pointer: fine) {
+      body.compact .input-pill:hover .pill-snake { opacity: 1; }
+      body.compact .input-pill:hover .pill-snake rect { stroke-dashoffset: 0; }
+    }
+
+    body.compact .input-pill.snake-on .pill-snake { opacity: 1; }
+    body.compact .input-pill.snake-on .pill-snake rect {
+      stroke-dashoffset: 0;
+    }
+    /* Beats the focus-within rule that hides the outline, because on a phone
+       the tap that asks for it is the same tap that takes focus. */
+    body.compact .input-pill.snake-on:focus-within .pill-snake { opacity: 1; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -1521,7 +1735,7 @@
              preserveAspectRatio="none">
           <rect x="1" y="1" pathLength="100" />
         </svg>
-        <input type="text" id="query" placeholder="Ask about VRHS..."
+        <input type="text" id="query" placeholder="Try asking here…"
                autocomplete="off" aria-label="Ask a question" />
         <button onclick="sendMessage()" id="submitButton" aria-label="Send">
           <!-- An arrow up rather than a paper plane. The plane is a
@@ -1544,6 +1758,26 @@
   </div>
 
     <script>
+      // Inline markdown, plus the one block form an answer actually uses.
+      //
+      // marked.parseInline renders no block markup at all - it is the right
+      // call for a stream, where the buffer is flushed in pieces and a block
+      // parser would rewrite the whole answer on every token - but it means
+      // "### Bell schedules" reached the reader as those literal characters.
+      // Headings are line-shaped, so they can be handled a line at a time
+      // without giving up the streaming parser: the line becomes one span,
+      // its text still goes through parseInline so bold and links inside it
+      // work, and the newlines survive for white-space: pre-line.
+      function renderInline(text) {
+        return text.split("\n").map(function (line) {
+          const h = /^\s{0,3}(#{1,6})\s+(.*)$/.exec(line);
+          if (!h) return marked.parseInline(line);
+          const body = h[2].replace(/\s*#+\s*$/, "");
+          return '<span class="answer-h" data-level="' + h[1].length + '">'
+               + marked.parseInline(body) + "</span>";
+        }).join("\n");
+      }
+
       // helper from before
       function splitTokens(text) {
         const tokens = [];
@@ -1677,24 +1911,107 @@
         const panel = document.createElement("div");
         panel.className = "fb-panel";
         panel.hidden = true;
+        panel.setAttribute("role", "dialog");
+        panel.setAttribute("aria-label", "What went wrong");
         panel.innerHTML = `
+          <div class="fb-title">What went wrong?</div>
           <div class="fb-reasons">
-            <button class="fb-reason" data-reason="not_found">Didn't find it</button>
-            <button class="fb-reason" data-reason="not_up_to_date">Out of date</button>
-            <button class="fb-reason" data-reason="inaccurate">Inaccurate</button>
+            <button type="button" class="fb-reason" data-reason="not_found">Didn't find it</button>
+            <button type="button" class="fb-reason" data-reason="not_up_to_date">Out of date</button>
+            <button type="button" class="fb-reason" data-reason="inaccurate">Inaccurate</button>
           </div>
           <div class="fb-comment">
-            <textarea class="fb-input" maxlength="1000" rows="1"
-                      placeholder="Type..."></textarea>
+            <textarea class="fb-input" maxlength="1000" rows="2"
+                      placeholder="Anything else? (optional)"></textarea>
             <span class="fb-hint"></span>
           </div>
+          <div class="fb-actions">
+            <button type="button" class="fb-send">Submit</button>
+          </div>
         `;
+        // Parented to the body, not to the footer. See the CSS note: the
+        // conversation scrolls, so anything positioned inside it is clipped
+        // at its edge - which is exactly where the newest answer sits.
+        document.body.appendChild(panel);
         fb.panel = panel;
 
         const buttons = fb.querySelectorAll(".fb-btn");
         const reasons = panel.querySelectorAll(".fb-reason");
         const input = panel.querySelector(".fb-input");
         const hint = panel.querySelector(".fb-hint");
+        const sendBtn = panel.querySelector(".fb-send");
+
+        // Anchored under the thumbs-down and pulled back inside the viewport
+        // if that would hang it off an edge. Measured from the button every
+        // time rather than remembered, because the conversation scrolls
+        // underneath it and a phone rotates.
+        const place = () => {
+          const anchor = fb.querySelector('.fb-btn[data-type="down"]')
+                         || fb;
+          const a = anchor.getBoundingClientRect();
+          const box = panel.getBoundingClientRect();
+          const margin = 12;
+
+          // Right edge of the panel under the right edge of the button, so
+          // it opens back across the answer rather than off the side.
+          let left = a.right - box.width;
+          left = Math.min(left, window.innerWidth - box.width - margin);
+          left = Math.max(margin, left);
+
+          let top = a.bottom + 8;
+          if (top + box.height > window.innerHeight - margin) {
+            // No room below: flip above the button, and if there is no room
+            // there either, sit against the top edge.
+            top = Math.max(margin, a.top - box.height - 8);
+          }
+          panel.style.left = Math.round(left) + "px";
+          panel.style.top = Math.round(top) + "px";
+        };
+
+        let outside = null;
+
+        const closePanel = () => {
+          if (panel.hidden) return;
+          panel.classList.remove("open");
+          if (outside) {
+            document.removeEventListener("pointerdown", outside, true);
+            document.removeEventListener("keydown", outside, true);
+            window.removeEventListener("resize", place);
+            window.removeEventListener("scroll", place, true);
+            outside = null;
+          }
+          // Hidden only once the fade has finished, or the panel vanishes on
+          // the frame the class comes off and there is nothing to watch.
+          setTimeout(() => {
+            if (!panel.classList.contains("open")) panel.hidden = true;
+          }, 200);
+        };
+        fb.closePanel = closePanel;
+
+        const openPanel = () => {
+          panel.hidden = false;
+          // Placed before the class goes on, so it fades in where it belongs
+          // rather than sliding across from wherever it was measured.
+          place();
+          requestAnimationFrame(() => {
+            panel.classList.add("open");
+            place();
+          });
+
+          outside = (e) => {
+            if (e.type === "keydown") {
+              if (e.key === "Escape") { closePanel(); }
+              return;
+            }
+            if (panel.contains(e.target) || fb.contains(e.target)) return;
+            closePanel();
+          };
+          document.addEventListener("pointerdown", outside, true);
+          document.addEventListener("keydown", outside, true);
+          window.addEventListener("resize", place);
+          // Capture, so the conversation scrolling underneath moves it too.
+          window.addEventListener("scroll", place, true);
+        };
 
         // Captured now, because lastAnswerMeta moves on to the next answer.
         const context = lastAnswerMeta;
@@ -1729,7 +2046,7 @@
               rating = null;
               reason = null;
               btn.classList.remove("active");
-              panel.hidden = true;
+              closePanel();
               return;
             }
 
@@ -1738,7 +2055,7 @@
             buttons.forEach(b => b.classList.toggle("active", b === btn));
 
             if (type === "up") {
-              panel.hidden = true;
+              closePanel();
               post(null);
               return;
             }
@@ -1747,12 +2064,14 @@
             // Waiting for a reason meant a reader who shrugged and moved on
             // was recorded as never having rated at all.
             post(null);
-            panel.hidden = false;
             reasons.forEach(r => r.classList.remove("active"));
             input.value = "";
             fit();
             hint.className = "fb-hint";
             hint.textContent = "";
+            sendBtn.className = "fb-send";
+            sendBtn.textContent = "Submit";
+            openPanel();
             // Deliberately not focused. Autofocusing outlined the box the
             // instant thumbs-down was clicked, which reads as a demand for an
             // explanation before the rating counts. It already counted.
@@ -1764,15 +2083,36 @@
         // whether their click had counted - the answer being that it had, and
         // the button was for something else. Clicking a chip files it, and
         // Enter files whatever has been typed. Nothing needs confirming twice.
+        // Picking a chip no longer files anything on its own. It used to,
+        // and that was right when a chip was the only control in the row -
+        // but a panel with a Submit button in it makes two ways to send one
+        // rating, and a reader who picks a reason and then types a sentence
+        // would have filed twice.
         reasons.forEach(option => {
           option.addEventListener("click", () => {
             const already = reason === option.dataset.reason;
             reason = already ? null : option.dataset.reason;
             reasons.forEach(r => r.classList.toggle("active",
                                                     !already && r === option));
-            post(input.value.trim());
           });
         });
+
+        // Submit files whatever is set, confirms in place, and takes the
+        // panel away. The rating itself was already filed when thumbs-down
+        // was pressed, so this is never the difference between counted and
+        // not - it is the difference between a bare vote and one with a
+        // reason attached.
+        const submit = () => {
+          if (sendBtn.classList.contains("done")) return;
+          post(input.value.trim());
+          sendBtn.classList.add("done");
+          sendBtn.textContent = "\u2713 Submitted";
+          hint.className = "fb-hint show done";
+          hint.textContent = "Submitted anonymously";
+          input.blur();
+          setTimeout(closePanel, 950);
+        };
+        sendBtn.addEventListener("click", submit);
 
         // Grow to fit, within bounds: never narrower than the placeholder,
         // never wider than the conversation column.
@@ -1803,23 +2143,20 @@
             // the one moment a reader is actually writing, and it is the last
             // moment before the text leaves the browser. Telling someone
             // afterwards that their comment was published is not a warning.
-            hint.textContent = "enter to submit — please don't include "
-              + "names or other personal details";
+            hint.textContent = "Enter to submit. Please don't include "
+              + "names or other personal details.";
           } else {
             hint.className = "fb-hint";
             hint.textContent = "";
           }
         });
 
+        // Enter still sends, because a comment box that needs a mouse to
+        // submit is a comment box people abandon.
         input.addEventListener("keydown", (e) => {
-          if (e.key !== "Enter") return;
+          if (e.key !== "Enter" || e.shiftKey) return;
           e.preventDefault();
-          const text = input.value.trim();
-          if (!text) return;
-          post(text);
-          hint.className = "fb-hint show done";
-          hint.textContent = "Submitted anonymously ✓";
-          input.blur();
+          submit();
         });
 
         return fb;
@@ -1944,7 +2281,7 @@
             // a) flush text before link (with inline markdown)
             if (idx > 0) {
               const chunk = buffer.slice(0, idx);
-              const html  = marked.parseInline(chunk);
+              const html  = renderInline(chunk);
               const tmp   = document.createElement("span");
               tmp.innerHTML = html;
               bubble.appendChild(tmp);
@@ -1970,10 +2307,15 @@
           const hasOpenBold = (boldMarkers.length % 2) === 1;
           const hasPartialSentinel =
             metaBuffer === null && endsWithSentinelPrefix(buffer);
+          // A heading is a line, so it is only renderable once the line has
+          // arrived. Flushing "### Bell" and then " schedules" would put the
+          // hashes on screen and then style half a title.
+          const hasOpenHeading = /(^|\n)\s{0,3}#{1,6}[^\n]*$/.test(buffer);
 
-          if (!hasOpenLink && !hasOpenBold && !hasPartialSentinel) {
+          if (!hasOpenLink && !hasOpenBold && !hasPartialSentinel
+              && !hasOpenHeading) {
             // flush entire buffer now
-            const html = marked.parseInline(buffer);
+            const html = renderInline(buffer);
             const tmp  = document.createElement("span");
             tmp.innerHTML = html;
             bubble.appendChild(tmp);
@@ -1985,7 +2327,7 @@
 
         // 3) final flush of anything left
         if (buffer) {
-          const html = marked.parseInline(buffer);
+          const html = renderInline(buffer);
           const tmp  = document.createElement("span");
           tmp.innerHTML = html;
           bubble.appendChild(tmp);
@@ -2096,7 +2438,11 @@
         // affected is the one where it was wrong.
         {
           const fb = createFeedbackElement();
-          fb.appendChild(fb.panel);
+          // The panel is not appended here. It lives on the body now, because
+          // .chat-messages scrolls and therefore clips - putting it back in
+          // the footer undid the whole reason it was moved, and quietly, since
+          // it still opened and still looked right until the answer being
+          // rated was near the bottom of the conversation.
           footer.appendChild(fb);
           msgContainer.appendChild(footer);
 
@@ -2357,100 +2703,131 @@
 
 <script>
   // ===================================================================
-  // Questions typing themselves into the placeholder on hover.
+  // The placeholder, when nobody is doing anything.
   // ===================================================================
-  // An empty box saying "Ask about VRHS..." tells you that you may ask and
-  // nothing about what is worth asking. Hovering it clears its own prompt a
-  // character at a time, types a real question out, holds it long enough to
-  // read, and moves to the next - so the composer answers "like what?"
-  // without a strip of chips under it taking up room, and says nothing at all
-  // while nobody is looking at it.
+  // Two behaviours over one property, so they are one controller. Written as
+  // two timers writing to the same placeholder they would fight, and the
+  // symptom would be a half-erased Spanish sentence with an English question
+  // typing itself over the top.
   //
-  // The resting text is erased rather than swapped. Cutting straight to the
-  // first question makes the box look like it reloaded; erasing what was
-  // already there makes the same two seconds read as one continuous thing
-  // being retyped, which is what it is.
+  //   Idle, in view          the prompt cycles through four languages, held
+  //                          long enough to read, crossfaded rather than cut
+  //   Hovered, fine pointer  a real question types itself out, as before
+  //   Focused or typing      neither; the box belongs to the reader
   //
-  // Only while the box is empty and unfocused. Once there is a cursor in it
-  // the placeholder sits behind live text and moving it is noise; once there
-  // is a value the placeholder is not visible at all.
+  // Always English first. The cycle restarts from English every time the
+  // widget enters the viewport, so somebody scrolling to it never arrives
+  // mid-rotation and finds a school chatbot addressing them in Chinese with
+  // no explanation. An IntersectionObserver is what makes "enters the
+  // viewport" a real event rather than a guess - this thing is designed to be
+  // embedded, so it can easily be below the fold of a page it does not own.
   (function () {
     const pill = document.querySelector(".input-pill");
     const box = document.getElementById("query");
     if (!pill || !box) return;
 
-    const RESTING = box.getAttribute("placeholder") || "Ask about VRHS...";
+    const RESTING = box.getAttribute("placeholder") || "Try asking here…";
+
+    // Same sentence, four ways. Kept short: this is a placeholder inside a
+    // rounded field on a phone, and a long translation either wraps or is
+    // clipped, both of which look like a bug rather than a flourish.
+    const LANGS = [
+      RESTING,
+      "Prueba a preguntar aquí…",
+      "यहाँ पूछकर देखें…",
+      "在这里提问吧…"
+    ];
+
+    const IDLE_MS = 3600;    // in view and untouched before anything happens
+    const HOLD_MS = 2600;    // each language, long enough to read
+    const FADE_MS = 260;     // matches the CSS transition on ::placeholder
+
     const CARET = "|";
-    const TYPE_MS = 42;      // per character going on
-    const ERASE_MS = 22;     // and coming off, faster - nobody reads a delete
-    const HOLD_MS = 1600;    // long enough to read a question of ten words
+    const TYPE_MS = 42;
+    const ERASE_MS = 22;
+    const Q_HOLD_MS = 1600;
     const GAP_MS = 220;
     const BLINK_MS = 530;
 
-    // A phone has no hover, and a browser that emulates one fires it on tap,
-    // at which point the field is about to be focused anyway. Reduced motion
-    // is a request not to animate text, which this very much is.
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     const coarse = window.matchMedia("(pointer: coarse)");
 
+    // One handle for every pending thing, so any stop is a complete stop.
     let timer = null;
     let blinker = null;
-    let running = false;
+    let mode = "rest";       // rest | langs | questions
+    let done = false;        // the reader has touched it; nothing runs again
+    let inView = false;
+    let hovering = false;
+
+    const clearAll = function () {
+      clearTimeout(timer);
+      clearInterval(blinker);
+      timer = null;
+      blinker = null;
+    };
+
+    const setText = function (text) {
+      box.setAttribute("placeholder", text);
+    };
+
+    // Fades the placeholder out, swaps it, fades it back. The text itself
+    // cannot be transitioned; the colour can, and .ph-fade is what takes it
+    // to transparent.
+    const fadeTo = function (text, then) {
+      box.classList.add("ph-fade");
+      timer = setTimeout(function () {
+        setText(text);
+        box.classList.remove("ph-fade");
+        if (then) { timer = setTimeout(then, FADE_MS); }
+      }, FADE_MS);
+    };
+
+    // --- the language rotation -------------------------------------------
+    let langAt = 0;
+
+    const nextLang = function () {
+      if (mode !== "langs" || !ready()) { return; }
+      langAt = (langAt + 1) % LANGS.length;
+      fadeTo(LANGS[langAt], function () {
+        if (mode !== "langs") return;
+        timer = setTimeout(nextLang, HOLD_MS);
+      });
+    };
+
+    const startLangs = function () {
+      if (!ready() || still.matches) return;
+      clearAll();
+      mode = "langs";
+      langAt = 0;
+      setText(LANGS[0]);
+      box.classList.remove("ph-fade");
+      // A short beat before the first change, not a full hold. The reader has
+      // already spent the idle wait looking at the English prompt; holding it
+      // again for another 2.6s put the first sign of life six and a half
+      // seconds after the widget appeared, by which time nobody is watching.
+      // Every language after this one gets the full hold.
+      timer = setTimeout(nextLang, 700);
+    };
+
+    // --- the question typer ----------------------------------------------
     let order = [];
     let at = 0;
-    let text = "";        // what is currently written, without the caret
+    let text = "";
     let caretOn = true;
 
     const paint = function () {
-      box.setAttribute("placeholder", text + (caretOn ? CARET : " "));
+      setText(text + (caretOn ? CARET : " "));
     };
 
-    // Solid while characters are moving, blinking while the question sits
-    // there being read. That is what a real cursor does, and a caret that
-    // blinks through its own typing reads as a flicker instead.
     const blink = function (on) {
       clearInterval(blinker);
       blinker = null;
       caretOn = true;
       if (on) {
-        blinker = setInterval(function () {
-          caretOn = !caretOn;
-          paint();
-        }, BLINK_MS);
+        blinker = setInterval(function () { caretOn = !caretOn; paint(); },
+                              BLINK_MS);
       }
-    };
-
-    // Faded, not swapped. Moving the pointer from the composer to the
-    // composer - hovering it, then clicking into it - used to replace a
-    // half-typed question with "Ask about VRHS..." between one frame and the
-    // next, which reads as a glitch rather than as the animation ending. The
-    // text still cannot be transitioned; its colour can, so it goes out,
-    // changes while invisible, and comes back.
-    let fading = null;
-
-    const stop = function () {
-      running = false;
-      clearTimeout(timer);
-      clearInterval(blinker);
-      timer = null;
-      blinker = null;
-
-      const current = box.getAttribute("placeholder");
-      if (current === RESTING) return;
-
-      clearTimeout(fading);
-      box.classList.add("ph-fade");
-      fading = setTimeout(function () {
-        box.setAttribute("placeholder", RESTING);
-        box.classList.remove("ph-fade");
-      }, 150);
-    };
-
-    // A new cycle must not arrive mid-fade wearing the faded class.
-    const unfade = function () {
-      clearTimeout(fading);
-      fading = null;
-      box.classList.remove("ph-fade");
     };
 
     const shuffled = function () {
@@ -2462,81 +2839,161 @@
       return list;
     };
 
-    // Checked on every tick rather than only at the start: focus and typing
-    // can happen mid-word, and the cycle has to give the box back the moment
-    // they do.
-    const allowed = function () {
-      return running && !box.value && document.activeElement !== box;
-    };
-
-    const step = function () {
-      if (!allowed()) { stop(); return false; }
-      return true;
+    const typing = function () {
+      return mode === "questions" && ready() && hovering;
     };
 
     const eraseTo = function (target, whenDone) {
-      if (!step()) return;
-      if (text.length > target.length || text.slice(0, target.length) !== target) {
+      if (!typing()) { rest(); return; }
+      if (text.length > target.length
+          || text.slice(0, target.length) !== target) {
         text = text.slice(0, -1);
         paint();
         timer = setTimeout(function () { eraseTo(target, whenDone); },
                            ERASE_MS);
-      } else {
-        whenDone();
-      }
+      } else { whenDone(); }
     };
 
     const typeTo = function (target, whenDone) {
-      if (!step()) return;
+      if (!typing()) { rest(); return; }
       if (text.length < target.length) {
         text = target.slice(0, text.length + 1);
         paint();
         timer = setTimeout(function () { typeTo(target, whenDone); }, TYPE_MS);
-      } else {
-        whenDone();
-      }
+      } else { whenDone(); }
     };
 
     const cycle = function () {
-      if (!step()) return;
-      const question = order[at];
+      if (!typing()) { rest(); return; }
       blink(false);
-      typeTo(question, function () {
-        if (!step()) return;
+      typeTo(order[at], function () {
+        if (!typing()) { rest(); return; }
         blink(true);
         timer = setTimeout(function () {
-          if (!step()) return;
+          if (!typing()) { rest(); return; }
           blink(false);
           eraseTo("", function () {
             at = (at + 1) % order.length;
             timer = setTimeout(cycle, GAP_MS);
           });
-        }, HOLD_MS);
+        }, Q_HOLD_MS);
       });
     };
 
-    const start = function () {
-      if (running) return;
-      if (still.matches || coarse.matches) return;
-      if (box.value || document.activeElement === box) return;
+    const startQuestions = function () {
+      if (!ready() || still.matches || coarse.matches) return;
       order = shuffled();
-      if (!order.length) return;
-      unfade();
+      if (!order.length) { startLangs(); return; }
+      clearAll();
+      mode = "questions";
       at = 0;
-      running = true;
-      // Begin from what is already on screen, and take it off.
       text = RESTING;
       caretOn = true;
+      box.classList.remove("ph-fade");
       blink(false);
-      eraseTo("", function () {
-        timer = setTimeout(cycle, GAP_MS);
-      });
+      eraseTo("", function () { timer = setTimeout(cycle, GAP_MS); });
     };
 
-    pill.addEventListener("mouseenter", start);
-    pill.addEventListener("mouseleave", stop);
-    box.addEventListener("focus", stop);
-    box.addEventListener("input", stop);
+    // --- shared ----------------------------------------------------------
+    // Everything checks this on every tick rather than only at the start:
+    // focus and typing happen mid-word, and the box has to come back the
+    // moment they do.
+    function ready() {
+      return !done && inView && !box.value
+             && document.activeElement !== box;
+    }
+
+    const rest = function () {
+      clearAll();
+      mode = "rest";
+      if (box.getAttribute("placeholder") === RESTING) {
+        box.classList.remove("ph-fade");
+        return;
+      }
+      // Faded, not swapped. Moving from hovering the composer to clicking
+      // into it used to replace a half-typed question with the resting
+      // prompt between one frame and the next, which reads as a glitch.
+      box.classList.add("ph-fade");
+      timer = setTimeout(function () {
+        setText(RESTING);
+        box.classList.remove("ph-fade");
+      }, FADE_MS);
+    };
+
+    // The reader has taken the box. Nothing animates it again this visit.
+    const surrender = function () {
+      done = true;
+      rest();
+    };
+
+    box.addEventListener("focus", surrender);
+    box.addEventListener("input", surrender);
+
+    pill.addEventListener("mouseenter", function () {
+      hovering = true;
+      if (coarse.matches) return;
+      startQuestions();
+    });
+    pill.addEventListener("mouseleave", function () {
+      hovering = false;
+      if (done) return;
+      // Back to the language rotation, from the top, rather than to nothing.
+      clearAll();
+      mode = "rest";
+      setText(RESTING);
+      box.classList.remove("ph-fade");
+      timer = setTimeout(startLangs, IDLE_MS);
+    });
+
+    // --- in view, or not -------------------------------------------------
+    const enter = function () {
+      if (inView) return;
+      inView = true;
+      if (done) return;
+      clearAll();
+      mode = "rest";
+      // Always English on arrival, whatever it was showing when it left.
+      setText(RESTING);
+      box.classList.remove("ph-fade");
+      timer = setTimeout(function () {
+        if (!hovering) startLangs();
+      }, IDLE_MS);
+    };
+
+    const leave = function () {
+      inView = false;
+      clearAll();
+      mode = "rest";
+      setText(RESTING);
+      box.classList.remove("ph-fade");
+    };
+
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { enter(); } else { leave(); }
+        });
+      }, { threshold: 0.4 }).observe(pill);
+    } else {
+      enter();
+    }
+
+    // A conversation is not the landing screen: once something has been
+    // asked the composer is a working control and its prompt should sit
+    // still. leaveLanding is the one-way trip the first question takes.
+    //
+    // Wrapped on a timeout because it is defined by a later script block in
+    // this file. Wrapping it inline captured undefined and was then
+    // overwritten by the real definition, so this hook silently did nothing -
+    // which only shows up on the one path that does not type: a quick-prompt
+    // button sets the value in code, so no input event ever fires.
+    setTimeout(function () {
+      const wasLeaving = window.leaveLanding;
+      window.leaveLanding = function () {
+        surrender();
+        if (wasLeaving) wasLeaving.apply(this, arguments);
+      };
+    }, 0);
   })();
   </script>
 
@@ -2563,6 +3020,18 @@
       rect.setAttribute("rx", r);
       rect.setAttribute("ry", r);
     };
+
+    // Touch has no hover, so the tap does it. Held long enough for the
+    // outline to finish drawing itself - the animation is the point, and a
+    // class removed on pointerup would cut it in half.
+    if (window.matchMedia("(hover: none), (pointer: coarse)").matches) {
+      let off = null;
+      pill.addEventListener("pointerdown", () => {
+        pill.classList.add("snake-on");
+        clearTimeout(off);
+        off = setTimeout(() => pill.classList.remove("snake-on"), 2200);
+      });
+    }
 
     fit();
     if (window.ResizeObserver) {
@@ -2699,25 +3168,52 @@
 
       const wrap = document.createElement("div");
       wrap.className = "disclaimer";
+      // Joined with nothing, so every line carries its own trailing space and
+      // none carry leading indentation.
+      //
+      // The previous version was indented for readability and joined the same
+      // way, which put five spaces inside the sentence at every line break -
+      // "Vista Ridge High School     website" - and six between the button's
+      // label and its arrow. HTML collapses runs of whitespace when it paints,
+      // so it looked right and was not: the runs are in the DOM, so they are
+      // what a screen reader reads, what a copy-paste carries, and what any
+      // measurement of the text sees.
       wrap.innerHTML = [
-        '<div class="disclaimer-card" role="dialog" aria-modal="true"',
-        '     aria-labelledby="disclaimer-title">',
-        '  <h3 id="disclaimer-title">Before you ask</h3>',
-        '  <p>This assistant answers from pages on the Vista Ridge High School',
-        '     website. It can be wrong, out of date, or miss things the site',
-        '     does not cover. Check anything that matters &mdash; a deadline, a',
-        '     fee, a room &mdash; against the source it cites, or with the front',
-        '     office.</p>',
-        '  <div class="disclaimer-actions">',
-        '    <button type="button" class="cancel">Cancel</button>',
-        '    <button type="button" class="accept">I understand',
-        '      <span class="arrow" aria-hidden="true">&rarr;</span></button>',
-        '  </div>',
+        '<div class="disclaimer-card" role="dialog" aria-modal="true" ',
+        'aria-labelledby="disclaimer-title">',
+        '<h3 id="disclaimer-title">Before you ask</h3>',
+        '<p>This assistant answers from pages on the Vista Ridge High School ',
+        'website. It can be wrong, out of date, or miss things the site does ',
+        'not cover. Check anything that matters &mdash; a deadline, a fee, a ',
+        'room &mdash; against the source it cites, or with the front office.',
+        '</p>',
+        '<div class="disclaimer-actions">',
+        '<button type="button" class="cancel">Cancel</button>',
+        '<button type="button" class="accept">I understand',
+        '<span class="arrow" aria-hidden="true">&rarr;</span></button>',
+        '</div>',
         '</div>'
       ].join("");
       document.body.appendChild(wrap);
+      // One frame at the starting state before the class that moves it, or
+      // the browser coalesces both into the final state and there is no
+      // transition to see.
+      requestAnimationFrame(() => wrap.classList.add("open"));
 
-      const close = () => wrap.remove();
+      const close = () => {
+        wrap.classList.remove("open");
+        // Removed after the fade, not during it. Taking the node out on the
+        // click is what made this disappear rather than close.
+        const done = (e) => {
+          if (e && e.target !== wrap) return;
+          wrap.removeEventListener("transitionend", done);
+          wrap.remove();
+        };
+        wrap.addEventListener("transitionend", done);
+        // A transition that never runs fires no event - a reader on reduced
+        // motion, or a tab that was backgrounded mid-close.
+        setTimeout(() => { if (wrap.isConnected) wrap.remove(); }, 420);
+      };
       wrap.querySelector(".cancel").addEventListener("click", close);
       wrap.querySelector(".accept").addEventListener("click", () => {
         accepted = true;
@@ -2861,7 +3357,7 @@
 
     // Strip trailing newlines + parse markdown inline
     const trimmed = text.replace(/\n+$/, "");
-    bubble.innerHTML = marked.parseInline(trimmed);
+    bubble.innerHTML = renderInline(trimmed);
 
     msgContainer.appendChild(bubble);
 
@@ -2904,17 +3400,11 @@
   };
 
   dismissBtn.addEventListener("click", () => {
-    // start closing animation
-    overlay.classList.add("closing");
+    // Taking .shown off runs the fade and the card's slide together, and the
+    // delayed visibility in the CSS is what removes it from reach once they
+    // have finished. No display juggling, so nothing cancels mid-animation.
+    overlay.classList.remove("shown");
     localStorage.setItem("vrhsDisclaimerAccepted", "true");
-  });
-
-  // After transition ends, fully hide the element
-  overlay.addEventListener("transitionend", (e) => {
-    // make sure we only trigger when the overlay transition finishes
-    if (e.target === overlay && overlay.classList.contains("closing")) {
-      overlay.style.display = "none";
-    }
   });
 
 
