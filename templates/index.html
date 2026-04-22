@@ -6,12 +6,7 @@
   <title>VRHS Chatbot</title>
   <!-- Inline so there is no extra request and no 404 in the console. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'%3EVR%3C/text%3E%3C/svg%3E" />
-  <!-- Two families, one request. Roboto Condensed is only used by the
-       composer: a narrow face fits more of a question on a phone before it
-       scrolls, and the placeholder cycles through Hindi and Chinese, where
-       the extra room matters. Latin only - the CJK and Devanagari glyphs fall
-       through to the system face per glyph, which is correct and free. -->
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Roboto+Condensed:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     /* The app is a fixed frame: only the message list scrolls, never the page
        behind it. Previously the container was 90vh inside a margined body, so
@@ -237,8 +232,13 @@
     }
     body.compact .chat-bubble { font-size: 0.86rem; padding: 10px 13px; }
     body.compact .source-pill,
-    body.compact .fb-reason,
-    body.compact .fb-input { font-size: 0.68rem; padding: 2px 8px; }
+    body.compact .fb-reason { font-size: 0.68rem; padding: 2px 8px; }
+    /* The comment box is not shrunk with the rest of the compact chrome. It
+       is the one control here somebody types into, and iOS zooms the whole
+       page whenever a focused field is under 16px - which is what made the
+       panel appear to vanish, because the zoom moves the visual viewport out
+       from under a fixed element. 0.68rem is 10.88px. */
+    body.compact .fb-input { padding: 4px 9px; }
     body.compact .fb-hint { font-size: 0.66rem; }
     body.compact .source-lead { font-size: 0.66rem; }
     body.compact .pill-tip { font-size: 0.68rem; max-width: 240px; }
@@ -715,14 +715,7 @@
       border: none;
       border-radius: 999px;
       outline: none;
-      /* Condensed, and only here. Public Sans stays everywhere else - this is
-         the one control whose content is unpredictable in length and often in
-         script, and a narrow face buys a couple of words before it scrolls.
-         The fallbacks matter: Devanagari and Han have no Roboto Condensed
-         cut, so those glyphs come from the system face. */
-      font-family: 'Roboto Condensed', 'Public Sans', 'Segoe UI',
-                   sans-serif;
-      letter-spacing: 0.002em;
+      font-family: 'Public Sans', sans-serif;
       font-size: 0.95rem;
       color: #2c2f33;
       background-color: transparent;
@@ -1553,7 +1546,8 @@
       .input-pill:focus-within input,
       body.compact .chat-input input,
       body.compact.awaiting .chat-input input,
-      .fb-input,
+      .fb-panel .fb-input,
+      body.compact .fb-input,
       #reportDescription {
         font-size: 16px;
       }
@@ -1570,10 +1564,21 @@
         flex-direction: column-reverse;
         align-items: stretch;
       }
+      /* Same fix as .disclaimer-button, which is where it was needed and
+         where it was applied - and this is the card the widget actually
+         shows, so the one anybody saw was still wrong. A button lays its
+         label on a line box, and Public Sans leaves more room above the cap
+         height than below the baseline, so symmetric padding sits the text
+         high. Centre the line box instead of padding around it. */
       .disclaimer-actions button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
         width: 100%;
+        min-height: 46px;
+        padding: 0 16px;
+        line-height: 1;
         white-space: nowrap;
-        padding: 11px 16px;
       }
       /* The arrow slides in on hover, which a phone does not have. Reserving
          room for it just makes the label sit off-centre. */
@@ -1618,9 +1623,15 @@
       body.compact.awaiting .chat-input { padding: 0 16px; }
 
       body.compact.awaiting .input-pill {
+        /* Held in from the edges until it is being used. Edge to edge at
+           rest, the composer reads as a bar the page is sitting on rather
+           than as one control somebody is invited to press; taking the full
+           width on focus is then the field opening up to be typed in. */
+        width: 86%;
         padding: 4px 8px 4px 14px;
         transform: translateY(0);
-        transition: padding 0.28s cubic-bezier(0.33, 0.9, 0.35, 1),
+        transition: width 0.3s cubic-bezier(0.33, 0.9, 0.35, 1),
+                    padding 0.28s cubic-bezier(0.33, 0.9, 0.35, 1),
                     transform 0.28s cubic-bezier(0.33, 0.9, 0.35, 1),
                     border-color 0.2s ease,
                     background-color 0.2s ease;
@@ -1628,6 +1639,7 @@
       body.compact.awaiting .chat-input input { padding: 8px 10px; }
 
       body.compact.awaiting .input-pill:focus-within {
+        width: 100%;
         padding: 10px 12px 10px 18px;
         /* Down a little as it grows. The composer is centred in the row, so
            growing it alone expands it evenly about its middle and the whole
@@ -1735,7 +1747,7 @@
              preserveAspectRatio="none">
           <rect x="1" y="1" pathLength="100" />
         </svg>
-        <input type="text" id="query" placeholder="Try asking here…"
+        <input type="text" id="query" placeholder="Ask about VRHS..."
                autocomplete="off" aria-label="Ask a question" />
         <button onclick="sendMessage()" id="submitButton" aria-label="Send">
           <!-- An arrow up rather than a paper plane. The plane is a
@@ -1952,23 +1964,41 @@
           const box = panel.getBoundingClientRect();
           const margin = 12;
 
+          // The visual viewport, not the layout one, when the browser offers
+          // it. They are the same until a phone zooms or raises a keyboard,
+          // and then they are not: clamping a fixed element to innerWidth
+          // while the reader is looking at a zoomed-in slice puts it off the
+          // side of what they can actually see, which reads as the panel
+          // vanishing rather than as it being somewhere else.
+          const vv = window.visualViewport;
+          const viewW = vv ? vv.width : window.innerWidth;
+          const viewH = vv ? vv.height : window.innerHeight;
+          const offX = vv ? vv.offsetLeft : 0;
+          const offY = vv ? vv.offsetTop : 0;
+
           // Right edge of the panel under the right edge of the button, so
           // it opens back across the answer rather than off the side.
           let left = a.right - box.width;
-          left = Math.min(left, window.innerWidth - box.width - margin);
-          left = Math.max(margin, left);
+          left = Math.min(left, offX + viewW - box.width - margin);
+          left = Math.max(offX + margin, left);
 
           let top = a.bottom + 8;
-          if (top + box.height > window.innerHeight - margin) {
+          if (top + box.height > offY + viewH - margin) {
             // No room below: flip above the button, and if there is no room
             // there either, sit against the top edge.
-            top = Math.max(margin, a.top - box.height - 8);
+            top = Math.max(offY + margin, a.top - box.height - 8);
           }
           panel.style.left = Math.round(left) + "px";
           panel.style.top = Math.round(top) + "px";
         };
 
         let outside = null;
+        const onScroll = () => {
+          if (document.activeElement === panel.querySelector(".fb-input")) {
+            return;
+          }
+          place();
+        };
 
         const closePanel = () => {
           if (panel.hidden) return;
@@ -1977,7 +2007,10 @@
             document.removeEventListener("pointerdown", outside, true);
             document.removeEventListener("keydown", outside, true);
             window.removeEventListener("resize", place);
-            window.removeEventListener("scroll", place, true);
+            window.removeEventListener("scroll", onScroll, true);
+            if (window.visualViewport) {
+              window.visualViewport.removeEventListener("resize", place);
+            }
             outside = null;
           }
           // Hidden only once the fade has finished, or the panel vanishes on
@@ -2009,8 +2042,14 @@
           document.addEventListener("pointerdown", outside, true);
           document.addEventListener("keydown", outside, true);
           window.addEventListener("resize", place);
-          // Capture, so the conversation scrolling underneath moves it too.
-          window.addEventListener("scroll", place, true);
+          // Capture, so the conversation scrolling underneath moves it too -
+          // but not while the comment box has focus. A phone scrolls the page
+          // as it raises the keyboard, and re-anchoring to a button that is
+          // being pushed off screen drags the panel away with it.
+          window.addEventListener("scroll", onScroll, true);
+          if (window.visualViewport) {
+            window.visualViewport.addEventListener("resize", place);
+          }
         };
 
         // Captured now, because lastAnswerMeta moves on to the next answer.
@@ -2108,7 +2147,7 @@
           sendBtn.classList.add("done");
           sendBtn.textContent = "\u2713 Submitted";
           hint.className = "fb-hint show done";
-          hint.textContent = "Submitted anonymously";
+          hint.textContent = "Submitted anonymously \u2713";
           input.blur();
           setTimeout(closePanel, 950);
         };
@@ -2121,10 +2160,11 @@
         // its own cap, after which it scrolls.
         // 13ch of resting width, so nothing moves until the text passes
         // it; 26ch of cap, after which the height takes over.
-        const REST = 13, CAP = 26;
+        // No width here any more. It used to grow the box a character at a
+        // time because the box lived in a crowded row; in a popover it is
+        // simply full width, and the inline width this set was overriding
+        // that and holding the textarea at 111px inside a 268px panel.
         const fit = () => {
-          const chars = Math.min(CAP, Math.max(REST, input.value.length + 1));
-          input.style.width = "calc(" + chars + "ch + 24px)";
           input.style.height = "auto";
           // box-sizing is border-box here, so scrollHeight - which excludes
           // the border - is two pixels short of the height the content needs
@@ -2703,48 +2743,57 @@
 
 <script>
   // ===================================================================
-  // The placeholder, when nobody is doing anything.
+  // The placeholder.
   // ===================================================================
-  // Two behaviours over one property, so they are one controller. Written as
-  // two timers writing to the same placeholder they would fight, and the
-  // symptom would be a half-erased Spanish sentence with an English question
-  // typing itself over the top.
+  // One controller, because everything here writes to the same property and
+  // two timers doing that is a half-erased Spanish sentence with an English
+  // question typing itself over the top.
   //
-  //   Idle, in view          the prompt cycles through four languages, held
-  //                          long enough to read, crossfaded rather than cut
-  //   Hovered, fine pointer  a real question types itself out, as before
-  //   Focused or typing      neither; the box belongs to the reader
+  //   Landing, first seen   "Try asking here" types itself out a character
+  //                         at a time, then its ellipsis animates
+  //   Landing, idle         the prompt crossfades through four languages,
+  //                         the ellipsis still going underneath
+  //   Hovered, fine pointer a real question types itself out, as before
+  //   In conversation       "Ask about VRHS..." and nothing moves
+  //   Focused or typing     nothing moves, permanently
   //
-  // Always English first. The cycle restarts from English every time the
-  // widget enters the viewport, so somebody scrolling to it never arrives
-  // mid-rotation and finds a school chatbot addressing them in Chinese with
-  // no explanation. An IntersectionObserver is what makes "enters the
-  // viewport" a real event rather than a guess - this thing is designed to be
-  // embedded, so it can easily be below the fold of a page it does not own.
+  // The landing text and the conversation text are different on purpose. "Try
+  // asking here" is an invitation and belongs on an empty screen; once there
+  // are answers above it the control is a control, and a composer that keeps
+  // coaxing is a composer that is still selling itself after the sale.
+  //
+  // Always English first, and typed out rather than simply present, because
+  // the typing is what makes somebody look at it. An IntersectionObserver is
+  // what makes "first seen" a real event: this thing is built to be embedded,
+  // so it is routinely below the fold of a page it does not own, and starting
+  // the animation on load would mean it had finished before anybody scrolled
+  // to it.
   (function () {
     const pill = document.querySelector(".input-pill");
     const box = document.getElementById("query");
     if (!pill || !box) return;
 
-    const RESTING = box.getAttribute("placeholder") || "Try asking here…";
+    const CHAT_PROMPT = box.getAttribute("placeholder") || "Ask about VRHS...";
 
-    // Same sentence, four ways. Kept short: this is a placeholder inside a
-    // rounded field on a phone, and a long translation either wraps or is
-    // clipped, both of which look like a bug rather than a flourish.
+    // Bases without the dots. The dots are animated separately, so every
+    // language gets them without four copies of the same three strings.
     const LANGS = [
-      RESTING,
-      "Prueba a preguntar aquí…",
-      "यहाँ पूछकर देखें…",
-      "在这里提问吧…"
+      "Try asking here",
+      "Prueba a preguntar aquí",
+      "यहाँ पूछकर देखें",
+      "在这里提问吧"
     ];
+    const DOTS = [".", "..", "..."];
 
-    const IDLE_MS = 3600;    // in view and untouched before anything happens
-    const HOLD_MS = 2600;    // each language, long enough to read
-    const FADE_MS = 260;     // matches the CSS transition on ::placeholder
+    const TYPE_MS = 55;      // per character of the opening line
+    const DOT_MS = 420;      // one, two, three
+    const IDLE_MS = 3200;    // in view and untouched before the languages
+    const HOLD_MS = 2800;    // each language
+    const FADE_MS = 260;     // matches the ::placeholder colour transition
 
     const CARET = "|";
-    const TYPE_MS = 42;
-    const ERASE_MS = 22;
+    const Q_TYPE_MS = 42;
+    const Q_ERASE_MS = 22;
     const Q_HOLD_MS = 1600;
     const GAP_MS = 220;
     const BLINK_MS = 530;
@@ -2752,73 +2801,114 @@
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     const coarse = window.matchMedia("(pointer: coarse)");
 
-    // One handle for every pending thing, so any stop is a complete stop.
-    let timer = null;
+    let timer = null;      // the one-shot in whatever sequence is running
+    let dotTimer = null;   // the ellipsis, which runs under the others
     let blinker = null;
-    let mode = "rest";       // rest | langs | questions
-    let done = false;        // the reader has touched it; nothing runs again
+    let mode = "rest";     // rest | intro | langs | questions
+    let done = false;      // the reader has taken the box; nothing runs again
     let inView = false;
     let hovering = false;
+    let langAt = 0;
+    let dotAt = 0;
+    let base = LANGS[0];
+
+    // The landing screen is the only place the invitation belongs.
+    const landing = () => document.body.classList.contains("compact")
+                          && document.body.classList.contains("awaiting");
+
+    const resting = () => (landing() ? LANGS[0] + DOTS[2] : CHAT_PROMPT);
 
     const clearAll = function () {
       clearTimeout(timer);
+      clearTimeout(dotTimer);
       clearInterval(blinker);
-      timer = null;
-      blinker = null;
+      timer = dotTimer = blinker = null;
     };
 
-    const setText = function (text) {
-      box.setAttribute("placeholder", text);
+    const setText = function (t) { box.setAttribute("placeholder", t); };
+
+    // Checked on every tick, not just at the start: focus and typing happen
+    // mid-word and the box has to come back the moment they do.
+    function ready() {
+      return !done && inView && landing() && !box.value
+             && document.activeElement !== box;
+    }
+
+    // --- the ellipsis ------------------------------------------------------
+    // Runs underneath whichever language is showing, so switching language is
+    // only ever a change of `base`.
+    const tickDots = function () {
+      if (!ready() || (mode !== "langs" && mode !== "intro")) return;
+      dotAt = (dotAt + 1) % DOTS.length;
+      setText(base + DOTS[dotAt]);
+      dotTimer = setTimeout(tickDots, DOT_MS);
     };
 
-    // Fades the placeholder out, swaps it, fades it back. The text itself
-    // cannot be transitioned; the colour can, and .ph-fade is what takes it
-    // to transparent.
-    const fadeTo = function (text, then) {
+    const startDots = function () {
+      clearTimeout(dotTimer);
+      dotAt = 2;
+      dotTimer = setTimeout(tickDots, DOT_MS);
+    };
+
+    // --- the opening line, typed -------------------------------------------
+    const typeIntro = function (i) {
+      if (!ready() || mode !== "intro") { rest(); return; }
+      setText(LANGS[0].slice(0, i));
+      if (i < LANGS[0].length) {
+        timer = setTimeout(function () { typeIntro(i + 1); }, TYPE_MS);
+        return;
+      }
+      base = LANGS[0];
+      startDots();
+      timer = setTimeout(startLangs, IDLE_MS);
+    };
+
+    const startIntro = function () {
+      if (!ready()) return;
+      clearAll();
+      mode = "intro";
+      box.classList.remove("ph-fade");
+      if (still.matches) {
+        // Asked not to animate: the finished sentence, and nothing moving.
+        setText(resting());
+        mode = "rest";
+        return;
+      }
+      typeIntro(0);
+    };
+
+    // --- the language rotation ---------------------------------------------
+    const nextLang = function () {
+      if (!ready() || mode !== "langs") { rest(); return; }
+      langAt = (langAt + 1) % LANGS.length;
+      // Fade the text out, change it underneath, fade it back. The dots keep
+      // their own time through all of it.
       box.classList.add("ph-fade");
       timer = setTimeout(function () {
-        setText(text);
+        if (!ready() || mode !== "langs") { rest(); return; }
+        base = LANGS[langAt];
+        setText(base + DOTS[dotAt]);
         box.classList.remove("ph-fade");
-        if (then) { timer = setTimeout(then, FADE_MS); }
-      }, FADE_MS);
-    };
-
-    // --- the language rotation -------------------------------------------
-    let langAt = 0;
-
-    const nextLang = function () {
-      if (mode !== "langs" || !ready()) { return; }
-      langAt = (langAt + 1) % LANGS.length;
-      fadeTo(LANGS[langAt], function () {
-        if (mode !== "langs") return;
         timer = setTimeout(nextLang, HOLD_MS);
-      });
+      }, FADE_MS);
     };
 
     const startLangs = function () {
       if (!ready() || still.matches) return;
-      clearAll();
+      clearTimeout(timer);
       mode = "langs";
       langAt = 0;
-      setText(LANGS[0]);
-      box.classList.remove("ph-fade");
-      // A short beat before the first change, not a full hold. The reader has
-      // already spent the idle wait looking at the English prompt; holding it
-      // again for another 2.6s put the first sign of life six and a half
-      // seconds after the widget appeared, by which time nobody is watching.
-      // Every language after this one gets the full hold.
-      timer = setTimeout(nextLang, 700);
+      startDots();
+      timer = setTimeout(nextLang, HOLD_MS);
     };
 
-    // --- the question typer ----------------------------------------------
+    // --- the hover question typer ------------------------------------------
     let order = [];
     let at = 0;
     let text = "";
     let caretOn = true;
 
-    const paint = function () {
-      setText(text + (caretOn ? CARET : " "));
-    };
+    const paint = function () { setText(text + (caretOn ? CARET : " ")); };
 
     const blink = function (on) {
       clearInterval(blinker);
@@ -2839,9 +2929,7 @@
       return list;
     };
 
-    const typing = function () {
-      return mode === "questions" && ready() && hovering;
-    };
+    const typing = () => mode === "questions" && ready() && hovering;
 
     const eraseTo = function (target, whenDone) {
       if (!typing()) { rest(); return; }
@@ -2850,7 +2938,7 @@
         text = text.slice(0, -1);
         paint();
         timer = setTimeout(function () { eraseTo(target, whenDone); },
-                           ERASE_MS);
+                           Q_ERASE_MS);
       } else { whenDone(); }
     };
 
@@ -2859,7 +2947,8 @@
       if (text.length < target.length) {
         text = target.slice(0, text.length + 1);
         paint();
-        timer = setTimeout(function () { typeTo(target, whenDone); }, TYPE_MS);
+        timer = setTimeout(function () { typeTo(target, whenDone); },
+                           Q_TYPE_MS);
       } else { whenDone(); }
     };
 
@@ -2883,88 +2972,79 @@
     const startQuestions = function () {
       if (!ready() || still.matches || coarse.matches) return;
       order = shuffled();
-      if (!order.length) { startLangs(); return; }
+      if (!order.length) return;
       clearAll();
       mode = "questions";
       at = 0;
-      text = RESTING;
+      text = box.getAttribute("placeholder") || "";
       caretOn = true;
       box.classList.remove("ph-fade");
       blink(false);
       eraseTo("", function () { timer = setTimeout(cycle, GAP_MS); });
     };
 
-    // --- shared ----------------------------------------------------------
-    // Everything checks this on every tick rather than only at the start:
-    // focus and typing happen mid-word, and the box has to come back the
-    // moment they do.
-    function ready() {
-      return !done && inView && !box.value
-             && document.activeElement !== box;
-    }
-
+    // --- back to nothing ---------------------------------------------------
     const rest = function () {
       clearAll();
       mode = "rest";
-      if (box.getAttribute("placeholder") === RESTING) {
+      const want = resting();
+      if (box.getAttribute("placeholder") === want) {
         box.classList.remove("ph-fade");
         return;
       }
-      // Faded, not swapped. Moving from hovering the composer to clicking
-      // into it used to replace a half-typed question with the resting
-      // prompt between one frame and the next, which reads as a glitch.
+      // Faded, not swapped. Going from a half-typed question to the resting
+      // prompt between one frame and the next reads as a glitch rather than
+      // as the animation ending.
       box.classList.add("ph-fade");
       timer = setTimeout(function () {
-        setText(RESTING);
+        setText(want);
         box.classList.remove("ph-fade");
       }, FADE_MS);
     };
 
-    // The reader has taken the box. Nothing animates it again this visit.
-    const surrender = function () {
-      done = true;
-      rest();
-    };
+    // The reader has taken the box. Nothing animates it again.
+    const surrender = function () { done = true; rest(); };
 
     box.addEventListener("focus", surrender);
     box.addEventListener("input", surrender);
 
     pill.addEventListener("mouseenter", function () {
       hovering = true;
-      if (coarse.matches) return;
+      if (coarse.matches || !ready()) return;
       startQuestions();
     });
     pill.addEventListener("mouseleave", function () {
       hovering = false;
-      if (done) return;
-      // Back to the language rotation, from the top, rather than to nothing.
+      if (done || !inView) return;
       clearAll();
       mode = "rest";
-      setText(RESTING);
+      base = LANGS[0];
+      setText(resting());
       box.classList.remove("ph-fade");
-      timer = setTimeout(startLangs, IDLE_MS);
+      timer = setTimeout(startIntro, GAP_MS);
     });
 
-    // --- in view, or not -------------------------------------------------
+    // --- in view, or not ---------------------------------------------------
     const enter = function () {
       if (inView) return;
       inView = true;
       if (done) return;
       clearAll();
       mode = "rest";
-      // Always English on arrival, whatever it was showing when it left.
-      setText(RESTING);
+      base = LANGS[0];
       box.classList.remove("ph-fade");
-      timer = setTimeout(function () {
-        if (!hovering) startLangs();
-      }, IDLE_MS);
+      if (!landing()) { setText(CHAT_PROMPT); return; }
+      // Empty, so the typing has somewhere to start from.
+      setText("");
+      timer = setTimeout(startIntro, 260);
     };
 
     const leave = function () {
       inView = false;
       clearAll();
       mode = "rest";
-      setText(RESTING);
+      base = LANGS[0];
+      setText(resting());
       box.classList.remove("ph-fade");
     };
 
@@ -2978,22 +3058,33 @@
       enter();
     }
 
-    // A conversation is not the landing screen: once something has been
-    // asked the composer is a working control and its prompt should sit
-    // still. leaveLanding is the one-way trip the first question takes.
+    // Once a question has been asked the composer stops being an invitation,
+    // and the class on <body> is what says so.
     //
-    // Wrapped on a timeout because it is defined by a later script block in
-    // this file. Wrapping it inline captured undefined and was then
-    // overwritten by the real definition, so this hook silently did nothing -
-    // which only shows up on the one path that does not type: a quick-prompt
-    // button sets the value in code, so no input event ever fires.
-    setTimeout(function () {
-      const wasLeaving = window.leaveLanding;
-      window.leaveLanding = function () {
-        surrender();
-        if (wasLeaving) wasLeaving.apply(this, arguments);
-      };
-    }, 0);
+    // Watched rather than hooked. The obvious version wraps window.leaveLanding
+    // and does the swap there, and it cannot be made to work from here: that
+    // function is defined by a later script block, so wrapping it inline
+    // captures undefined, and wrapping it on a timeout races the definition -
+    // the timeout fires first, the later block overwrites the wrapper, and
+    // the hook is simply never called. It fails silently, which is how it
+    // survived a browser test that only checked the end state a second later.
+    //
+    // The class is the fact the wrapper was reaching for anyway, and watching
+    // it works whatever order the scripts load in and whichever path removed
+    // it - typing, a quick prompt, or anything added later.
+    let wasLanding = landing();
+    new MutationObserver(function () {
+      const now = landing();
+      if (now === wasLanding) return;
+      wasLanding = now;
+      if (now) return;
+      done = true;
+      clearAll();
+      mode = "rest";
+      box.classList.remove("ph-fade");
+      setText(CHAT_PROMPT);
+    }).observe(document.body, { attributes: true,
+                                attributeFilter: ["class"] });
   })();
   </script>
 

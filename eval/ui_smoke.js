@@ -147,18 +147,30 @@ function check(name, pass, detail) {
   // That is the behaviour, so the test has to respect it rather than measure
   // through it.
   console.log("\nplaceholder");
-  const RESTING = "Try asking here…";
+  // The invitation, with its ellipsis animating between one dot and three -
+  // so the assertion is on the sentence, not on a frame of it.
+  const ENGLISH = /^Try asking here\.{0,3}$/;
   await page.goto(URL, { waitUntil: "networkidle2" });
-  await sleep(500);
+  // Past the character-by-character intro, which is the point of the pause.
+  await sleep(2200);
   const atRest = await page.evaluate(() =>
     document.getElementById("query").getAttribute("placeholder"));
-  check("starts in English", atRest === RESTING, JSON.stringify(atRest));
+  check("starts in English", ENGLISH.test(atRest), JSON.stringify(atRest));
+
+  const dots = new Set();
+  for (let i = 0; i < 10; i++) {
+    const t = await page.evaluate(() =>
+      document.getElementById("query").getAttribute("placeholder"));
+    if (ENGLISH.test(t)) dots.add(t.slice("Try asking here".length));
+    await sleep(200);
+  }
+  check("its ellipsis animates", dots.size >= 2, JSON.stringify([...dots]));
 
   // Idle and in view for long enough, and it rotates through four languages.
-  await sleep(5200);
+  await sleep(4200);
   const other = await page.evaluate(() =>
     document.getElementById("query").getAttribute("placeholder"));
-  check("cycles languages when left alone", other !== RESTING,
+  check("cycles languages when left alone", !ENGLISH.test(other),
         JSON.stringify(other));
 
   await page.click("#query");
@@ -173,13 +185,13 @@ function check(name, pass, detail) {
   await sleep(420);
   const settled = await page.evaluate(() =>
     document.getElementById("query").getAttribute("placeholder"));
-  check("settles back to English on focus", settled === RESTING,
+  check("settles back to English on focus", ENGLISH.test(settled),
         JSON.stringify(settled));
 
   await sleep(5200);
   const stopped = await page.evaluate(() =>
     document.getElementById("query").getAttribute("placeholder"));
-  check("and stays stopped once touched", stopped === RESTING,
+  check("and stays stopped once touched", ENGLISH.test(stopped),
         JSON.stringify(stopped));
 
   // === the send button ===================================================

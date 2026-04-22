@@ -83,14 +83,16 @@ const overflow = p => p.evaluate(() => {
   await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
   await sleep(600);
 
-  check("placeholder starts English", await p.evaluate(() => document.getElementById("query").getAttribute("placeholder")) === "Try asking here…");
+  const ENGLISH = /^Try asking here\.{0,3}$/;
+  await sleep(2000);  // the intro types itself in first
+  check("placeholder starts English", ENGLISH.test(await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"))));
 
   // language cycle after idle
   await sleep(4200);
   const l1 = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
   await sleep(3000);
   const l2 = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
-  check("cycles to another language", l1 !== l2 || l1 !== "Try asking here…", JSON.stringify([l1, l2]));
+  check("cycles to another language", !ENGLISH.test(l1) || !ENGLISH.test(l2), JSON.stringify([l1, l2]));
 
   // focus stops it
   await p.click("#query");
@@ -98,7 +100,7 @@ const overflow = p => p.evaluate(() => {
   const afterFocus = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
   await sleep(4500);
   const stillStopped = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
-  check("focus stops cycling for good", afterFocus === "Try asking here…" && stillStopped === "Try asking here…", JSON.stringify([afterFocus, stillStopped]));
+  check("focus stops cycling for good", ENGLISH.test(afterFocus) && ENGLISH.test(stillStopped), JSON.stringify([afterFocus, stillStopped]));
 
   // send an answer with headings
   await p.type("#query", "bell schedule", { delay: 4 });
@@ -199,11 +201,13 @@ const overflow = p => p.evaluate(() => {
       const gap = await p.evaluate(() => getComputedStyle(document.querySelector(".landing-title")).marginBottom);
       check("less air under the headline", parseInt(gap, 10) <= 20, gap);
 
-      const rest = await p.evaluate(() => { const r = document.querySelector(".input-pill").getBoundingClientRect(); return { h: Math.round(r.height), t: Math.round(r.top) }; });
+      const rest = await p.evaluate(() => { const r = document.querySelector(".input-pill").getBoundingClientRect(); return { h: Math.round(r.height), t: Math.round(r.top), w: Math.round(r.width), l: Math.round(r.left) }; });
+      check("composer is held in from the edges at rest", rest.w < 340 && rest.l > 20, JSON.stringify({ w: rest.w, l: rest.l }));
       await p.tap("#query");
-      await sleep(600);
-      const grown = await p.evaluate(() => { const r = document.querySelector(".input-pill").getBoundingClientRect(); return { h: Math.round(r.height), t: Math.round(r.top) }; });
+      await sleep(700);
+      const grown = await p.evaluate(() => { const r = document.querySelector(".input-pill").getBoundingClientRect(); return { h: Math.round(r.height), t: Math.round(r.top), w: Math.round(r.width) }; });
       check("composer grows on tap", grown.h > rest.h, `${rest.h} -> ${grown.h}px`);
+      check("and takes the full width", grown.w > rest.w + 20, `${rest.w} -> ${grown.w}px`);
       check("and drifts down, not up", grown.t >= rest.t, `${rest.t} -> ${grown.t}`);
 
       const snake = await p.evaluate(() => { const el = document.querySelector(".input-pill"); return { on: el.classList.contains("snake-on"), op: +getComputedStyle(document.querySelector(".pill-snake")).opacity }; });
@@ -234,7 +238,45 @@ const overflow = p => p.evaluate(() => {
         check("no overflow with the feedback panel open", o.pan <= 0 && !o.worst, JSON.stringify(o));
         const fit = await p.evaluate(() => { const r = document.querySelector(".fb-panel").getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width), win: window.innerWidth }; });
         check("feedback panel fits the screen", fit.l >= 0 && fit.r <= fit.win, JSON.stringify(fit));
-          } else check("feedback control present on mobile", false);
+
+        // The comment box has to be at least 16px or iOS zooms the page when
+        // it takes focus, and the zoom shifts the visual viewport out from
+        // under a fixed panel - which reads as the panel disappearing. It was
+        // 10.88px, from a compact rule that outranked the mobile one.
+        const fi = await p.evaluate(() => {
+          const t = document.querySelector(".fb-panel .fb-input");
+          const pr = document.querySelector(".fb-panel").getBoundingClientRect();
+          return { font: parseFloat(getComputedStyle(t).fontSize),
+                   w: Math.round(t.getBoundingClientRect().width),
+                   panelW: Math.round(pr.width) };
+        });
+        check("comment box is 16px, so tapping it cannot zoom", fi.font >= 16,
+              fi.font + "px");
+        check("comment box fills the panel", fi.w > fi.panelW - 40,
+              `${fi.w} of ${fi.panelW}`);
+
+        await p.tap(".fb-panel .fb-input");
+        await sleep(450);
+        const alive = await p.evaluate(() => {
+          const el = document.querySelector(".fb-panel");
+          const r = el.getBoundingClientRect();
+          return { open: el.classList.contains("open"), hidden: el.hidden,
+                   onScreen: r.left >= 0 && r.right <= window.innerWidth
+                             && r.top >= 0 };
+        });
+        check("panel survives tapping the comment box",
+              alive.open && !alive.hidden && alive.onScreen,
+              JSON.stringify(alive));
+
+        await p.type(".fb-panel .fb-input", "wrong", { delay: 12 });
+        await p.tap(".fb-send");
+        await sleep(250);
+        const hint = await p.evaluate(() =>
+          (document.querySelector(".fb-panel .fb-hint") || {}).textContent);
+        check("the confirmation carries a tick",
+              /Submitted anonymously\s*✓/.test(hint || ""),
+              JSON.stringify(hint));
+      } else check("feedback control present on mobile", false);
     }
     check(`no page errors (mobile ${route})`, !p.__err, (p.__err || []).join("; "));
     await p.close();
