@@ -1158,6 +1158,11 @@ def health():
         # repository the default points at, which is not the one the token had
         # been granted access to. A destination that cannot be read back is a
         # destination nobody can debug.
+        #
+        # config.GITHUB_REPO is validated to owner/name before it reaches
+        # here, so this cannot print a credential even when one is set in the
+        # wrong variable - which is exactly what happened. A rejected value is
+        # described by `problem` and never echoed.
         "feedback": {
             "token_present": bool(config.GITHUB_TOKEN),
             "repo": config.GITHUB_REPO,
@@ -1166,6 +1171,7 @@ def health():
             "reader_text_sent": (bool(config.GITHUB_TOKEN)
                                  and repo_is_private()),
             "issues_per_hour": config.GITHUB_ISSUES_PER_HOUR,
+            "problem": config.GITHUB_REPO_PROBLEM,
         },
         "data_writable": os.access("data", os.W_OK) if os.path.isdir("data")
                          else None,
@@ -1901,6 +1907,11 @@ def submit_feedback():
           f"q={entry['question'][:60]}")
     return jsonify({"status": "success"})
 
+
+# Said at boot as well as on /health, because the operator who set the
+# variable is looking at the deploy log and not at a JSON endpoint.
+if config.GITHUB_REPO_PROBLEM:
+    log.error("[feedback] %s", config.GITHUB_REPO_PROBLEM)
 
 warm_start()
 

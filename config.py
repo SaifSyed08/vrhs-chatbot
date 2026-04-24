@@ -12,6 +12,7 @@ see the note on it.
 """
 
 import os
+import re
 
 from dotenv import load_dotenv
 
@@ -141,7 +142,41 @@ HTTP_READ_TIMEOUT = _float("VRHS_HTTP_READ_TIMEOUT", 60.0)
 # Unset by default, so the file remains the only store until a token is
 # configured. A token needs no more than issues:write on this one repository.
 GITHUB_TOKEN = os.getenv("VRHS_GITHUB_TOKEN", "")
-GITHUB_REPO = os.getenv("VRHS_GITHUB_REPO", "SaifSyed08/vrhs-chatbot")
+
+# owner/name, and nothing else.
+_REPO_SHAPE = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
+# Every shape GitHub issues a credential in.
+_SECRET_SHAPE = re.compile(r"^(gh[pousr]_|github_pat_)")
+
+
+def _repo(raw, default):
+    """The issue destination, or the default, plus what was wrong with it.
+
+    This validates because it once did not. VRHS_GITHUB_REPO and
+    VRHS_GITHUB_TOKEN were set to each other's values in the deployment, so
+    the repository name was a fine-grained personal access token - and
+    /health, which reports the destination so that "why is my feedback not
+    arriving" is answerable without a live test, published it to anyone who
+    asked. A diagnostic endpoint is the last place a secret should be able to
+    reach, and the only way to be sure is to refuse to carry a value that does
+    not look like the thing it is supposed to be.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return default, None
+    if _SECRET_SHAPE.match(raw):
+        return default, ("VRHS_GITHUB_REPO holds what looks like a GitHub "
+                         "token. It is ignored, and the token it contains "
+                         "should be treated as exposed and revoked. The two "
+                         "variables are probably swapped.")
+    if not _REPO_SHAPE.match(raw):
+        return default, ("VRHS_GITHUB_REPO is not in owner/name form and is "
+                         "ignored.")
+    return raw, None
+
+
+GITHUB_REPO, GITHUB_REPO_PROBLEM = _repo(
+    os.getenv("VRHS_GITHUB_REPO"), "SaifSyed08/vrhs-chatbot")
 
 # /feedback is public and unauthenticated, so anyone who finds it can file
 # issues through it. A cap is the difference between a feedback channel and a
