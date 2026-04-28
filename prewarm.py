@@ -93,7 +93,13 @@ def generate(question):
     """One candidate answer, through the same path the route uses."""
     context, stats, sources = main.get_relevant_context(question)
 
-    response = main.client.chat.completions.create(
+    # Retried, unlike the route this imitates. A reader asks one question and
+    # waits; this asks forty-odd in a row, three times each, with a grader
+    # behind every one - which walks straight into the 30,000 tokens-a-minute
+    # ceiling and killed the run partway through. The route's own retry
+    # already knows to give up immediately on a quota error and only back off
+    # for a rate limit, which is exactly the distinction that matters here.
+    response = main.with_retry(lambda: main.client.chat.completions.create(
         model=config.CHAT_MODEL,
         messages=[{
             "role": "system",
@@ -101,7 +107,7 @@ def generate(question):
         }, {
             "role": "user",
             "content": "Context:\n" + context + "\n\nQuestion: " + question
-        }])
+        }]), attempts=6)
     answer = (response.choices[0].message.content or "").strip()
 
     verdict = hallucination.verify_answer(main.client, answer, context, stats,

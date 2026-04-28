@@ -600,6 +600,32 @@ names A-Co". It needs either a stronger embedding model, which means
 re-embedding and recalibrating the gate, or hybrid keyword-and-vector
 retrieval.
 
+## Reading the PDFs
+
+The school publishes a lot as PDF on Drive: bell schedules, detention rules,
+the hours-owed form, the resource one-pagers, both songs. Ingest already
+learned their *filenames* - that is what fixed the two rival "A/B Calendar"
+links - but it never opened one, so the bot could hand over a link and nothing
+else. Asked for the fight song it gave the link; asked for the lyrics it said
+it did not have them. They are on page one of that PDF, in text, four hundred
+bytes in.
+
+Twenty Drive files are linked. Twenty are PDFs and **seventeen carry a real
+text layer**, about 47,000 characters between them. `pdfs.py` downloads them
+against a size cap, extracts with pypdf, and skips anything that comes back
+empty - the other three are scans, and OCR is a different project: a wrong
+answer read out of a bad OCR pass is worse than the honest refusal a reader
+gets now.
+
+Chunked by line rather than by word count, because a PDF is the one source
+here whose line breaks carry meaning. "Go you Rangers / Fight you Rangers /
+Take that ball and score" is a verse; the same words in a paragraph are not.
+
+| | before | after |
+| --- | --- | --- |
+| Chunks | 797 | 827 |
+| "What's the VRHS fight song?" | a link | the lyrics, cosine 0.905 |
+
 ## When the corpus has nothing: the district fallback
 
 Over-refusal is the largest measured quality defect, and most of it is one

@@ -28,3 +28,8 @@ beautifulsoup4==4.15.0
 # America/Chicago there. feeds.py needs it to place calendar times, which
 # Google publishes in UTC.
 tzdata==2026.1
+
+# Reads the PDFs the site links. Pure Python, no system libraries, which is
+# what makes it safe on a free instance - see pdfs.py for what it is and is
+# not asked to do.
+pypdf==6.18.0

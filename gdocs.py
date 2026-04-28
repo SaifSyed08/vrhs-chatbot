@@ -39,6 +39,8 @@ import logging
 import re
 import urllib.parse
 
+import pdfs
+
 log = logging.getLogger("vrhs.gdocs")
 
 DOC_ID = re.compile(r"https://docs\.google\.com/document/d/([\w-]+)")
@@ -262,8 +264,14 @@ def label_quality(label):
 
 
 def readable(url):
-    """Whether this is a Google file this module knows how to open."""
-    return bool(document_id(url) or sheet_id(url))
+    """Whether this is a Google file something here knows how to open.
+
+    Drive files are in the list now. They are nearly all PDFs on this site,
+    and pdfs.py opens the seventeen of twenty that carry a text layer - which
+    is how the fight song stopped being a link the bot handed over and started
+    being lyrics it could recite.
+    """
+    return bool(document_id(url) or sheet_id(url) or drive_id(url))
 
 
 def linked_documents(references):
@@ -307,16 +315,37 @@ def linked_documents(references):
         name = " ".join((label or "").split()) or "Linked document"
         if name.lower() in VAGUE_LABELS:
             name = "Linked document"
-        log.info("reading %s: %s",
-                 "spreadsheet" if sheet_id(href) and not document_id(href)
-                 else "document", name[:60])
 
-        text = document_text(href, session)
+        if document_id(href):
+            kind = "document"
+        elif sheet_id(href):
+            kind = "spreadsheet"
+        else:
+            kind = "pdf"
+        log.info("reading %s: %s", kind, name[:60])
+
+        if kind == "pdf":
+            # Drive will not export a PDF as text, so this is the file itself,
+            # downloaded and parsed. Three of the twenty on this site are
+            # scans with no text layer and come back None - correctly, because
+            # the alternative is OCR and a bad OCR pass is worse than the
+            # refusal the reader gets now.
+            text = pdfs.fetch(
+                "https://drive.google.com/uc?export=download&id="
+                + drive_id(href), session)
+        else:
+            text = document_text(href, session)
+
         if not text:
-            log.info("  skipped, not public or no text")
+            log.info("  skipped, not public or no text layer")
             continue
 
-        if sheet_id(href) and not document_id(href):
+        if kind == "pdf":
+            # Line-aware, because a PDF is the one source here whose line
+            # breaks carry meaning - a verse, a numbered step - and slicing it
+            # by word count throws that away.
+            pieces = pdfs.pieces(text)
+        elif sheet_id(href) and not document_id(href):
             pieces = sheet_rows(text, name)
         else:
             words = text.split()
