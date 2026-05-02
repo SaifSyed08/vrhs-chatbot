@@ -6,7 +6,11 @@
   <title>VRHS Chatbot</title>
   <!-- Inline so there is no extra request and no 404 in the console. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'%3EVR%3C/text%3E%3C/svg%3E" />
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Bebas Neue is the landing headline and nothing else. One request for
+       both families; it ships a single weight and no lowercase, which is the
+       whole reason it is only used on the one line of type here that is meant
+       to be looked at rather than read through. -->
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
   <style>
     /* The app is a fixed frame: only the message list scrolls, never the page
        behind it. Previously the container was 90vh inside a margined body, so
@@ -294,18 +298,33 @@
     body.compact.awaiting .landing-title {
       display: block;
       width: 100%;
-      max-width: 760px;
+      /* Wide enough for the headline to set on one line on a desktop. At
+         760px Bebas broke it after "LOOKING" and left "FOR?" alone on the
+         second, which is the one wrap a two-line headline must not make. */
+      max-width: 940px;
       margin: 0 auto 44px auto;
       padding: 0 8px;
+      /* And when it does have to wrap - a narrow window, a longer headline -
+         the browser evens the lines out rather than filling the first and
+         orphaning whatever is left. Ignored where unsupported, which just
+         gives the old greedy wrap. */
+      text-wrap: balance;
       /* A display face, not the interface font. This is the one piece of
          type on the screen that is meant to be looked at rather than read
          through, and Public Sans at 40px is just a big version of the
-         placeholder underneath it. */
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(1.9rem, 5.2vw, 3.1rem);
-      line-height: 1.15;
+         placeholder underneath it.
+         Bebas Neue has no lowercase - it maps to capitals - so the line sets
+         itself in caps whatever is typed. The three numbers below all move
+         together because of that: caps fill the em box, so the same rem reads
+         much larger and needs less of it; there are no descenders, so 1.15
+         leading opens a gap that looks like a mistake on two lines; and a
+         condensed face set large closes up, so it wants tracking added rather
+         than the negative the serif wanted. */
+      font-family: 'Bebas Neue', 'Public Sans', Impact, sans-serif;
+      font-size: clamp(2.3rem, 6vw, 3.9rem);
+      line-height: 0.98;
       font-weight: 400;
-      letter-spacing: -0.015em;
+      letter-spacing: 0.012em;
       color: #1f2225;
       text-align: center;
       animation: settleIn 0.45s ease both;
@@ -1614,7 +1633,7 @@
          screen and left the two reading as unrelated. */
       body.compact.awaiting .landing-title {
         margin-bottom: 18px;
-        font-size: clamp(1.6rem, 7.4vw, 2.2rem);
+        font-size: clamp(2rem, 9.2vw, 2.9rem);
       }
 
       /* A smaller resting composer that grows into the normal one. Only the
