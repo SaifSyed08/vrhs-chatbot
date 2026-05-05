@@ -6,11 +6,9 @@
   <title>VRHS Chatbot</title>
   <!-- Inline so there is no extra request and no 404 in the console. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'%3EVR%3C/text%3E%3C/svg%3E" />
-  <!-- Bebas Neue is the landing headline and nothing else. One request for
-       both families; it ships a single weight and no lowercase, which is the
-       whole reason it is only used on the one line of type here that is meant
-       to be looked at rather than read through. -->
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
+  <!-- Oswald is the landing headline and nothing else. Two weights of it,
+       one request for both families. -->
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Oswald:wght@300;400&display=swap" rel="stylesheet">
   <style>
     /* The app is a fixed frame: only the message list scrolls, never the page
        behind it. Previously the container was 90vh inside a margined body, so
@@ -313,18 +311,26 @@
          type on the screen that is meant to be looked at rather than read
          through, and Public Sans at 40px is just a big version of the
          placeholder underneath it.
-         Bebas Neue has no lowercase - it maps to capitals - so the line sets
-         itself in caps whatever is typed. The three numbers below all move
-         together because of that: caps fill the em box, so the same rem reads
-         much larger and needs less of it; there are no descenders, so 1.15
-         leading opens a gap that looks like a mistake on two lines; and a
-         condensed face set large closes up, so it wants tracking added rather
-         than the negative the serif wanted. */
-      font-family: 'Bebas Neue', 'Public Sans', Impact, sans-serif;
-      font-size: clamp(2.3rem, 6vw, 3.9rem);
-      line-height: 0.98;
-      font-weight: 400;
-      letter-spacing: 0.012em;
+         Oswald rather than Bebas Neue, and the reason is weight. Google
+         serves Bebas at 400 and nothing else, so asking it for 300 changes
+         nothing - a browser will synthesise a bolder face but never a
+         lighter one. Oswald is the same kind of tall condensed gothic and
+         carries 200 through 700, so a lighter headline is actually possible;
+         300 set against Bebas 400 side by side is the closest of the
+         alternatives in proportion, where Barlow Condensed opens up too wide
+         to read as the same design.
+         It does have lowercase, so the capitals come from text-transform
+         rather than from the font having no other option.
+         Caps still fill the em box, so this stays smaller than a
+         lowercase face would need, and still wants tracking added rather
+         than the negative the original serif wanted - a touch more of it now
+         the strokes are lighter and the counters more open. */
+      font-family: 'Oswald', 'Public Sans', Impact, sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(2rem, 5vw, 3.15rem);
+      line-height: 1.03;
+      font-weight: 300;
+      letter-spacing: 0.015em;
       color: #1f2225;
       text-align: center;
       animation: settleIn 0.45s ease both;
@@ -1633,7 +1639,7 @@
          screen and left the two reading as unrelated. */
       body.compact.awaiting .landing-title {
         margin-bottom: 18px;
-        font-size: clamp(2rem, 9.2vw, 2.9rem);
+        font-size: clamp(1.7rem, 7.6vw, 2.4rem);
       }
 
       /* A smaller resting composer that grows into the normal one. Only the
