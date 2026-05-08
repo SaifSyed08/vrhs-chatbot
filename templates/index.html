@@ -327,11 +327,18 @@
          the strokes are lighter and the counters more open. */
       font-family: 'Oswald', 'Public Sans', Impact, sans-serif;
       text-transform: uppercase;
-      font-size: clamp(2rem, 5vw, 3.15rem);
+      font-size: clamp(2.15rem, 5.4vw, 3.5rem);
       line-height: 1.03;
-      font-weight: 300;
-      letter-spacing: 0.015em;
-      color: #1f2225;
+      font-weight: 400;
+      /* Slightly tighter than the 300 wanted. Heavier strokes close the
+         counters on their own, so the tracking that kept the light cut from
+         looking sparse would now just look loose. */
+      letter-spacing: 0.008em;
+      /* The school's red, the same one the send button and the caret use, so
+         the headline reads as part of the same interface rather than as a
+         warning. 5:1 against white, which clears AA for text this size twice
+         over. */
+      color: #e60023;
       text-align: center;
       animation: settleIn 0.45s ease both;
     }
@@ -1639,7 +1646,7 @@
          screen and left the two reading as unrelated. */
       body.compact.awaiting .landing-title {
         margin-bottom: 18px;
-        font-size: clamp(1.7rem, 7.6vw, 2.4rem);
+        font-size: clamp(1.85rem, 8.2vw, 2.65rem);
       }
 
       /* A smaller resting composer that grows into the normal one. Only the
