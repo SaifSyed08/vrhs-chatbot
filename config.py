@@ -98,6 +98,18 @@ EMBEDDINGS_PATH = os.getenv("VRHS_EMBEDDINGS", "data/vrhs_embeddings.json")
 # extra tokens buy nothing. The cost of five over three is about 400 input
 # tokens a question, which is a tenth of a cent per hundred questions.
 PROSE_SLOTS = _int("VRHS_PROSE_SLOTS", 5)
+
+# How many prose chunks to take when the best of them is short of the solid
+# gate. Looking at more of the corpus is the cheapest thing to try when
+# retrieval is unsure, and it only happens on the questions that are going
+# badly - a confident question still gets five.
+#
+# It is not a cure. A reader asking for "ap email" wants the assistant
+# principal and the corpus reads "AP" as Advanced Placement, so the row they
+# want sits at rank 7: ten slots reach it, five do not. Phrased "email of ap"
+# the same row is at rank 19 and no sane number of slots reaches it - that one
+# needs the prompt to say which sense it answered, which it now does.
+WIDE_PROSE_SLOTS = _int("VRHS_WIDE_PROSE_SLOTS", 10)
 LINK_SLOTS = _int("VRHS_LINK_SLOTS", 2)
 
 # Calibrated in eval/retrieval_eval.py. See hallucination.py for the full

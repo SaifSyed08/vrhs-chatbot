@@ -73,6 +73,10 @@ SYSTEM_PROMPT = (
     "district login\", \"you have to register first\" - if the context does "
     "not say it, do not say it. Name the person or office to ask instead."
     "\n\n"
+    "When somebody wants to reach a person or an office, give them the contact rather than the page it is on. The staff directory is in your context as one row per person, each carrying a name, a department, a position and an email address, so a question about who to email is usually answerable from a row that is already in front of you - read it and quote the address. Pointing at the directory instead is only right when the row is genuinely not there."
+    "\n\n"
+    "Watch for the abbreviations, because two of them collide here. \"AP\" is Advanced Placement in anything about exams, courses or registration, and the Assistant Principal in anything about attendance, discipline, hours owed, enrolment or checking a student out. If a short question could be either, say which one you have answered, or answer both briefly - a reader who wanted the other one can then see that at a glance instead of being told nothing was found."
+    "\n\n"
     "You answer questions about Vista Ridge High School and Leander ISD. "
     "That is the scope, and it is worth stating because loosening the rule "
     "above loosened this too: asked to reverse a linked list in Python, the "
@@ -1063,7 +1067,15 @@ def get_relevant_context(query):
     ranked = np.argsort(sims)[::-1]
     is_link = [docs[i].get("kind") == "link" for i in range(len(docs))]
 
-    prose = [i for i in ranked if not is_link[i]][:PROSE_SLOTS]
+    # Wider when the best non-link chunk is short of the solid gate. Retrieval
+    # being unsure is exactly when a few more chunks are worth their tokens,
+    # and a question it is sure about still gets the usual five.
+    ordered_prose = [i for i in ranked if not is_link[i]]
+    best_prose = float(sims[ordered_prose[0]]) if ordered_prose else 0.0
+    slots = (PROSE_SLOTS if best_prose >= hallucination.SIMILARITY_SOLID
+             else config.WIDE_PROSE_SLOTS)
+
+    prose = ordered_prose[:slots]
     links = [i for i in ranked if is_link[i]][:LINK_SLOTS]
 
     # Keep overall similarity order so the strongest match leads the context.
@@ -1615,6 +1627,17 @@ _issue_lock = threading.Lock()
 # data/feedback.json is read, appended to and rewritten on every rating.
 _feedback_lock = threading.Lock()
 
+# feedback_id -> the issue number opened for it, so the second post about one
+# rating edits that issue instead of opening another.
+#
+# In memory, which is the right trade rather than a shortcut. The two posts
+# are seconds apart and the service runs one worker, so this hits in every
+# realistic case; when it misses - a restart in between - the fallback is a
+# second issue, which is exactly what used to happen every time. A durable
+# store for this would mean a database for a hint.
+_issue_ids = {}
+_issue_id_lock = threading.Lock()
+
 REASON_LABEL = {
     "not_found": "not-found",
     "not_up_to_date": "out-of-date",
@@ -1711,7 +1734,12 @@ def quoted_safely(text, limit=1000):
 
 
 def issue_allowed():
-    """Whether another issue may be filed this hour."""
+    """Whether another *new* issue may be filed this hour.
+
+    Edits to an issue already open are not counted. The cap exists because
+    /feedback is public and could be turned into an issue firehose, and
+    editing one issue over and over cannot do that.
+    """
     cutoff = time.time() - 3600
     with _issue_lock:
         while _issue_times and _issue_times[0] < cutoff:
@@ -1736,7 +1764,13 @@ def file_issue(entry):
     """
     if not config.GITHUB_TOKEN or entry.get("rating") != "down":
         return
-    if not issue_allowed():
+
+    fid = entry.get("feedback_id")
+    with _issue_id_lock:
+        number = _issue_ids.get(fid) if fid else None
+
+    # Only a new issue counts against the cap. See issue_allowed.
+    if number is None and not issue_allowed():
         log.warning("[feedback] issue rate limit reached, not filing")
         return
 
@@ -1820,24 +1854,48 @@ def file_issue(entry):
     def send():
         try:
             import requests
-            response = requests.post(
-                "https://api.github.com/repos/%s/issues" % config.GITHUB_REPO,
-                headers={
-                    "Authorization": "Bearer " + config.GITHUB_TOKEN,
-                    "Accept": "application/vnd.github+json",
-                },
-                json={
-                    "title": title[:120] or "Feedback",
-                    "body": chr(10).join(body),
-                    "labels": labels,
-                },
-                timeout=20)
+            headers = {
+                "Authorization": "Bearer " + config.GITHUB_TOKEN,
+                "Accept": "application/vnd.github+json",
+            }
+            payload = {
+                "title": title[:120] or "Feedback",
+                "body": chr(10).join(body),
+                "labels": labels,
+            }
+            base = "https://api.github.com/repos/%s/issues" % config.GITHUB_REPO
+
+            if number is not None:
+                # More about a rating already filed. PATCH replaces the title,
+                # body and labels wholesale, and that is what is wanted: the
+                # second post carries everything the first did plus the reason
+                # and the comment, so the issue ends up as one complete record
+                # rather than a pair to be read together.
+                response = requests.patch("%s/%d" % (base, number),
+                                          headers=headers, json=payload,
+                                          timeout=20)
+                verb, where = "updated", number
+            else:
+                response = requests.post(base, headers=headers, json=payload,
+                                         timeout=20)
+                verb, where = "filed", None
+
             if response.status_code >= 300:
                 log.warning("[feedback] github said %s: %s",
                             response.status_code, response.text[:200])
-            else:
-                log.info("[feedback] filed issue %s",
-                         response.json().get("number"))
+                return
+
+            if where is None:
+                where = response.json().get("number")
+                if fid and where:
+                    with _issue_id_lock:
+                        _issue_ids[fid] = where
+                        # Bounded. One entry per rating, and the map only has
+                        # to outlive the seconds between the two posts.
+                        if len(_issue_ids) > 500:
+                            for old in list(_issue_ids)[:100]:
+                                _issue_ids.pop(old, None)
+            log.info("[feedback] %s issue %s", verb, where)
         except Exception as e:
             log.warning("[feedback] could not file issue: %s", e)
 
@@ -1862,6 +1920,7 @@ def submit_feedback():
         # What the reader typed, when they bothered to. A reason chip says
         # which of three buckets an answer failed in; a sentence says what
         # actually went wrong, and that is the part worth reading.
+        "feedback_id": (data.get("feedback_id") or "")[:64] or None,
         "comment": (data.get("comment") or "")[:1000] or None,
         # What the bot actually said. Capped well above a normal answer so a
         # long one is not cut mid-sentence, and well below anything that
@@ -1890,7 +1949,20 @@ def submit_feedback():
         except (FileNotFoundError, json.JSONDecodeError):
             entries = []
 
-        entries.append(entry)
+        # Replaced rather than appended when it is more about a rating
+        # already recorded, so the file holds one row per rating like the
+        # tracker does.
+        fid = entry.get("feedback_id")
+        spot = None
+        if fid:
+            for i, old in enumerate(entries):
+                if isinstance(old, dict) and old.get("feedback_id") == fid:
+                    spot = i
+                    break
+        if spot is None:
+            entries.append(entry)
+        else:
+            entries[spot] = entry
         # Written beside and renamed, so an interrupted write leaves the old
         # file rather than half of a new one.
         tmp = path + ".tmp"

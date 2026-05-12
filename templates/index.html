@@ -2086,6 +2086,17 @@
 
         // Captured now, because lastAnswerMeta moves on to the next answer.
         const context = lastAnswerMeta;
+
+        // One id for this answer's feedback, sent with every post about it.
+        // A thumbs-down files immediately - a reader who shrugs and leaves
+        // should still be counted - and then the reason and the comment
+        // arrive seconds later as a second post. Both used to open their own
+        // GitHub issue, so every complaint was filed twice and the pair had
+        // to be read together to find out what the reader actually said. The
+        // id is what lets the server recognise the second post as more of the
+        // first and edit the issue it already opened.
+        const fid = "fb-" + Date.now().toString(36) + "-"
+                  + Math.random().toString(36).slice(2, 10);
         let rating = null;
         let reason = null;
 
@@ -2094,6 +2105,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              feedback_id: fid,
               question: context.question,
               answer: context.answer || null,
               rating: rating,

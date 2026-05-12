@@ -114,6 +114,13 @@ def remote_name(url, session=None):
     return re.sub(r"\.(pdf|docx?|xlsx?|pptx?)$", "", name, flags=re.I)
 
 
+# Header names that hold the rest of somebody's name. A sheet whose first
+# column is a given name and which carries one of these is a list of people,
+# and their name is the two columns together.
+SURNAME_KEYS = frozenset(["last name", "lastname", "surname", "last",
+                          "family name"])
+
+
 def sheet_rows(text, label):
     """One readable line per spreadsheet row, headed by its first column.
 
@@ -121,12 +128,31 @@ def sheet_rows(text, label):
     leaves a club's name in one chunk and its meeting time in another. Row by
     row, each club becomes a unit that can be retrieved on its own and read
     whole - which is what "when does Aerospace Club meet" actually needs.
+
+    Two things here are about what the row looks like once it is embedded,
+    and both came out of a reader asking for an assistant principal's email
+    and being told the site did not have it. It does - there are 206 staff
+    rows with a Position, a Phone and an Email in them.
+
+    The label is not repeated. It used to be written in here as well as by
+    the caller, so every row opened "From the linked document VRHS Staff
+    Directory: Google Sheets Version: Kelly, from VRHS Staff Directory:
+    Google Sheets Version." - fourteen words of boilerplate identical across
+    all 206 of them, which is fourteen words of every row's embedding spent
+    saying nothing that distinguishes it from its neighbours.
+
+    And the name is put back together. The first column was the given name
+    and the surname sat in a column of its own, so "Kelly Carl" appeared as
+    "Kelly" and then, past all that boilerplate, "Last Name: Carl" - the two
+    halves of the one thing somebody would search for, never adjacent.
     """
     rows = list(csv.reader(io.StringIO(text)))
     if not rows:
         return []
 
     header = [h.strip() for h in rows[0]]
+    surname_at = next((i for i, h in enumerate(header)
+                       if h.strip().lower() in SURNAME_KEYS), None)
     out = []
 
     for row in rows[1:]:
@@ -140,15 +166,20 @@ def sheet_rows(text, label):
         if name and not any(cells[1:]):
             continue
 
+        if (surname_at is not None and surname_at < len(cells)
+                and cells[surname_at] and name):
+            name = "%s %s" % (name, cells[surname_at])
+
         parts = []
-        for key, value in zip(header[1:], cells[1:]):
+        for i, (key, value) in enumerate(zip(header[1:], cells[1:]), start=1):
+            if i == surname_at:
+                continue          # already in the name
             if value and key:
                 parts.append("%s: %s" % (key, value))
         if not parts:
             continue
 
-        out.append("%s, from %s. %s" % (name or "Entry", label,
-                                        " ".join(parts)))
+        out.append("%s. %s" % (name or "Entry", " ".join(parts)))
     return out
 
 
@@ -255,6 +286,38 @@ def file_key(url):
     return document_id(url) or sheet_id(url) or drive_id(url) or url
 
 
+# Words that describe how a file is stored rather than what is in it. The
+# site labels its directory "VRHS Staff Directory: Google Sheets Version",
+# and the last three words are on every one of the 206 rows drawn from it
+# without telling a reader - or an embedding - anything.
+FORMAT_SUFFIX = re.compile(
+    r"[\s:,(-]+(google\s+)?(sheets?|docs?|slides?|pdf|excel|word)"
+    r"(\s+(version|format|file|copy))?\s*\)?\s*$", re.I)
+
+
+FORMAT_WORDS = frozenset(["google", "sheet", "sheets", "doc", "docs",
+                          "document", "slide", "slides", "pdf", "excel",
+                          "word", "version", "format", "file", "copy"])
+
+
+def tidy_label(label):
+    """A label with any trailing note about its file format removed.
+
+    Kept only when something that is not itself a format word survives.
+    "Google Sheets Version" is a label made entirely of them, and trimming it
+    leaves "Google", which names the wrong thing rather than nothing - worse
+    than the noise it replaced.
+    """
+    clean = " ".join((label or "").split())
+    trimmed = FORMAT_SUFFIX.sub("", clean).strip(" :,-")
+    if len(trimmed) < 3:
+        return clean
+    words = re.findall(r"[A-Za-z]+", trimmed.lower())
+    if words and all(w in FORMAT_WORDS for w in words):
+        return clean
+    return trimmed
+
+
 def label_quality(label):
     """How much a label tells you. Higher is better."""
     clean = " ".join((label or "").split())
@@ -312,7 +375,7 @@ def linked_documents(references):
             break
         done.add(href)
 
-        name = " ".join((label or "").split()) or "Linked document"
+        name = tidy_label(label) or "Linked document"
         if name.lower() in VAGUE_LABELS:
             name = "Linked document"
 
