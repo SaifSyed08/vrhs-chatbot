@@ -300,7 +300,7 @@
          760px Bebas broke it after "LOOKING" and left "FOR?" alone on the
          second, which is the one wrap a two-line headline must not make. */
       max-width: 940px;
-      margin: 0 auto 44px auto;
+      margin: 0 auto clamp(10px, 6vh, 44px) auto;
       padding: 0 8px;
       /* And when it does have to wrap - a narrow window, a longer headline -
          the browser evens the lines out rather than filling the first and
@@ -327,7 +327,10 @@
          the strokes are lighter and the counters more open. */
       font-family: 'Oswald', 'Public Sans', Impact, sans-serif;
       text-transform: uppercase;
-      font-size: clamp(2.15rem, 5.4vw, 3.5rem);
+      /* Bounded by the height too. This skin is embedded in pages that give
+         it very little of that, and a headline sized by width alone pushed
+         the composer out of the bottom of a short frame. */
+      font-size: clamp(1.4rem, min(5.4vw, 11vh), 3.5rem);
       line-height: 1.03;
       font-weight: 400;
       /* Slightly tighter than the 300 wanted. Heavier strokes close the
@@ -361,15 +364,32 @@
       padding: 10px 14px 10px 18px;
     }
 
-    /* The default composer grows when it takes focus and the landing one did
-       not, which made the big version feel like a picture of an input rather
-       than an input. */
+    /* Held at its resting size when it takes focus. It used to widen to
+       720px, and on a phone widen and drop 10px as well - in a page that
+       gives this frame very little height, a composer that moves when it is
+       clicked is a composer that shoves the headline and the suggestions
+       around under the reader's cursor. The pill is pinned rather than the
+       rule deleted, because the classic skin's own focus growth would
+       otherwise reach it. */
     body.compact.awaiting .input-pill:focus-within {
-      max-width: 720px;
-      padding: 13px 17px 13px 22px;
+      max-width: 560px;
+      padding: 10px 14px 10px 18px;
     }
 
     body.compact.awaiting .chat-input input { font-size: 1.05rem; }
+
+    /* "Try asking here" is the only instruction on the landing screen, and at
+       the composer's usual #a8adb3 it read as disabled text. Darker while it
+       is inviting; the usual light grey once the box is focused, because
+       then it is a placeholder again and the reader's own text should be the
+       darkest thing in it. The fade class is restated at this specificity or
+       the darker colour would beat it and the language crossfade would stop
+       fading. */
+    body.compact.awaiting .chat-input input::placeholder { color: #5f6368; }
+    body.compact.awaiting .chat-input input:focus::placeholder { color: #a8adb3; }
+    body.compact.awaiting .chat-input input.ph-fade::placeholder {
+      color: transparent;
+    }
 
     /* Everything that was hidden slides in once the first answer is on its
        way, rather than appearing fully formed. */
@@ -1645,8 +1665,8 @@
          44px of margin plus the centring pushed the composer well down the
          screen and left the two reading as unrelated. */
       body.compact.awaiting .landing-title {
-        margin-bottom: 18px;
-        font-size: clamp(1.85rem, 8.2vw, 2.65rem);
+        margin-bottom: clamp(8px, 4vh, 18px);
+        font-size: clamp(1.35rem, min(8.2vw, 10vh), 2.65rem);
       }
 
       /* A smaller resting composer that grows into the normal one. Only the
@@ -1670,17 +1690,14 @@
       }
       body.compact.awaiting .chat-input input { padding: 8px 10px; }
 
+      /* Focus changes nothing about its size or place. It used to open to
+         the full width and drift 10px down, which in a short embedded frame
+         is 10px of the composer leaving the frame - and the keyboard
+         arriving at the same moment already takes most of the screen. */
       body.compact.awaiting .input-pill:focus-within {
-        width: 100%;
-        padding: 10px 12px 10px 18px;
-        /* Down a little as it grows. The composer is centred in the row, so
-           growing it alone expands it evenly about its middle and the whole
-           thing appears to inflate; drifting down at the same time reads as
-           the field coming forward to be typed in. */
-        transform: translateY(10px);
-      }
-      body.compact.awaiting .input-pill:focus-within input {
-        padding: 11px 12px;
+        width: 86%;
+        padding: 4px 8px 4px 14px;
+        transform: none;
       }
     }
 
@@ -1701,12 +1718,569 @@
     /* Beats the focus-within rule that hides the outline, because on a phone
        the tap that asks for it is the same tap that takes focus. */
     body.compact .input-pill.snake-on:focus-within .pill-snake { opacity: 1; }
+
+    /* ===================================================================
+       A question leaving the composer.
+       ===================================================================
+       It rises from the composer into its place, arriving a little small
+       with its text out of focus, and settles. The bubble and its text move
+       separately because they say different things: the bubble travelling is
+       the message being sent, the text sharpening is it being received. A
+       blur on the bubble itself would soften the red edge along with the
+       words, which reads as a rendering fault rather than as motion. */
+    .chat-bubble.user.launch {
+      transform-origin: 100% 100%;
+      animation: bubbleLaunch 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .chat-bubble.user .ub-text { display: block; }
+    .chat-bubble.user.launch .ub-text {
+      animation: textFocus 0.62s cubic-bezier(0.33, 0.9, 0.35, 1) both;
+    }
+
+    @keyframes bubbleLaunch {
+      from { opacity: 0; transform: translateY(38px) scale(0.86); }
+      45%  { opacity: 1; }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes textFocus {
+      from { filter: blur(5px); opacity: 0.55; }
+      to   { filter: blur(0); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .chat-bubble.user.launch,
+      .chat-bubble.user.launch .ub-text { animation: none; }
+    }
+
+    /* The copy control, and the pair it sits beside. .fb-rate groups the
+       thumbs so the third skin can draw them as one pill; here it is only a
+       row, and the three buttons look the way the two always did. */
+    .fb-rate { display: flex; align-items: center; gap: 2px; }
+    .fb-copy .ic-done { display: none; }
+    .fb-copy.copied .ic-copy { display: none; }
+    .fb-copy.copied .ic-done { display: block; }
+    .fb-copy.copied { color: #1e8e3e; }
+
+    /* A frame embedded short enough to clip the first-question notice. The
+       buttons go back side by side, because stacked they are most of the
+       card, and the prose tightens. */
+    @media (max-height: 460px) {
+      .disclaimer { padding: 10px; }
+      .disclaimer-card { padding: 14px 16px; }
+      .disclaimer-card h3 { margin-bottom: 6px; }
+      .disclaimer-card p { font-size: 0.8rem; line-height: 1.45; margin-bottom: 10px; }
+      .disclaimer-actions { flex-direction: row; justify-content: center; }
+      .disclaimer-actions button { width: auto; min-height: 36px; }
+    }
+
+    /* ===================================================================
+       The third skin, toggled with the 3 key or opened with /widget?v=3.
+       ===================================================================
+       Compact underneath, always: every rule here is scoped to
+       body.compact.v3, so it is an override of that skin in the same way
+       compact is an override of the classic one, and a fix to either still
+       lands here. The differences are about letting the answer be the page -
+       no bubble round it, controls that are drawn rather than hinted at, and
+       the two things a reader of an AI answer ought to be able to find out
+       sitting permanently beside the composer. */
+
+    /* The answer is not a message in a bubble. It is text on the page, the
+       width of the column, and only the reader's own question stays in one -
+       which is what makes it obvious at a glance who said what. */
+    body.compact.v3 .chat-bubble.bot {
+      background: transparent;
+      border-radius: 0;
+      padding: 4px 2px 2px 2px;
+      width: auto;
+      max-width: 100%;
+      font-size: 0.9rem;
+      line-height: 1.62;
+      color: #202124;
+    }
+    body.compact.v3 .typing-indicator {
+      background: transparent;
+      padding: 12px 2px;
+    }
+    body.compact.v3 .typing-indicator span { background: #9aa0a6; }
+    body.compact.v3 .verify-card { max-width: 100%; }
+
+    /* Clearance under the conversation for the two notes that sit above the
+       composer, so at rest - scrolled to the end - they stand on white. */
+    body.compact.v3:not(.awaiting) .chat-messages { padding-bottom: 42px; }
+
+    /* Sources, then copy, then the rating, in one row from the left. The
+       column is full width now, and space-between would have thrown the
+       buttons to the far edge, a long way from the answer they act on. */
+    body.compact.v3 .answer-footer {
+      justify-content: flex-start;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: 100%;
+      margin: 4px 0 16px 0;
+    }
+    body.compact.v3 .source-pills { max-width: 100%; margin: 0; }
+
+    /* Drawn, not hinted. In the other skins these wait for a hover, which a
+       phone never produces; circles with an edge are meant to be seen. */
+    body.compact.v3 .feedback-inline { opacity: 1; gap: 6px; }
+
+    body.compact.v3 .fb-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      color: #5f6368;
+    }
+    body.compact.v3 .fb-btn svg { width: 15px; height: 15px; }
+    body.compact.v3 .fb-btn:hover { background: #f1f2f4; color: #202124; }
+
+    /* The copy circle has its own edge; the two thumbs share one. Outer
+       sizes match - 30 + 2 x 1 border for the lone circle, 26 + 2 x 2 padding
+       + 2 x 1 border for the pair - so the row lines up along the middle. */
+    body.compact.v3 .fb-copy {
+      width: 32px;
+      height: 32px;
+      border: 1px solid #dadce0;
+      background: #fff;
+    }
+    body.compact.v3 .fb-copy.copied { color: #1e8e3e; border-color: #b7dfc3; }
+    body.compact.v3 .fb-rate {
+      gap: 0;
+      padding: 2px;
+      border: 1px solid #dadce0;
+      border-radius: 999px;
+      background: #fff;
+    }
+    body.compact.v3 .fb-rate .fb-btn { width: 26px; height: 26px; }
+    body.compact.v3 .fb-rate .fb-btn svg { width: 14px; height: 14px; }
+    body.compact.v3 .fb-btn.active { color: #202124; background: #f1f2f4; }
+
+    /* --- more than one source ---------------------------------------------
+       A row of four pills is the widest thing under an answer and the least
+       read. They collapse into one pill carrying the sites' own icons,
+       overlapped, and open into a sheet. One source is still just a pill. */
+    .source-stack { display: none; }
+    body.compact.v3 .answer-footer.many-sources .source-pills { display: none; }
+    body.compact.v3 .answer-footer.many-sources .source-stack {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 32px;
+      padding: 0 12px 0 5px;
+      border: 1px solid #dadce0;
+      border-radius: 999px;
+      background: #fff;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #3c4043;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    body.compact.v3 .source-stack:hover {
+      border-color: #c4c7cc;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    }
+    .source-stack .stack { display: flex; }
+    .source-stack .count { color: #80868b; font-weight: 400; }
+
+    /* Each icon ringed in white so an overlap reads as a stack of discs
+       rather than as one blot. */
+    .fav {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #f1f3f4;
+      box-shadow: 0 0 0 2px #fff;
+      overflow: hidden;
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: #5f6368;
+    }
+    .fav img { width: 14px; height: 14px; display: block; }
+    .source-stack .stack .fav + .fav { margin-left: -6px; }
+
+    /* A single source gets its site's icon too, so the two cases look like
+       the same idea. */
+    .source-pill .fav { display: none; }
+    body.compact.v3 .source-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 11px 0 5px;
+      height: 32px;
+      border-color: #dadce0;
+      color: #3c4043;
+    }
+    body.compact.v3 .source-pill .fav { display: inline-flex; box-shadow: none; }
+    body.compact.v3 .source-lead { display: none; }
+
+    /* --- the notes over the composer --------------------------------------
+       Your privacy and How AI works. Dotted rather than solid underlines:
+       these open an explanation in place, and a solid underline in this
+       interface means a link that leaves it. */
+    .ai-notes { display: none; }
+    .ai-notes-row { position: relative; height: 0; }
+
+    body.compact.v3 .ai-notes {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      pointer-events: none;
+    }
+    /* In the conversation they float over the bottom of the message list,
+       just above whatever sits on the composer. */
+    body.compact.v3 .ai-notes-row .ai-notes {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 6px;
+      z-index: 5;
+    }
+    /* On the landing screen there is no message list to float over, and the
+       headline has the space above the composer; they sit just below it. */
+    body.compact.v3 .ai-notes-landing { display: none; }
+    body.compact.v3.awaiting .ai-notes-row .ai-notes { display: none; }
+    body.compact.v3.awaiting .ai-notes-landing {
+      display: flex;
+      margin-top: clamp(8px, 2.5vh, 14px);
+    }
+
+    .ai-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 0;
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: 0.74rem;
+      color: #5f6368;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: opacity 0.18s ease, visibility 0s linear 0s, color 0.15s ease;
+    }
+    .ai-note svg { width: 13px; height: 13px; flex: 0 0 auto; }
+    .ai-note span {
+      text-decoration: underline dotted #9aa0a6;
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 3px;
+    }
+    .ai-note:hover { color: #202124; }
+    .ai-note:hover span { text-decoration-color: #5f6368; }
+
+    /* Over a line of the conversation, a note is a word printed on top of
+       another word. It steps aside, and comes back when the text has
+       scrolled past. */
+    .ai-note.covered {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+    }
+
+    /* --- the composer ------------------------------------------------------
+       White rather than the off-white fill, lifted off the page by a shadow,
+       and a firmer edge and placeholder: the grey version read as a disabled
+       field against an answer that is no longer in a grey bubble. */
+    body.compact.v3 .input-pill {
+      background: #fff;
+      border-color: #b9bec4;
+      box-shadow: 0 6px 18px rgba(32, 33, 36, 0.09),
+                  0 1px 3px rgba(32, 33, 36, 0.08);
+    }
+    body.compact.v3 .input-pill:focus-within {
+      background: #fff;
+      border-color: #e60023;
+      box-shadow: 0 10px 26px rgba(32, 33, 36, 0.12),
+                  0 2px 5px rgba(32, 33, 36, 0.08);
+    }
+    body.compact.v3:not(.awaiting) .chat-input input::placeholder {
+      color: #5f6368;
+    }
+    body.compact.v3:not(.awaiting) .chat-input input.ph-fade::placeholder {
+      color: transparent;
+    }
+
+    /* Clicked, the composer rises. The space under it grows, the message
+       list gives up the same height, and the end of the conversation is kept
+       in view as it does - so the last thing said stays readable above the
+       box instead of sliding under it. The padding is what moves, not a
+       transform, because a transform would lift the pill over the text
+       without the list making room for it. */
+    body.compact.v3:not(.awaiting) .chat-input {
+      transition: padding-bottom 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    body.compact.v3:not(.awaiting) .chat-input:focus-within {
+      padding-bottom: 26px;
+    }
+
+    /* --- the sheet ----------------------------------------------------------
+       One panel for all three explanations: it rises from the bottom edge,
+       and the page behind it goes out of focus rather than dark. */
+    .sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.3);
+      -webkit-backdrop-filter: blur(0px);
+      backdrop-filter: blur(0px);
+      opacity: 0;
+      transition: opacity 0.28s ease, backdrop-filter 0.28s ease,
+                  -webkit-backdrop-filter 0.28s ease;
+    }
+    .sheet.open {
+      opacity: 1;
+      -webkit-backdrop-filter: blur(7px);
+      backdrop-filter: blur(7px);
+    }
+
+    .sheet-panel {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      max-height: min(82%, 560px);
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border: 1px solid #e3e5e8;
+      border-bottom: none;
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -10px 40px rgba(32, 33, 36, 0.16);
+      transform: translateY(100%);
+      transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .sheet.open .sheet-panel { transform: none; }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 56px 10px 22px;
+    }
+    .sheet-head .sheet-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #fdecef;
+      color: #c40020;
+      flex: 0 0 auto;
+    }
+    .sheet-head .sheet-icon svg { width: 16px; height: 16px; }
+    .sheet-head h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #202124;
+    }
+
+    .sheet-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: #f1f3f4;
+      color: #3c4043;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    .sheet-close:hover { background: #e3e5e8; }
+    .sheet-close svg { width: 16px; height: 16px; }
+
+    /* The panel scrolls inside itself if a list of sources outgrows it; the
+       page behind never does. */
+    .sheet-body {
+      padding: 4px 22px 22px 22px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: #3c4043;
+    }
+    .sheet-body p { margin: 0 0 12px 0; }
+    .sheet-body p:last-child { margin-bottom: 0; }
+    .sheet-body .sheet-lead { font-size: 0.95rem; color: #202124; }
+
+    .sheet-points { list-style: none; margin: 4px 0 14px 0; padding: 0; }
+    .sheet-points li {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid #f1f3f4;
+    }
+    .sheet-points li:first-child { border-top: none; }
+    .sheet-points .pt-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #e8f0fe;
+      color: #1a57c9;
+    }
+    .sheet-points .pt-icon.green { background: #e6f4ea; color: #1e7e34; }
+    .sheet-points .pt-icon.amber { background: #fef7e0; color: #a05a00; }
+    .sheet-points .pt-icon svg { width: 15px; height: 15px; }
+    .sheet-points strong {
+      display: block;
+      font-weight: 600;
+      color: #202124;
+      line-height: 1.35;
+    }
+    .sheet-points .pt-text { font-size: 0.84rem; line-height: 1.5; }
+    .sheet-foot { font-size: 0.78rem; color: #80868b; }
+
+    /* Sources in the sheet: one group per site, each folding shut on its
+       own. <details> rather than script, so it works for a keyboard and a
+       screen reader with nothing added. */
+    .src-group {
+      border: 1px solid #e8eaed;
+      border-radius: 14px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .src-group summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      cursor: pointer;
+      list-style: none;
+      font-weight: 600;
+      color: #202124;
+      user-select: none;
+    }
+    .src-group summary::-webkit-details-marker { display: none; }
+    .src-group summary .fav { box-shadow: none; }
+    .src-group summary .n {
+      margin-left: auto;
+      font-weight: 400;
+      font-size: 0.78rem;
+      color: #80868b;
+    }
+    .src-group summary .chev {
+      width: 16px;
+      height: 16px;
+      color: #80868b;
+      transition: transform 0.2s ease;
+    }
+    .src-group[open] summary .chev { transform: rotate(180deg); }
+    .src-group summary:hover { background: #f8f9fa; }
+
+    .src-item {
+      display: block;
+      padding: 9px 14px 10px 44px;
+      border-top: 1px solid #f1f3f4;
+      text-decoration: none;
+      color: inherit;
+      transition: background-color 0.13s ease;
+    }
+    .src-item:hover { background: #f8f9fa; }
+    .src-item .t {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #c40020;
+      font-weight: 500;
+      font-size: 0.86rem;
+    }
+    .src-item .t svg { width: 12px; height: 12px; flex: 0 0 auto; }
+    .src-item .s {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: #5f6368;
+    }
+
+    /* The suggestion strip in this skin is written for the answer above it,
+       so it shows those instead of the fixed openers, and they arrive as a
+       row rather than all at once. The fixed ones come back in the other
+       skins. */
+    .quick-prompts .qp-tailored { display: none; }
+    body.compact.v3 .quick-prompts.tailored > button:not(.qp-tailored) {
+      display: none;
+    }
+    body.compact.v3 .quick-prompts .qp-tailored {
+      display: inline-block;
+      animation: suggestIn 0.26s ease both;
+    }
+    body.compact.v3 .quick-prompts .qp-tailored:nth-child(2) { animation-delay: 0.06s; }
+    body.compact.v3 .quick-prompts .qp-tailored:nth-child(3) { animation-delay: 0.12s; }
+
+    /* --- back to the end, on a phone ---------------------------------------
+       A thumb scrolling up through a long answer has no scrollbar to grab
+       and a long way to flick back. The circle is frosted rather than
+       solid, so the text it floats over still reads through it as text
+       rather than being blotted out. A desktop has a wheel and the End key,
+       and gets none of this. */
+    .to-end { display: none; }
+    @media (max-width: 720px), (pointer: coarse) {
+      body.compact.v3:not(.awaiting) .to-end {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        left: 50%;
+        bottom: 34px;
+        z-index: 6;
+        width: 38px;
+        height: 38px;
+        margin-left: -19px;
+        padding: 0;
+        border: 1px solid rgba(32, 33, 36, 0.1);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.55);
+        -webkit-backdrop-filter: blur(10px) saturate(1.4);
+        backdrop-filter: blur(10px) saturate(1.4);
+        box-shadow: 0 4px 14px rgba(32, 33, 36, 0.14);
+        color: #3c4043;
+        cursor: pointer;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(8px) scale(0.9);
+        transition: opacity 0.2s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                    visibility 0s linear 0.24s;
+      }
+      body.compact.v3:not(.awaiting) .to-end.show {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        transition: opacity 0.2s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                    visibility 0s linear 0s;
+      }
+      .to-end svg { width: 18px; height: 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sheet, .sheet-panel, body.compact.v3:not(.awaiting) .chat-input,
+      .to-end { transition: none; }
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 </head>
-<body{% if compact %} class="compact awaiting"{% endif %}>
+<body{% if compact %} class="compact awaiting{% if v3 %} v3{% endif %}"{% endif %}>
   <div class="chat-container">
     <div class="chat-header">
       <span>Ask Your Questions Here!</span>
@@ -1743,6 +2317,28 @@
     </div>
     
     <div class="chat-messages" id="messages"></div>
+    <!-- The third skin's two notes, floated over the foot of the message
+         list. A zero-height row, so the layout of the other skins is not
+         touched by it existing. Anchors rather than buttons because a second
+         copy lives inside .chat-input, where every <button> is restyled as
+         the round send control. -->
+    <div class="ai-notes-row">
+      <!-- Back to the newest message. Third skin, phones only; see
+           .to-end. -->
+      <button type="button" class="to-end" aria-label="Scroll to the latest message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5.5 12.5L12 19l6.5-6.5"/></svg>
+      </button>
+      <div class="ai-notes">
+        <a href="#" class="ai-note" role="button" data-sheet="privacy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+          <span>Your privacy</span>
+        </a>
+        <a href="#" class="ai-note" role="button" data-sheet="ai">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.1"/></svg>
+          <span>How AI works</span>
+        </a>
+      </div>
+    </div>
     <div class="quick-prompts">
       <button onclick="quickAsk('Where do I find the calendar?')">Where do I find the calendar?</button>
       <button onclick="quickAsk('Where are the bell schedules?')">Where are the bell schedules?</button>
@@ -1795,6 +2391,19 @@
             <path d="M12 19V5M12 5L5.5 11.5M12 5l6.5 6.5"/>
           </svg>
         </button>
+      </div>
+
+      <!-- The same two notes on the third skin's landing screen, under the
+           composer. -->
+      <div class="ai-notes ai-notes-landing">
+        <a href="#" class="ai-note" role="button" data-sheet="privacy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+          <span>Your privacy</span>
+        </a>
+        <a href="#" class="ai-note" role="button" data-sheet="ai">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.1"/></svg>
+          <span>How AI works</span>
+        </a>
       </div>
     </div>
 
@@ -1917,7 +2526,68 @@
         return friendly[host] || ("Opens " + host);
       }
 
-      function createFeedbackElement() {
+      // The clipboard, with the old route behind it. navigator.clipboard
+      // needs a secure context and, inside an embedding page's iframe, that
+      // page's permission - neither of which this widget controls. A hidden
+      // textarea and execCommand still works in both places it does not.
+      function copyText(text) {
+        const fallback = () => {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          ta.style.top = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          let ok = false;
+          try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+          ta.remove();
+          return ok;
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text)
+            .then(() => true, () => fallback());
+        }
+        return Promise.resolve(fallback());
+      }
+
+      // The site a source lives on, without the www.
+      function hostOf(url) {
+        try {
+          return new URL(url, window.location.href).hostname
+                   .replace(/^www\./, "");
+        } catch (err) {
+          return "";
+        }
+      }
+
+      // A site's own icon in a small disc. From Google's favicon service,
+      // because the school and district sites serve theirs from paths that
+      // differ page to page; if it fails to load, the disc shows the site's
+      // first letter rather than a broken image.
+      function makeFav(urlOrHost) {
+        const host = /^[a-z0-9.-]+$/i.test(urlOrHost) ? urlOrHost
+                                                      : hostOf(urlOrHost);
+        const disc = document.createElement("span");
+        disc.className = "fav";
+        disc.setAttribute("aria-hidden", "true");
+        if (!host) return disc;
+        const img = document.createElement("img");
+        img.alt = "";
+        img.loading = "lazy";
+        img.referrerPolicy = "no-referrer";
+        img.src = "https://www.google.com/s2/favicons?sz=64&domain="
+                  + encodeURIComponent(host);
+        img.addEventListener("error", () => {
+          img.remove();
+          disc.textContent = host.charAt(0).toUpperCase();
+        });
+        disc.appendChild(img);
+        return disc;
+      }
+
+      function createFeedbackElement(bubble) {
         // Rewritten from a full-width block that announced itself with "Was
         // this helpful?" and sat on its own line under every answer. Three
         // things were wrong with it: the question is cognitive load on someone
@@ -1932,6 +2602,16 @@
         fb.className = "feedback-inline";
 
         fb.innerHTML = `
+          <button type="button" class="fb-btn fb-copy" title="Copy answer" aria-label="Copy answer">
+            <svg class="ic-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/>
+              <path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>
+            </svg>
+            <svg class="ic-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12.5l4.5 4.5L19 7.5"/>
+            </svg>
+          </button>
+          <div class="fb-rate">
           <button class="fb-btn" data-type="up" title="Helpful" aria-label="Helpful">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M3 10C3 9.44772 3.44772 9 4 9H7V21H4C3.44772 21 3 20.5523 3 20V10Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1946,6 +2626,7 @@
               <path d="M14 9L14.6872 5.56415C14.8659 4.67057 14.3512 3.78375 13.4867 3.49558C12.6336 3.21122 11.7013 3.59741 11.2992 4.4017L8 11H7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+          </div>
         `;
 
         // The panel sits inside the icon row, immediately after the thumbs.
@@ -1979,7 +2660,9 @@
         document.body.appendChild(panel);
         fb.panel = panel;
 
-        const buttons = fb.querySelectorAll(".fb-btn");
+        // The rating buttons only. The copy button is an .fb-btn too, for
+        // its looks, and is not a vote.
+        const buttons = fb.querySelectorAll(".fb-btn[data-type]");
         const reasons = panel.querySelectorAll(".fb-reason");
         const input = panel.querySelector(".fb-input");
         const hint = panel.querySelector(".fb-hint");
@@ -2243,6 +2926,35 @@
           submit();
         });
 
+        // Copy the answer as text a reader can paste somewhere useful. Links
+        // keep their address - "Bell Schedules (https://...)" - because the
+        // label alone is a dead end once it has left the page.
+        const copyBtn = fb.querySelector(".fb-copy");
+        let copiedTimer = null;
+        copyBtn.addEventListener("click", () => {
+          const clone = (bubble || document.createElement("div"))
+                          .cloneNode(true);
+          clone.querySelectorAll("a[href]").forEach(a => {
+            const label = a.textContent.trim();
+            const href = a.href;
+            a.replaceWith(document.createTextNode(
+              label && label !== href ? label + " (" + href + ")" : href));
+          });
+          const text = clone.textContent.replace(/\n{3,}/g, "\n\n").trim();
+          copyText(text).then((ok) => {
+            if (!ok) return;
+            copyBtn.classList.add("copied");
+            copyBtn.setAttribute("title", "Copied");
+            copyBtn.setAttribute("aria-label", "Copied");
+            clearTimeout(copiedTimer);
+            copiedTimer = setTimeout(() => {
+              copyBtn.classList.remove("copied");
+              copyBtn.setAttribute("title", "Copy answer");
+              copyBtn.setAttribute("aria-label", "Copy answer");
+            }, 1600);
+          });
+        });
+
         return fb;
       }
 
@@ -2302,7 +3014,8 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query: message,
-            history: conversation.slice(-HISTORY_TURNS)
+            history: conversation.slice(-HISTORY_TURNS),
+            followups: document.body.classList.contains("v3")
           })
         });
 
@@ -2481,6 +3194,8 @@
             pill.target = "_blank";
             pill.rel = "noopener";
             pill.innerText = src.label;
+            // Shown only by the third skin's CSS.
+            pill.prepend(makeFav(src.url));
 
             // The snippet is a quotation from the page, not a description
             // of where the pill goes - but the pill is still a link out, so
@@ -2490,6 +3205,42 @@
             row.appendChild(pill);
           });
           footer.appendChild(row);
+
+          // Built for every answer and shown only by the third skin, so
+          // switching skins mid-conversation changes how existing answers
+          // look rather than leaving them in the old one.
+          if (meta.sources.length > 1) {
+            footer.classList.add("many-sources");
+            const stack = document.createElement("button");
+            stack.type = "button";
+            stack.className = "source-stack";
+            stack.setAttribute("aria-label",
+              meta.sources.length + " sources - show them");
+
+            const icons = document.createElement("span");
+            icons.className = "stack";
+            const hosts = [];
+            meta.sources.forEach(src => {
+              const h = hostOf(src.url);
+              if (h && hosts.indexOf(h) === -1) hosts.push(h);
+            });
+            hosts.slice(0, 3).forEach(h => icons.appendChild(makeFav(h)));
+            stack.appendChild(icons);
+
+            const word = document.createElement("span");
+            word.textContent = "Sources";
+            stack.appendChild(word);
+            const count = document.createElement("span");
+            count.className = "count";
+            count.textContent = meta.sources.length;
+            stack.appendChild(count);
+
+            const list = meta.sources.slice();
+            stack.addEventListener("click", () => {
+              if (window.openSourcesSheet) window.openSourcesSheet(list);
+            });
+            footer.appendChild(stack);
+          }
         }
 
         if (Array.isArray(meta.notice) && meta.notice.length) {
@@ -2521,7 +3272,7 @@
         // rating control from the first real answer. The one skin the guard
         // affected is the one where it was wrong.
         {
-          const fb = createFeedbackElement();
+          const fb = createFeedbackElement(bubble);
           // The panel is not appended here. It lives on the body now, because
           // .chat-messages scrolls and therefore clips - putting it back in
           // the footer undid the whole reason it was moved, and quietly, since
@@ -2547,6 +3298,10 @@
             el.addEventListener("mouseleave", () => reveal(false));
             el.addEventListener("focusin", () => reveal(true));
           });
+        }
+
+        if (window.tailorPrompts) {
+          window.tailorPrompts(message, bubble.innerText, meta.followups);
         }
 
 
@@ -2739,12 +3494,29 @@
       }
     };
 
+    // Not on a phone. The keyboard takes half of an already short frame, and
+    // a list opening under the composer is a list opening under the keyboard
+    // - or, embedded, off the bottom of the frame, which is the one thing
+    // this screen must not do.
+    const phone = window.matchMedia("(max-width: 720px), (pointer: coarse)");
+
+    // How many rows fit between the composer and the bottom of the frame.
+    // This skin is embedded in pages that give it little height, and the
+    // frame clips rather than scrolls, so a third row that does not fit is a
+    // row cut in half. Measured, because the room depends on the frame.
+    const ROW = 39;
+    const room = function () {
+      const below = window.innerHeight - pill.getBoundingClientRect().bottom
+                    - 6 - 8;
+      return Math.max(0, Math.min(MAX, Math.floor(below / ROW)));
+    };
+
     const update = function () {
       const typed = box.value.trim().toLowerCase();
       const body = document.body;
       if (!body.classList.contains("compact")
           || !body.classList.contains("awaiting")
-          || typed.length < 2) {
+          || typed.length < 2 || phone.matches) {
         close();
         return;
       }
@@ -2752,7 +3524,7 @@
       // not only the questions that happen to open with it.
       const hits = QUESTIONS.filter(function (q) {
         return q.toLowerCase().indexOf(typed) !== -1;
-      }).slice(0, MAX);
+      }).slice(0, room());
       render(hits, typed);
     };
 
@@ -3249,6 +4021,417 @@
 
 <script>
   // ===================================================================
+  // The third skin: sheets, the two notes, and the composer rising.
+  // ===================================================================
+  (function () {
+    const body = document.body;
+    const msgs = document.getElementById("messages");
+    const box = document.getElementById("query");
+    const v3 = () => body.classList.contains("compact")
+                     && body.classList.contains("v3");
+
+    const svg = (inner) =>
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+      + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+      + 'aria-hidden="true">' + inner + "</svg>";
+
+    const ICON = {
+      lock: svg('<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/>'
+                + '<path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'),
+      info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/>'
+                + '<path d="M12 7.6v.1"/>'),
+      clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+      user: svg('<circle cx="12" cy="8" r="3.5"/>'
+                + '<path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>'),
+      shield: svg('<path d="M12 3l7 3v5.5c0 4.3-3 7.9-7 9.5-4-1.6-7-5.2-7-9.5V6z"/>'
+                  + '<path d="M9 12l2 2 4-4"/>'),
+      link: svg('<path d="M7 17L17 7M17 7H9M17 7V15"/>'),
+      chev: svg('<path d="M6 9l6 6 6-6"/>'),
+      close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+      stack: svg('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>')
+    };
+
+    // --- the sheet ---------------------------------------------------------
+    // Built when asked for and removed when closed, so the page carries no
+    // hidden dialog for the two skins that never show one.
+    let current = null;
+
+    function openSheet(title, icon, fill) {
+      if (current) current(true);
+
+      const wrap = document.createElement("div");
+      wrap.className = "sheet";
+      const panel = document.createElement("div");
+      panel.className = "sheet-panel";
+      panel.setAttribute("role", "dialog");
+      panel.setAttribute("aria-modal", "true");
+      panel.setAttribute("aria-labelledby", "sheet-title");
+
+      const head = document.createElement("div");
+      head.className = "sheet-head";
+      head.innerHTML = '<span class="sheet-icon">' + icon + "</span>"
+                     + '<h3 id="sheet-title"></h3>';
+      head.querySelector("h3").textContent = title;
+
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "sheet-close";
+      x.setAttribute("aria-label", "Close");
+      x.innerHTML = ICON.close;
+
+      const content = document.createElement("div");
+      content.className = "sheet-body";
+      fill(content);
+
+      panel.append(head, x, content);
+      wrap.appendChild(panel);
+      document.body.appendChild(wrap);
+
+      const before = document.activeElement;
+      // One frame at the closed state first, or there is nothing to animate
+      // from and the sheet appears already up.
+      requestAnimationFrame(() => wrap.classList.add("open"));
+
+      const onKey = (e) => {
+        if (e.key === "Escape") { e.stopPropagation(); close(); }
+      };
+
+      const close = (instant) => {
+        if (current !== close) return;
+        current = null;
+        document.removeEventListener("keydown", onKey, true);
+        if (instant) { wrap.remove(); return; }
+        wrap.classList.remove("open");
+        setTimeout(() => wrap.remove(), 420);
+        // Back to what opened it, except the composer on a phone - focusing
+        // that raises the keyboard nobody asked for.
+        if (before && before !== box && before.focus) {
+          before.focus({ preventScroll: true });
+        }
+      };
+      current = close;
+
+      x.addEventListener("click", () => close());
+      wrap.addEventListener("click", (e) => { if (e.target === wrap) close(); });
+      document.addEventListener("keydown", onKey, true);
+      x.focus({ preventScroll: true });
+    }
+
+    const para = (el, text, cls) => {
+      const p = document.createElement("p");
+      if (cls) p.className = cls;
+      p.textContent = text;
+      el.appendChild(p);
+      return p;
+    };
+
+    const points = (el, rows) => {
+      const ul = document.createElement("ul");
+      ul.className = "sheet-points";
+      rows.forEach(r => {
+        const li = document.createElement("li");
+        li.innerHTML = '<span class="pt-icon ' + (r.tone || "") + '">'
+                     + r.icon + '</span><div class="pt-text"><strong></strong>'
+                     + "<span></span></div>";
+        li.querySelector("strong").textContent = r.title;
+        li.querySelector(".pt-text span").textContent = r.text;
+        ul.appendChild(li);
+      });
+      el.appendChild(ul);
+    };
+
+    // Every line here has to be true of this deployment, because it is a
+    // promise made to students about their data. Checked against the code:
+    // the server has no sessions and keeps no transcript, the conversation
+    // is held in this page's memory and sent back with each question, the
+    // process log records at most the first sixty characters of a question
+    // for debugging, and a rating is filed with the question and answer it
+    // is about. OpenAI's API terms are the stated retention for the model.
+    const SHEETS = {
+      ai: ["How AI works", ICON.info, (el) => {
+        para(el, "This website uses AI to find and explain campus and "
+               + "district information based on available official sources.",
+             "sheet-lead");
+        para(el, "AI may miss details or misinterpret guidance, and sources "
+               + "may be incomplete or out of date.");
+        points(el, [
+          { icon: ICON.stack, tone: "", title: "Finds the pages first",
+            text: "Each question is matched against the Vista Ridge and "
+                + "Leander ISD pages, and the answer is written from what "
+                + "those pages say." },
+          { icon: ICON.shield, tone: "amber", title: "Checks its own answer",
+            text: "Answers are checked against the pages they came from. "
+                + "When something doesn't line up, you'll see a note "
+                + "under the answer." },
+          { icon: ICON.link, tone: "green", title: "Check the linked sources",
+            text: "Before you act on a deadline, a fee or a room, open the "
+                + "source under the answer or ask the front office." }
+        ]);
+      }],
+      privacy: ["Your privacy", ICON.lock, (el) => {
+        para(el, "Ask without an account. Here is what happens to what "
+               + "you type.", "sheet-lead");
+        points(el, [
+          { icon: ICON.lock, tone: "", title: "Sent securely",
+            text: "Questions travel over an encrypted connection, and are "
+                + "used to look up and write your answer." },
+          { icon: ICON.clock, tone: "green", title: "Limited retention",
+            text: "No chat history is saved. Your conversation lives in "
+                + "this tab and is gone when you close it. Short server "
+                + "logs for fixing bugs can include the start of a "
+                + "question. Our AI provider, OpenAI, may hold requests "
+                + "for up to 30 days for abuse monitoring and doesn't "
+                + "train on them." },
+          { icon: ICON.user, tone: "amber", title: "No sign-in, no profile",
+            text: "We never ask who you are. Ratings are anonymous - "
+                + "just leave names and personal details out of what "
+                + "you type." }
+        ]);
+      }]
+    };
+
+    // Delegated, so both copies of the notes - landing and conversation -
+    // are covered by one handler. Anchors, so Space has to be added; Enter
+    // already clicks.
+    document.addEventListener("click", (e) => {
+      const note = e.target.closest && e.target.closest(".ai-note");
+      if (!note) return;
+      e.preventDefault();
+      const def = SHEETS[note.dataset.sheet];
+      if (def) openSheet(def[0], def[1], def[2]);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== " ") return;
+      const note = e.target.closest && e.target.closest(".ai-note");
+      if (!note) return;
+      e.preventDefault();
+      note.click();
+    });
+
+    // --- sources, by site ----------------------------------------------------
+    const SITE = {
+      "vrhs.leanderisd.org": "Vista Ridge High School",
+      "leanderisd.org": "Leander ISD",
+      "news.leanderisd.org": "Leander ISD news",
+      "docs.google.com": "Google Docs",
+      "drive.google.com": "Google Drive",
+      "sites.google.com": "Google Sites",
+      "calendar.google.com": "Google Calendar"
+    };
+
+    window.openSourcesSheet = function (sources) {
+      // Grouped by site, in the order their best source was ranked - the
+      // site the answer leaned on most comes first.
+      const groups = [];
+      const byHost = {};
+      sources.forEach(src => {
+        const host = hostOf(src.url) || "other";
+        if (!byHost[host]) {
+          byHost[host] = { host: host, items: [] };
+          groups.push(byHost[host]);
+        }
+        byHost[host].items.push(src);
+      });
+
+      openSheet("Sources", ICON.stack, (el) => {
+        groups.forEach(g => {
+          const d = document.createElement("details");
+          d.className = "src-group";
+          d.open = true;
+          const sum = document.createElement("summary");
+          sum.appendChild(makeFav(g.host));
+          const name = document.createElement("span");
+          name.textContent = SITE[g.host] || g.host;
+          name.title = g.host;
+          sum.appendChild(name);
+          const n = document.createElement("span");
+          n.className = "n";
+          n.textContent = g.items.length === 1 ? "1 page"
+                                               : g.items.length + " pages";
+          sum.appendChild(n);
+          sum.insertAdjacentHTML("beforeend",
+            ICON.chev.replace("<svg", '<svg class="chev"'));
+          d.appendChild(sum);
+
+          g.items.forEach(src => {
+            const a = document.createElement("a");
+            a.className = "src-item";
+            a.href = src.url;
+            a.target = "_blank";
+            a.rel = "noopener";
+            const t = document.createElement("span");
+            t.className = "t";
+            t.textContent = src.label || src.url;
+            t.insertAdjacentHTML("beforeend", ICON.link);
+            a.appendChild(t);
+            if (src.snippet) {
+              const sn = document.createElement("span");
+              sn.className = "s";
+              sn.textContent = src.snippet;
+              a.appendChild(sn);
+            }
+            d.appendChild(a);
+          });
+          el.appendChild(d);
+        });
+      });
+    };
+
+    // --- the notes step aside over text -------------------------------------
+    // Checked against the lines of text themselves, not the boxes they sit
+    // in. An answer in this skin is a full-width block, and its last line is
+    // often short: testing the block would hide a note that is plainly over
+    // white space beside that line.
+    const notes = document.querySelectorAll(".ai-notes-row .ai-note");
+    const toEnd = document.querySelector(".to-end");
+    if (toEnd && msgs) {
+      toEnd.addEventListener("click", () => {
+        msgs.scrollTo({ top: msgs.scrollHeight, behavior: "smooth" });
+      });
+    }
+    const SOLID = ".chat-bubble.user, .typing-indicator, .verify-card, "
+                + ".source-pills, .source-stack, .feedback-inline, "
+                + ".mid-disclaimer";
+    const range = document.createRange();
+
+    const overlaps = (a, b, pad) =>
+      b.width > 0 && b.height > 0
+      && b.bottom > a.top - pad && b.top < a.bottom + pad
+      && b.right > a.left - pad && b.left < a.right + pad;
+
+    let queued = false;
+    const check = () => {
+      queued = false;
+      if (!v3() || body.classList.contains("awaiting") || !msgs) return;
+      const rects = [];
+      msgs.querySelectorAll(".chat-bubble.bot").forEach(el => {
+        range.selectNodeContents(el);
+        for (const r of range.getClientRects()) rects.push(r);
+      });
+      msgs.querySelectorAll(SOLID).forEach(el => {
+        rects.push(el.getBoundingClientRect());
+      });
+      notes.forEach(n => {
+        const r = n.getBoundingClientRect();
+        n.classList.toggle("covered", rects.some(b => overlaps(r, b, 4)));
+      });
+      // Up by more than about a screen's worth of a phone's conversation.
+      // Less than that and the end is a short flick away already.
+      if (toEnd) {
+        const behind = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight;
+        toEnd.classList.toggle("show", behind > 240);
+      }
+    };
+    const soon = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(check);
+    };
+
+    if (msgs) {
+      msgs.addEventListener("scroll", soon, { passive: true });
+      new MutationObserver(soon).observe(msgs, {
+        childList: true, subtree: true, characterData: true });
+    }
+    window.addEventListener("resize", soon);
+    new MutationObserver(soon).observe(body, {
+      attributes: true, attributeFilter: ["class"] });
+
+    // --- the composer rises, and the conversation keeps its end in view -----
+    // The rise itself is CSS: the space under the composer grows on focus
+    // and the message list gives up that height. What the CSS cannot do is
+    // keep the last line where the reader was looking, so whenever the list
+    // changes size while it was scrolled to the end, it is put back there.
+    // Instant rather than smooth: the list is smooth-scrolling by default,
+    // and a smooth correction every frame of a transition trails behind it.
+    let atEnd = true;
+    if (msgs) {
+      msgs.addEventListener("scroll", () => {
+        atEnd = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 28;
+      }, { passive: true });
+      if (window.ResizeObserver) {
+        new ResizeObserver(() => {
+          if (!v3() || !atEnd) return;
+          msgs.scrollTo({ top: msgs.scrollHeight, behavior: "instant" });
+          soon();
+        }).observe(msgs);
+      }
+    }
+
+    // --- suggestions written for the last answer ---------------------------
+    // The server writes three from the pages the answer was retrieved from
+    // when this skin asks it to. When it has none - a pre-written answer, a
+    // question the pages do not cover, a slow or failed call - the landing
+    // list is ranked against the question and the answer instead, so the
+    // strip still moves on with the conversation and still only offers
+    // things the site can answer.
+    const STOP = new Set(("the a an and or of to in on for is are do does "
+      + "did i my me we you your how what where when who which can could "
+      + "with at by from this that it be as about there here get find "
+      + "school vrhs vista ridge").split(" "));
+    const norm = (t) => String(t || "").toLowerCase()
+                          .replace(/[^a-z0-9 ]+/g, " ").trim()
+                          .replace(/\s+/g, " ");
+    const words = (t) => norm(t).split(" ")
+                          .filter(w => w.length > 2 && !STOP.has(w))
+                          .map(w => w.replace(/s$/, ""));
+
+    const ranked = (question, answer, skip) => {
+      const inQ = new Set(words(question));
+      const inA = new Set(words(answer));
+      return (window.VRHS_QUESTIONS || [])
+        .filter(q => !skip.has(norm(q)))
+        .map(q => {
+          let score = 0;
+          new Set(words(q)).forEach(w => {
+            if (inA.has(w)) score += 1;
+            if (inQ.has(w)) score += 1.5;
+          });
+          return { q: q, score: score };
+        })
+        .filter(x => x.score >= 1.5)
+        .sort((a, b) => b.score - a.score)
+        .map(x => x.q);
+    };
+
+    window.tailorPrompts = function (question, answer, followups) {
+      const strip = document.querySelector(".quick-prompts");
+      if (!strip) return;
+
+      const skip = new Set();
+      (typeof conversation !== "undefined" ? conversation : [])
+        .forEach(t => { if (t.role === "user") skip.add(norm(t.content)); });
+      skip.add(norm(question));
+
+      const list = [];
+      const add = (q) => {
+        const k = norm(q);
+        if (!k || skip.has(k) || list.some(x => norm(x) === k)) return;
+        list.push(q);
+      };
+      (Array.isArray(followups) ? followups : [])
+        .filter(q => typeof q === "string").forEach(add);
+      if (list.length < 3) ranked(question, answer, skip).forEach(add);
+
+      strip.querySelectorAll(".qp-tailored").forEach(b => b.remove());
+      const chosen = list.slice(0, 3);
+      chosen.slice().reverse().forEach(q => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "qp-tailored";
+        b.textContent = q;
+        b.addEventListener("click", () => quickAsk(q));
+        strip.prepend(b);
+      });
+      strip.classList.toggle("tailored", chosen.length > 0);
+      strip.scrollLeft = 0;
+      strip.dispatchEvent(new Event("scroll"));
+    };
+  })();
+  </script>
+
+<script>
+  // ===================================================================
   // Compact mode and the disclaimer.
   // ===================================================================
   (function () {
@@ -3259,8 +4442,14 @@
     // this one wants the key, and it would otherwise put a "2" in the
     // composer. Once the composer has focus, 2 is a character again, so a
     // question containing a number types normally.
+    //
+    // 3 does the same for the third skin, which is compact with overrides on
+    // top: on from anywhere, and off back to compact. 2 pressed in the third
+    // skin also lands in compact - 2 is the second skin - and from there
+    // toggles to classic as it always has.
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "2" || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.key !== "2" && e.key !== "3")
+          || e.ctrlKey || e.metaKey || e.altKey) return;
       const active = document.activeElement;
       const tag = active && active.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
@@ -3268,6 +4457,15 @@
 
       e.preventDefault();
       e.stopImmediatePropagation();
+
+      if (e.key === "3" || body.classList.contains("v3")) {
+        const on = e.key === "3" && !body.classList.contains("v3");
+        body.classList.toggle("v3", on);
+        body.classList.add("compact");
+        if (!window.__asked) body.classList.add("awaiting");
+        return;
+      }
+
       body.classList.toggle("compact");
 
       // Entering compact with nothing asked yet drops to the landing state.
@@ -3393,6 +4591,9 @@
       const selection = window.getSelection();
       if (selection && String(selection).length) return;
 
+      // Nor someone reading a sheet, whose composer is behind it.
+      if (document.querySelector(".sheet")) return;
+
       box.focus();
     });
 
@@ -3492,7 +4693,23 @@
 
     // Strip trailing newlines + parse markdown inline
     const trimmed = text.replace(/\n+$/, "");
-    bubble.innerHTML = renderInline(trimmed);
+    if (sender === "user") {
+      // The text in its own element, so it can come into focus while the
+      // bubble around it is still travelling. See .chat-bubble.user.launch.
+      const inner = document.createElement("span");
+      inner.className = "ub-text";
+      inner.innerHTML = renderInline(trimmed);
+      bubble.appendChild(inner);
+      bubble.classList.add("launch");
+      // Taken off once it has played. Showing a hidden list again restarts
+      // any animation still named on its children, and the question would
+      // be sent a second time on screen.
+      bubble.addEventListener("animationend", (e) => {
+        if (e.target === bubble) bubble.classList.remove("launch");
+      });
+    } else {
+      bubble.innerHTML = renderInline(trimmed);
+    }
 
     msgContainer.appendChild(bubble);
 

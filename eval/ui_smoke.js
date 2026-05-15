@@ -220,12 +220,15 @@ function check(name, pass, detail) {
   await sleep(900);
 
   const shown = await page.evaluate(() => ({
-    fbButtons: document.querySelectorAll(".fb-btn").length,
+    fbButtons: document.querySelectorAll(".fb-btn[data-type]").length,
+    copy: document.querySelectorAll(".fb-copy").length,
     pills: document.querySelectorAll(".source-pill").length,
     cards: document.querySelectorAll(".verify-card").length,
   }));
   check("the FIRST answer carries a rating control",
         shown.fbButtons === 2, `${shown.fbButtons} buttons`);
+  check("and a copy button beside it", shown.copy === 1,
+        `${shown.copy} copy`);
   check("sources and the caution render",
         shown.pills === 1 && shown.cards === 1,
         `${shown.pills} pill, ${shown.cards} card`);

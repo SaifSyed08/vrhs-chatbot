@@ -76,6 +76,12 @@ EMBED_MODEL = os.getenv("VRHS_EMBED_MODEL", "text-embedding-ada-002")
 # will ratify its mistakes.
 GRADER_MODEL = os.getenv("VRHS_GRADER_MODEL", "gpt-4o-mini")
 
+# Writes the follow-up suggestions under an answer in the third skin. A small
+# model is enough - it is picking three short questions out of a context that
+# is already in hand - and it runs beside the grader, so its time is hidden
+# behind the check the answer was waiting on anyway.
+FOLLOWUP_MODEL = os.getenv("VRHS_FOLLOWUP_MODEL", "gpt-4o-mini")
+
 
 # === Retrieval ===
 

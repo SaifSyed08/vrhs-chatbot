@@ -206,9 +206,12 @@ const overflow = p => p.evaluate(() => {
       await p.tap("#query");
       await sleep(700);
       const grown = await p.evaluate(() => { const r = document.querySelector(".input-pill").getBoundingClientRect(); return { h: Math.round(r.height), t: Math.round(r.top), w: Math.round(r.width) }; });
-      check("composer grows on tap", grown.h > rest.h, `${rest.h} -> ${grown.h}px`);
-      check("and takes the full width", grown.w > rest.w + 20, `${rest.w} -> ${grown.w}px`);
-      check("and drifts down, not up", grown.t >= rest.t, `${rest.t} -> ${grown.t}`);
+      // Reversed from the original behaviour on request. The landing
+      // composer used to widen to the full screen and drift 10px down on
+      // tap; in a short embedded frame that pushed it out of the bottom.
+      check("composer keeps its height on tap", grown.h === rest.h, `${rest.h} -> ${grown.h}px`);
+      check("and its width", grown.w === rest.w, `${rest.w} -> ${grown.w}px`);
+      check("and does not drop", grown.t === rest.t, `${rest.t} -> ${grown.t}`);
 
       const snake = await p.evaluate(() => { const el = document.querySelector(".input-pill"); return { on: el.classList.contains("snake-on"), op: +getComputedStyle(document.querySelector(".pill-snake")).opacity }; });
       check("snake shows on tap", snake.on && snake.op > 0.5, JSON.stringify(snake));

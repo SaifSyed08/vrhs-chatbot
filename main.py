@@ -1243,8 +1243,12 @@ def widget():
     Serving a chat page there would mean anyone loading the widget by its
     obvious name triggered a full re-scrape and a few thousand embedding calls
     instead.
+
+    ?v=3 opens the third skin, which is also what pressing 3 switches to - so
+    a page embedding that skin does not need the reader to know the key.
     """
-    return render_template("index.html", compact=True)
+    return render_template("index.html", compact=True,
+                           v3=request.args.get("v") == "3")
 
 
 @app.route("/report", methods=["POST"])
@@ -1342,6 +1346,74 @@ def retrieval_query(question, history):
     return previous + " " + question
 
 
+FOLLOWUP_PROMPT = (
+    "You suggest what a Vista Ridge High School student or parent might ask "
+    "next, after reading an answer from the school's help assistant. Return "
+    "a JSON object {\"questions\": [...]} with exactly three questions.\n\n"
+    "Each question must be one the CONTEXT below can answer - a detail it "
+    "states that the answer did not cover, or the natural next step after "
+    "the answer. Never suggest something the context does not contain; a "
+    "suggestion the assistant cannot answer is worse than none. Do not "
+    "repeat or reword the question already asked. Under nine words each, "
+    "phrased the way a student would type it, ending in a question mark."
+)
+
+# Long enough for the passages the answer leaned on, short enough that the
+# call stays cheap. The context is ordered best-match first, so the cut falls
+# on the chunks least likely to matter.
+FOLLOWUP_CONTEXT_CHARS = 6000
+
+
+def suggest_followups(question, answer, context):
+    """Three follow-up questions the retrieved context can actually answer.
+
+    Grounded in the context rather than in the answer alone. Written from the
+    answer, a model proposes the obvious next question whether or not the
+    school's pages say anything about it - and a suggestion is a promise, the
+    same promise the landing list makes, so it is drawn from what retrieval
+    actually found.
+
+    Never raises. The suggestions are a convenience under an answer that is
+    already on screen; failing to write them costs the reader nothing, and
+    the client keeps its own ranked list for exactly that case.
+    """
+    try:
+        reply = with_retry(lambda: client.chat.completions.create(
+            model=config.FOLLOWUP_MODEL,
+            temperature=0.3,
+            max_tokens=160,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": FOLLOWUP_PROMPT},
+                {"role": "user", "content": (
+                    "CONTEXT:\n" + context[:FOLLOWUP_CONTEXT_CHARS]
+                    + "\n\nQUESTION ASKED: " + question
+                    + "\n\nANSWER GIVEN: " + answer[:2000])},
+            ]))
+        raw = json.loads(reply.choices[0].message.content or "{}")
+    except Exception as e:
+        log.warning("[followups] not written: %s", e)
+        return []
+
+    asked = question.strip().lower().rstrip("?")
+    seen, out = set(), []
+    for q in raw.get("questions", []) if isinstance(raw, dict) else []:
+        if not isinstance(q, str):
+            continue
+        q = " ".join(q.split())
+        key = q.lower().rstrip("?")
+        # Bounded both ways: a one-word fragment is not a question, and a
+        # sentence long enough to wrap does not fit on a chip.
+        if not 8 <= len(q) <= 80 or key == asked or key in seen:
+            continue
+        seen.add(key)
+        # "Phrased the way a student would type it" came back all lowercase,
+        # which on a chip beside the capitalised openers reads as a typo.
+        q = q[0].upper() + q[1:]
+        out.append(q if q.endswith("?") else q + "?")
+    return out[:3]
+
+
 def context_block(context, stats, live=None, live_leads=True):
     """The retrieved text, with a word about how well it actually matched.
 
@@ -1422,6 +1494,9 @@ def ask():
     data = request.get_json()
     question = data.get("query")
     history = clean_history(data.get("history"))
+    # Only the third skin shows suggestions tailored to each answer, so only
+    # it pays for them.
+    want_followups = data.get("followups") is True
 
     # Checked before retrieval, because a hit skips both round trips - there is
     # no point embedding a question whose answer is already written and already
@@ -1543,6 +1618,18 @@ def ask():
                 # yield it straight to the HTTP response
                 yield token
 
+        # Started before the check and collected after it, so the two model
+        # calls overlap and the suggestions add nothing to the wait for the
+        # sources and the rating row.
+        followups = {}
+        writer = None
+        if want_followups:
+            writer = threading.Thread(
+                target=lambda: followups.update(
+                    q=suggest_followups(question, "".join(answer), context)),
+                daemon=True)
+            writer.start()
+
         # An answer is only checkable as a whole, so verification runs after
         # the last token. A failed check appends a warning rather than
         # retracting what the user has already read.
@@ -1572,6 +1659,14 @@ def ask():
                 "top": verdict.retrieval_top,
             },
         }
+        if writer is not None:
+            # Bounded, because the reader is waiting on this block for the
+            # sources. A slow suggestion call is dropped, not waited out.
+            writer.join(timeout=4)
+            # Not offered when the corpus did not cover the question: there
+            # is no context for them to be grounded in.
+            if verdict.retrieval_level != "none":
+                meta["followups"] = followups.get("q", [])
         yield META_SENTINEL + json.dumps(meta)
 
     # Wrap it in Flask’s Response so it streams chunked HTTP
