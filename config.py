@@ -193,8 +193,12 @@ def _repo(raw, default):
     return raw, None
 
 
+# The default is the private tracker, not this repository. This one is
+# public, so every issue filed here had the question and the comment
+# withheld and arrived as diagnostics alone - eight of them, none of which
+# said what the reader asked.
 GITHUB_REPO, GITHUB_REPO_PROBLEM = _repo(
-    os.getenv("VRHS_GITHUB_REPO"), "SaifSyed08/vrhs-chatbot")
+    os.getenv("VRHS_GITHUB_REPO"), "SaifSyed08/vrhs-chatbot-feedback")
 
 # /feedback is public and unauthenticated, so anyone who finds it can file
 # issues through it. A cap is the difference between a feedback channel and a
