@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- interactive-widget: Android Chrome otherwise lays the keyboard over
+       the page without shrinking it, so the composer is covered rather than
+       lifted. iOS ignores it; the visualViewport handler covers iOS. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
   <title>VRHS Chatbot</title>
   <!-- Inline so there is no extra request and no 404 in the console. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e60023'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'%3EVR%3C/text%3E%3C/svg%3E" />
@@ -444,11 +447,16 @@
          width, height or viewBox, and the opposite insets are then dropped
          as over-constrained. That is the tall narrow box it was drawing.
          Percentages resolve against the pill, which is the containing block,
-         so the pill's size plus twice the outset is the box we want. */
-      top: -3px;
-      left: -3px;
-      width: calc(100% + 6px);
-      height: calc(100% + 6px);
+         so the pill's size plus twice the outset is the box we want.
+         2.5px of outset, from 3. The offsets resolve against the pill's
+         padding box, inside its border, so this is about a pixel beyond the
+         border's outer edge - at 3 the ring stood a visible step taller than
+         the pill it traces; at 2 the stroke landed on the border itself and
+         read as the border changing colour. */
+      top: -2.5px;
+      left: -2.5px;
+      width: calc(100% + 5px);
+      height: calc(100% + 5px);
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.12s ease;
@@ -743,7 +751,10 @@
          pill rather than against its edge. A round button flush to a round
          corner reads as part of the border. */
       padding: 5px 9px 5px 8px;
-      border: 1.5px solid #e0e3e6;
+      /* #c4c8cc, from #e0e3e6. The lighter edge all but disappeared against
+         white, and a composer you cannot find the edge of is one you have to
+         look for. */
+      border: 1.5px solid #c4c8cc;
       border-radius: 999px;
       background-color: #fafbfc;
       transition: max-width 0.42s cubic-bezier(0.33, 0.9, 0.35, 1),
@@ -1244,7 +1255,12 @@
     /* Filled, not recoloured. The fill is what reads as "chosen"; turning it
        red as well made a rating look like a warning, which is the wrong tone
        for someone who just told us the answer was fine. */
-    .fb-btn.active { color: #5f6368; }
+    /* Red when chosen, in the school's red: a filled glyph on grey read as
+       barely different from a hover, and a rating or a copy is something
+       the reader should be able to see they did. The glyph stays filled -
+       white on red now. */
+    .fb-btn.active,
+    .fb-btn.active:hover { color: #fff; background: #e60023; }
     .fb-btn.active svg path { fill: currentColor; }
 
     /* A popover, anchored to the button that opens it and parented to the
@@ -1571,6 +1587,35 @@
       to   { opacity: 1; transform: none; }
     }
 
+    /* The row under an answer arrives a piece at a time - each source, then
+       the sources pill, copy and the rating - once the answer has finished,
+       rather than all of it in the frame the stream ends. --i is each
+       piece's place in the row, set as it is built.
+       "backwards", not "both": the pieces only borrow the animation's
+       starting state while they wait their turn. With "both" the finished
+       opacity would stay pinned by the animation and beat the hover reveal
+       that the other skins use on the rating controls. */
+    .answer-footer .source-pill,
+    .answer-footer .source-stack,
+    .answer-footer .fb-copy,
+    .answer-footer .fb-rate {
+      animation: chipIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+      animation-delay: calc(var(--i, 0) * 55ms + 60ms);
+    }
+    .answer-footer .source-pills { animation: none; }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateY(6px) scale(0.9); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .answer-footer .source-pill,
+      .answer-footer .source-stack,
+      .answer-footer .fb-copy,
+      .answer-footer .fb-rate { animation: none; }
+    }
+
     .verify-card .verify-title {
       font-weight: 600;
       color: #9a7b3a;
@@ -1759,7 +1804,8 @@
     .fb-copy .ic-done { display: none; }
     .fb-copy.copied .ic-copy { display: none; }
     .fb-copy.copied .ic-done { display: block; }
-    .fb-copy.copied { color: #1e8e3e; }
+    .fb-copy.copied,
+    .fb-copy.copied:hover { color: #fff; background: #e60023; }
 
     /* A frame embedded short enough to clip the first-question notice. The
        buttons go back side by side, because stacked they are most of the
@@ -1843,7 +1889,12 @@
       border: 1px solid #dadce0;
       background: #fff;
     }
-    body.compact.v3 .fb-copy.copied { color: #1e8e3e; border-color: #b7dfc3; }
+    body.compact.v3 .fb-copy.copied,
+    body.compact.v3 .fb-copy.copied:hover {
+      color: #fff;
+      background: #e60023;
+      border-color: #e60023;
+    }
     body.compact.v3 .fb-rate {
       gap: 0;
       padding: 2px;
@@ -1853,7 +1904,8 @@
     }
     body.compact.v3 .fb-rate .fb-btn { width: 26px; height: 26px; }
     body.compact.v3 .fb-rate .fb-btn svg { width: 14px; height: 14px; }
-    body.compact.v3 .fb-btn.active { color: #202124; background: #f1f2f4; }
+    body.compact.v3 .fb-btn.active,
+    body.compact.v3 .fb-btn.active:hover { color: #fff; background: #e60023; }
 
     /* --- more than one source ---------------------------------------------
        A row of four pills is the widest thing under an answer and the least
@@ -1932,8 +1984,9 @@
       gap: 18px;
       pointer-events: none;
     }
-    /* In the conversation they float over the bottom of the message list,
-       just above whatever sits on the composer. */
+    /* They float over the bottom of the message list, just above whatever
+       sits on the composer - and only in a conversation. The landing screen
+       has one job and a headline doing it. */
     body.compact.v3 .ai-notes-row .ai-notes {
       position: absolute;
       left: 0;
@@ -1941,14 +1994,7 @@
       bottom: 6px;
       z-index: 5;
     }
-    /* On the landing screen there is no message list to float over, and the
-       headline has the space above the composer; they sit just below it. */
-    body.compact.v3 .ai-notes-landing { display: none; }
     body.compact.v3.awaiting .ai-notes-row .ai-notes { display: none; }
-    body.compact.v3.awaiting .ai-notes-landing {
-      display: flex;
-      margin-top: clamp(8px, 2.5vh, 14px);
-    }
 
     .ai-note {
       display: inline-flex;
@@ -1958,20 +2004,20 @@
       border: none;
       background: none;
       font-family: inherit;
-      font-size: 0.74rem;
-      color: #5f6368;
+      font-size: 0.72rem;
+      color: #b0b5ba;
       cursor: pointer;
       pointer-events: auto;
       transition: opacity 0.18s ease, visibility 0s linear 0s, color 0.15s ease;
     }
-    .ai-note svg { width: 13px; height: 13px; flex: 0 0 auto; }
+    .ai-note svg { width: 12px; height: 12px; flex: 0 0 auto; }
     .ai-note span {
-      text-decoration: underline dotted #9aa0a6;
+      text-decoration: underline dotted #d3d7db;
       text-decoration-thickness: 1.5px;
       text-underline-offset: 3px;
     }
-    .ai-note:hover { color: #202124; }
-    .ai-note:hover span { text-decoration-color: #5f6368; }
+    .ai-note:hover { color: #6b7075; }
+    .ai-note:hover span { text-decoration-color: #9aa0a6; }
 
     /* Over a line of the conversation, a note is a word printed on top of
        another word. It steps aside, and comes back when the text has
@@ -1989,15 +2035,18 @@
        field against an answer that is no longer in a grey bubble. */
     body.compact.v3 .input-pill {
       background: #fff;
-      border-color: #b9bec4;
-      box-shadow: 0 6px 18px rgba(32, 33, 36, 0.09),
-                  0 1px 3px rgba(32, 33, 36, 0.08);
+      border-color: #9aa0a6;
+      /* Short and close. The first version dropped 6px and blurred 18, and
+         with 8px of room under the pill it ran into the bottom of the frame
+         and was cut off there, which read as a smudge along the edge. */
+      box-shadow: 0 2px 6px rgba(32, 33, 36, 0.08),
+                  0 1px 2px rgba(32, 33, 36, 0.05);
     }
     body.compact.v3 .input-pill:focus-within {
       background: #fff;
       border-color: #e60023;
-      box-shadow: 0 10px 26px rgba(32, 33, 36, 0.12),
-                  0 2px 5px rgba(32, 33, 36, 0.08);
+      box-shadow: 0 3px 9px rgba(32, 33, 36, 0.09),
+                  0 1px 2px rgba(32, 33, 36, 0.05);
     }
     body.compact.v3:not(.awaiting) .chat-input input::placeholder {
       color: #5f6368;
@@ -2017,6 +2066,13 @@
     }
     body.compact.v3:not(.awaiting) .chat-input:focus-within {
       padding-bottom: 26px;
+    }
+    /* Further on a phone, where the keyboard arriving under it is the thing
+       the rise has to be seen against. */
+    @media (max-width: 720px), (pointer: coarse) {
+      body.compact.v3:not(.awaiting) .chat-input:focus-within {
+        padding-bottom: 40px;
+      }
     }
 
     /* --- the sheet ----------------------------------------------------------
@@ -2059,24 +2115,33 @@
     }
     .sheet.open .sheet-panel { transform: none; }
 
+    /* The two notes' explanations, on a desktop: a small card in the middle
+       of the window instead. They are two sentences, and a sheet rising the
+       full height of a wide screen for two sentences is a lot of motion for
+       very little. A phone keeps the sheet, which is where a thumb is. */
+    @media (min-width: 721px) {
+      .sheet.center { align-items: center; padding: 20px; }
+      .sheet.center .sheet-panel {
+        max-width: 380px;
+        border: 1px solid #e3e5e8;
+        border-radius: 18px;
+        box-shadow: 0 18px 50px rgba(32, 33, 36, 0.18),
+                    0 2px 8px rgba(32, 33, 36, 0.06);
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                    opacity 0.22s ease;
+      }
+      .sheet.center.open .sheet-panel { opacity: 1; transform: none; }
+      .sheet.center .sheet-body { padding-bottom: 20px; }
+    }
+
     .sheet-head {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 18px 56px 10px 22px;
     }
-    .sheet-head .sheet-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #fdecef;
-      color: #c40020;
-      flex: 0 0 auto;
-    }
-    .sheet-head .sheet-icon svg { width: 16px; height: 16px; }
     .sheet-head h3 {
       margin: 0;
       font-size: 1rem;
@@ -2147,7 +2212,6 @@
       line-height: 1.35;
     }
     .sheet-points .pt-text { font-size: 0.84rem; line-height: 1.5; }
-    .sheet-foot { font-size: 0.78rem; color: #80868b; }
 
     /* Sources in the sheet: one group per site, each folding shut on its
        own. <details> rather than script, so it works for a keyboard and a
@@ -2226,6 +2290,22 @@
     }
     body.compact.v3 .quick-prompts .qp-tailored:nth-child(2) { animation-delay: 0.06s; }
     body.compact.v3 .quick-prompts .qp-tailored:nth-child(3) { animation-delay: 0.12s; }
+
+    /* Gone while the answer is being written. They were written for the
+       last answer, and offering them under a question that has moved on is
+       offering the wrong things; they come back, rewritten, once the answer
+       is complete. Faded where they stand rather than collapsed, so the
+       composer does not jump up and back down again. */
+    body.compact.v3 .quick-prompts.qp-away > button {
+      animation: chipOut 0.22s ease both;
+      pointer-events: none;
+    }
+    body.compact.v3 .quick-prompts.qp-away > button:nth-child(2) { animation-delay: 0.04s; }
+    body.compact.v3 .quick-prompts.qp-away > button:nth-child(3) { animation-delay: 0.08s; }
+
+    @keyframes chipOut {
+      to { opacity: 0; transform: translateY(6px) scale(0.94); }
+    }
 
     /* --- back to the end, on a phone ---------------------------------------
        A thumb scrolling up through a long answer has no scrollbar to grab
@@ -2391,19 +2471,6 @@
             <path d="M12 19V5M12 5L5.5 11.5M12 5l6.5 6.5"/>
           </svg>
         </button>
-      </div>
-
-      <!-- The same two notes on the third skin's landing screen, under the
-           composer. -->
-      <div class="ai-notes ai-notes-landing">
-        <a href="#" class="ai-note" role="button" data-sheet="privacy">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
-          <span>Your privacy</span>
-        </a>
-        <a href="#" class="ai-note" role="button" data-sheet="ai">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.1"/></svg>
-          <span>How AI works</span>
-        </a>
       </div>
     </div>
 
@@ -2995,6 +3062,7 @@
 
         // 2️⃣ show the user bubble
         appendMessage(message, 'user');
+        if (window.stashPrompts) window.stashPrompts();
         input.value = "";
         if (window.updateSendState) window.updateSendState();
 
@@ -3009,6 +3077,9 @@
         msgContainer.scrollTop = msgContainer.scrollHeight;
 
         // 4️⃣ fire the POST properly
+        // A request that never arrives leaves nothing to rewrite the
+        // suggestions from, so they come back as they were rather than
+        // staying away for good.
         const response = await fetch("/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3017,6 +3088,9 @@
             history: conversation.slice(-HISTORY_TURNS),
             followups: document.body.classList.contains("v3")
           })
+        }).catch(err => {
+          if (window.unstashPrompts) window.unstashPrompts();
+          throw err;
         });
 
         // 5️⃣ set up for streaming
@@ -3187,9 +3261,10 @@
           lead.innerText = "Sources";
           row.appendChild(lead);
 
-          meta.sources.forEach(src => {
+          meta.sources.forEach((src, i) => {
             const pill = document.createElement("a");
             pill.className = "source-pill";
+            pill.style.setProperty("--i", i);
             pill.href = src.url;
             pill.target = "_blank";
             pill.rel = "noopener";
@@ -3214,6 +3289,7 @@
             const stack = document.createElement("button");
             stack.type = "button";
             stack.className = "source-stack";
+            stack.style.setProperty("--i", 0);
             stack.setAttribute("aria-label",
               meta.sources.length + " sources - show them");
 
@@ -3280,6 +3356,14 @@
           // rated was near the bottom of the conversation.
           footer.appendChild(fb);
           msgContainer.appendChild(footer);
+
+          // Copy and the rating arrive after whatever sources are showing:
+          // the pills one by one, or the single folded pill in the third
+          // skin, which counts as one.
+          const shown = (meta.sources || []).length;
+          const after = shown > 1 ? 1 : shown;
+          fb.querySelector(".fb-copy").style.setProperty("--i", after);
+          fb.querySelector(".fb-rate").style.setProperty("--i", after + 1);
 
           // Revealed by hovering the answer itself, not just the thin footer
           // strip - an answer with no sources leaves that strip almost
@@ -3920,10 +4004,15 @@
     if (!pill || !rect) return;
 
     const fit = () => {
-      // The SVG box is the pill plus 3px of outset on each side, and the rect
-      // sits 1px inside that so its stroke is not clipped. So the rect is the
-      // pill's height plus four, and a pill's radius is half its height.
-      const r = Math.max(0, (pill.offsetHeight + 4) / 2);
+      // Half the rect's own height, measured. The rect sits 1px inside the
+      // SVG so its stroke is not clipped, so it is the SVG's height less two.
+      // Measured rather than derived from the pill, because the SVG's offsets
+      // resolve inside the pill's border and the border's rendered width
+      // depends on the screen's pixel density - a formula from offsetHeight
+      // was a pixel out, and a radius a pixel over half the height is
+      // clamped on one axis only, which draws an oval.
+      const svg = rect.ownerSVGElement;
+      const r = Math.max(0, (svg.getBoundingClientRect().height - 2) / 2);
       rect.setAttribute("rx", r);
       rect.setAttribute("ry", r);
     };
@@ -4038,17 +4127,10 @@
     const ICON = {
       lock: svg('<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/>'
                 + '<path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'),
-      info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/>'
-                + '<path d="M12 7.6v.1"/>'),
       clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
-      user: svg('<circle cx="12" cy="8" r="3.5"/>'
-                + '<path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>'),
-      shield: svg('<path d="M12 3l7 3v5.5c0 4.3-3 7.9-7 9.5-4-1.6-7-5.2-7-9.5V6z"/>'
-                  + '<path d="M9 12l2 2 4-4"/>'),
       link: svg('<path d="M7 17L17 7M17 7H9M17 7V15"/>'),
       chev: svg('<path d="M6 9l6 6 6-6"/>'),
-      close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
-      stack: svg('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>')
+      close: svg('<path d="M6 6l12 12M18 6L6 18"/>')
     };
 
     // --- the sheet ---------------------------------------------------------
@@ -4056,11 +4138,13 @@
     // hidden dialog for the two skins that never show one.
     let current = null;
 
-    function openSheet(title, icon, fill) {
+    // centered: a card in the middle of a desktop window rather than a sheet
+    // from the bottom edge. A phone still gets the sheet - see .sheet.center.
+    function openSheet(title, centered, fill) {
       if (current) current(true);
 
       const wrap = document.createElement("div");
-      wrap.className = "sheet";
+      wrap.className = centered ? "sheet center" : "sheet";
       const panel = document.createElement("div");
       panel.className = "sheet-panel";
       panel.setAttribute("role", "dialog");
@@ -4069,8 +4153,9 @@
 
       const head = document.createElement("div");
       head.className = "sheet-head";
-      head.innerHTML = '<span class="sheet-icon">' + icon + "</span>"
-                     + '<h3 id="sheet-title"></h3>';
+      // The title alone. An icon beside it repeated the one on the note
+      // that opened it.
+      head.innerHTML = '<h3 id="sheet-title"></h3>';
       head.querySelector("h3").textContent = title;
 
       const x = document.createElement("button");
@@ -4143,49 +4228,27 @@
     // Every line here has to be true of this deployment, because it is a
     // promise made to students about their data. Checked against the code:
     // the server has no sessions and keeps no transcript, the conversation
-    // is held in this page's memory and sent back with each question, the
-    // process log records at most the first sixty characters of a question
-    // for debugging, and a rating is filed with the question and answer it
-    // is about. OpenAI's API terms are the stated retention for the model.
+    // is held in this page's memory and sent back with each question, and
+    // the process log records at most the first sixty characters of a
+    // question for debugging. OpenAI's API terms are the stated retention
+    // for the model. Short on purpose - two points a reader takes in at a
+    // glance, not a policy.
+    // Centred cards on a desktop, not sheets: short enough to read in one
+    // look, so nothing in them should ever need scrolling.
     const SHEETS = {
-      ai: ["How AI works", ICON.info, (el) => {
-        para(el, "This website uses AI to find and explain campus and "
-               + "district information based on available official sources.",
-             "sheet-lead");
-        para(el, "AI may miss details or misinterpret guidance, and sources "
-               + "may be incomplete or out of date.");
-        points(el, [
-          { icon: ICON.stack, tone: "", title: "Finds the pages first",
-            text: "Each question is matched against the Vista Ridge and "
-                + "Leander ISD pages, and the answer is written from what "
-                + "those pages say." },
-          { icon: ICON.shield, tone: "amber", title: "Checks its own answer",
-            text: "Answers are checked against the pages they came from. "
-                + "When something doesn't line up, you'll see a note "
-                + "under the answer." },
-          { icon: ICON.link, tone: "green", title: "Check the linked sources",
-            text: "Before you act on a deadline, a fee or a room, open the "
-                + "source under the answer or ask the front office." }
-        ]);
+      ai: ["How AI works", true, (el) => {
+        para(el, "This site uses AI to explain school and district "
+               + "information from official sources. It can miss details or "
+               + "be out of date, so check the linked sources before making "
+               + "decisions.", "sheet-lead");
       }],
-      privacy: ["Your privacy", ICON.lock, (el) => {
-        para(el, "Ask without an account. Here is what happens to what "
-               + "you type.", "sheet-lead");
+      privacy: ["Your privacy", true, (el) => {
         points(el, [
-          { icon: ICON.lock, tone: "", title: "Sent securely",
-            text: "Questions travel over an encrypted connection, and are "
-                + "used to look up and write your answer." },
+          { icon: ICON.lock, tone: "", title: "Secure",
+            text: "Encrypted, with no sign-in." },
           { icon: ICON.clock, tone: "green", title: "Limited retention",
-            text: "No chat history is saved. Your conversation lives in "
-                + "this tab and is gone when you close it. Short server "
-                + "logs for fixing bugs can include the start of a "
-                + "question. Our AI provider, OpenAI, may hold requests "
-                + "for up to 30 days for abuse monitoring and doesn't "
-                + "train on them." },
-          { icon: ICON.user, tone: "amber", title: "No sign-in, no profile",
-            text: "We never ask who you are. Ratings are anonymous - "
-                + "just leave names and personal details out of what "
-                + "you type." }
+            text: "No chat history is kept. Server logs and OpenAI may keep "
+                + "what you ask for a limited time." }
         ]);
       }]
     };
@@ -4233,7 +4296,7 @@
         byHost[host].items.push(src);
       });
 
-      openSheet("Sources", ICON.stack, (el) => {
+      openSheet("Sources", false, (el) => {
         groups.forEach(g => {
           const d = document.createElement("details");
           d.className = "src-group";
@@ -4358,6 +4421,47 @@
       }
     }
 
+    // --- the keyboard, on a phone -------------------------------------------
+    // The page is a fixed frame sized to the window, and a phone keyboard
+    // does not change the window: iOS, and Android unless told otherwise,
+    // lay the keyboard over the page and pan the whole document up to keep
+    // the focused field in sight. That pan is what swallowed the composer's
+    // rise - the box went up with everything else, including the answer the
+    // reader was trying to keep in view.
+    //
+    // The visual viewport is the part not under the keyboard. The frame is
+    // sized to that instead while the keyboard is up, and the pan put back to
+    // zero, so the composer sits directly on the keyboard, rises from there,
+    // and the conversation shrinks above it with its end still in view.
+    //
+    // Not when the reader has pinch-zoomed: the visual viewport shrinks then
+    // too, and resizing the page to a zoomed slice of itself would be wrong.
+    // Inside an iframe the visual viewport never reports a keyboard, so this
+    // does nothing there and the embedding page decides.
+    const vv = window.visualViewport;
+    if (vv) {
+      const root = document.documentElement;
+      let frame = 0;
+      const fitKeyboard = () => {
+        frame = 0;
+        const zoomed = Math.abs((vv.scale || 1) - 1) > 0.01;
+        const covered = window.innerHeight - vv.height;
+        if (!zoomed && covered > 80) {
+          root.style.height = Math.round(vv.height) + "px";
+          root.classList.add("kb-up");
+          if (window.scrollY || vv.offsetTop) window.scrollTo(0, 0);
+        } else if (root.classList.contains("kb-up")) {
+          root.style.height = "";
+          root.classList.remove("kb-up");
+        }
+      };
+      const onViewport = () => {
+        if (!frame) frame = requestAnimationFrame(fitKeyboard);
+      };
+      vv.addEventListener("resize", onViewport);
+      vv.addEventListener("scroll", onViewport);
+    }
+
     // --- suggestions written for the last answer ---------------------------
     // The server writes three from the pages the answer was retrieved from
     // when this skin asks it to. When it has none - a pre-written answer, a
@@ -4394,19 +4498,44 @@
         .map(x => x.q);
     };
 
+    window.stashPrompts = function () {
+      const strip = document.querySelector(".quick-prompts");
+      if (strip) strip.classList.add("qp-away");
+    };
+    window.unstashPrompts = function () {
+      const strip = document.querySelector(".quick-prompts");
+      if (strip) strip.classList.remove("qp-away");
+    };
+
     window.tailorPrompts = function (question, answer, followups) {
       const strip = document.querySelector(".quick-prompts");
       if (!strip) return;
+      strip.classList.remove("qp-away");
 
       const skip = new Set();
       (typeof conversation !== "undefined" ? conversation : [])
         .forEach(t => { if (t.role === "user") skip.add(norm(t.content)); });
       skip.add(norm(question));
 
+      // The same question in other words counts as asked. Exact matching
+      // let "What time does the school day end?" through straight after
+      // "What time does school end?" had been answered.
+      const askedWords = [...skip].map(q => new Set(words(q)));
+      const same = (q) => {
+        const w = new Set(words(q));
+        return askedWords.concat(list.map(x => new Set(words(x))))
+          .some(a => {
+            let both = 0;
+            w.forEach(x => { if (a.has(x)) both++; });
+            const either = new Set([...w, ...a]).size;
+            return either > 0 && both / either >= 0.6;
+          });
+      };
+
       const list = [];
       const add = (q) => {
         const k = norm(q);
-        if (!k || skip.has(k) || list.some(x => norm(x) === k)) return;
+        if (!k || skip.has(k) || same(q)) return;
         list.push(q);
       };
       (Array.isArray(followups) ? followups : [])

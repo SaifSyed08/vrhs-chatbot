@@ -133,12 +133,14 @@ function check(name, pass, detail) {
     };
   });
   check("outline box wraps the composer",
-        Math.abs(snake.svgW - (snake.pillW + 6)) <= 2 &&
-        Math.abs(snake.svgH - (snake.pillH + 6)) <= 2,
+        // Clear of the pill on every side, by less than the 2px it used to
+        // stand off - the ring was a tad taller than the pill it traces.
+        snake.svgW - snake.pillW >= 1 && snake.svgW - snake.pillW <= 3 &&
+        snake.svgH - snake.pillH >= 1 && snake.svgH - snake.pillH <= 3,
         `svg ${snake.svgW}x${snake.svgH}, pill ${snake.pillW}x${snake.pillH}`);
   check("corners are a pill, not an ellipse",
         snake.rx === snake.ry &&
-        Math.abs(snake.rx - (snake.pillH + 4) / 2) <= 1,
+        Math.abs(snake.rx - (snake.svgH - 2) / 2) <= 0.6,
         `rx=${snake.rx} ry=${snake.ry}`);
 
   // === the placeholder =====================================================

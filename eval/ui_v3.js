@@ -60,21 +60,40 @@ const ANSWER = "School starts at **8:15 AM** and ends at 4:05 PM. See the "
       `Period ${i + 1} runs on the normal schedule unless it is a late start day, when everything shifts.`)
     .join("\n\n");
 
-async function newPage(browser, vp, mobile) {
+async function newPage(browser, vp, mobile, keyboard) {
   const ctx = browser.defaultBrowserContext();
   await ctx.overridePermissions(BASE, ["clipboard-read", "clipboard-write",
                                        "clipboard-sanitized-write"]);
   const p = await browser.newPage();
   await p.setViewport({ ...vp, isMobile: !!mobile, hasTouch: !!mobile,
                         deviceScaleFactor: 1 });
+  if (keyboard) {
+    // Headless Chrome has no on-screen keyboard, so the visual viewport is
+    // replaced with one whose height the test can take a keyboard out of.
+    await p.evaluateOnNewDocument(() => {
+      const vv = new EventTarget();
+      window.__kb = 0;
+      Object.defineProperties(vv, {
+        height: { get: () => window.innerHeight - window.__kb },
+        width: { get: () => window.innerWidth },
+        scale: { get: () => 1 },
+        offsetTop: { get: () => 0 },
+        offsetLeft: { get: () => 0 },
+      });
+      Object.defineProperty(window, "visualViewport", { get: () => vv });
+    });
+  }
+  p.__delay = 0;
   await p.setRequestInterception(true);
   p.__asks = [];
   p.on("request", req => {
     if (req.url().endsWith("/ask")) {
       p.__asks.push(JSON.parse(req.postData() || "{}"));
-      return req.respond({ status: 200,
+      const send = () => req.respond({ status: 200,
         contentType: "text/plain; charset=utf-8",
         body: ANSWER + ":::meta" + META });
+      if (p.__delay) { setTimeout(send, p.__delay); return; }
+      return send();
     }
     if (req.url().endsWith("/feedback")) {
       return req.respond({ status: 200, contentType: "application/json",
@@ -99,7 +118,7 @@ async function ask(p, text) {
 // Nothing on the landing screen may end below the frame.
 const landingFits = p => p.evaluate(() => {
   const H = window.innerHeight;
-  const sel = [".landing-title", ".input-pill", ".ai-notes-landing"];
+  const sel = [".landing-title", ".input-pill"];
   const bottoms = sel.map(s => {
     const el = document.querySelector(s);
     return el ? Math.round(el.getBoundingClientRect().bottom) : null;
@@ -158,6 +177,11 @@ const landingFits = p => p.evaluate(() => {
       return { w: Math.round(r.width), h: Math.round(r.height), t: Math.round(r.top) };
     });
     check("placeholder is darker at rest", restColour === "rgb(95, 99, 104)", restColour);
+    await p.evaluate(() => document.body.classList.add("v3"));
+    const landingNotes = await p.evaluate(() => [...document.querySelectorAll(".ai-note")]
+      .filter(n => n.getBoundingClientRect().width > 0).length);
+    check("the notes are not on the landing screen", landingNotes === 0, `${landingNotes} shown`);
+    await p.evaluate(() => document.body.classList.remove("v3"));
     check("and light again once focused", focusColour === "rgb(168, 173, 179)", focusColour);
     check("composer does not widen on focus", after.w === before.w, `${before.w} -> ${after.w}`);
     check("or grow or drop", after.h === before.h && after.t === before.t,
@@ -245,6 +269,13 @@ const landingFits = p => p.evaluate(() => {
                favs: stack ? stack.querySelectorAll(".fav").length : 0,
                text: stack && stack.textContent.trim() };
     });
+    const arrive = await p.evaluate(() => {
+      const a = s => { const el = document.querySelector(s); const cs = getComputedStyle(el);
+        return cs.animationName + "@" + cs.getPropertyValue("--i").trim(); };
+      return [a(".source-stack"), a(".fb-copy"), a(".fb-rate")];
+    });
+    check("the footer arrives in order rather than appearing",
+          arrive.join() === "chipIn@0,chipIn@1,chipIn@2", JSON.stringify(arrive));
     check("three sources fold into one pill", /flex/.test(src.stack || "") && src.row === "none",
           JSON.stringify(src));
     check("carrying one icon per site", src.favs === 2, `${src.favs} icons`);
@@ -265,6 +296,9 @@ const landingFits = p => p.evaluate(() => {
     const copied = await p.evaluate(async () => ({
       cls: document.querySelector(".fb-copy").classList.contains("copied"),
       text: await navigator.clipboard.readText().catch(e => "ERR " + e) }));
+    const copiedBg = await p.evaluate(() =>
+      getComputedStyle(document.querySelector(".fb-copy")).backgroundColor);
+    check("copied is red", copiedBg === "rgb(230, 0, 35)", copiedBg);
     check("copy puts the answer on the clipboard, links kept",
           copied.cls && /8:15 AM/.test(copied.text)
           && /bell schedules \(https:\/\/vrhs\.leanderisd\.org/.test(copied.text),
@@ -279,6 +313,20 @@ const landingFits = p => p.evaluate(() => {
     });
     check("the strip is rewritten for the answer",
           JSON.stringify(chips) === JSON.stringify(FOLLOWUPS), JSON.stringify(chips));
+
+    await p.click('.fb-btn[data-type="down"]');
+    await sleep(300);
+    const downBg = await p.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('.fb-btn[data-type="down"]'));
+      return cs.backgroundColor + " / " + cs.color;
+    });
+    check("thumbs-down is red when chosen", downBg === "rgb(230, 0, 35) / rgb(255, 255, 255)", downBg);
+    await p.keyboard.press("Escape");
+    await sleep(300);
+
+    const noteColour = await p.evaluate(() =>
+      getComputedStyle(document.querySelector(".ai-notes-row .ai-note")).color);
+    check("the notes are light", noteColour === "rgb(176, 181, 186)", noteColour);
 
     // Notes: over white at the end, gone once text is under them.
     await p.evaluate(() => { const m = document.getElementById("messages");
@@ -339,9 +387,21 @@ const landingFits = p => p.evaluate(() => {
       return s && { title: s.querySelector("h3").textContent,
                     lead: s.querySelector(".sheet-lead").textContent };
     });
+    const aiIcons = await p.evaluate(() => document.querySelectorAll(".sheet svg").length);
+    check("with no icons but the close button", aiIcons === 1, `${aiIcons} svg`);
     check("How AI works opens its sheet",
           ai && ai.title === "How AI works" && /official sources/.test(ai.lead),
           JSON.stringify(ai));
+    const card = await p.evaluate(() => {
+      const panel = document.querySelector(".sheet-panel");
+      const r = panel.getBoundingClientRect();
+      const b = panel.querySelector(".sheet-body");
+      return { mid: Math.round(r.top + r.height / 2), H: window.innerHeight,
+               w: Math.round(r.width), scroll: b.scrollHeight - b.clientHeight };
+    });
+    check("on a desktop it is a card in the middle",
+          Math.abs(card.mid - card.H / 2) <= 4 && card.w <= 380, JSON.stringify(card));
+    check("with nothing to scroll", card.scroll <= 0, JSON.stringify(card));
     await shot(p, "v3-how-ai-works");
     await p.keyboard.press("Escape");
     await sleep(600);
@@ -351,7 +411,8 @@ const landingFits = p => p.evaluate(() => {
     await sleep(600);
     const priv = await p.evaluate(() => [...document.querySelectorAll(".sheet .sheet-points strong")]
       .map(x => x.textContent));
-    check("Your privacy lists its points", priv.includes("Limited retention"), JSON.stringify(priv));
+    check("Your privacy lists its points", priv.includes("Limited retention") && priv.length === 2,
+          JSON.stringify(priv));
     await shot(p, "v3-privacy");
     await p.mouse.click(10, 10);
     await sleep(600);
@@ -374,8 +435,47 @@ const landingFits = p => p.evaluate(() => {
     check("the composer rises on focus", rise1.pill < rise0.pill,
           `${rise0.pill} -> ${rise1.pill} (padding ${rise0.pad} -> ${rise1.pad})`);
     check("and the conversation keeps its end in view", rise1.behind <= 2, `${rise1.behind}px behind`);
+    const edge = await p.evaluate(() =>
+      getComputedStyle(document.querySelector(".input-pill")).borderTopColor);
+    check("the composer's outline is darker", edge === "rgb(154, 160, 166)" ||
+          edge === "rgb(230, 0, 35)", edge);
     check("the composer is white with a shadow", rise1.bg === "rgb(255, 255, 255)" && rise1.shadow,
           JSON.stringify({ bg: rise1.bg, shadow: rise1.shadow }));
+    await p.evaluate(() => document.activeElement.blur());
+    await sleep(500);
+    const reach = await p.evaluate(() => {
+      const pill = document.querySelector(".input-pill").getBoundingClientRect();
+      const box = document.querySelector(".chat-container").getBoundingClientRect();
+      return { gap: Math.round(box.bottom - pill.bottom),
+               shadow: getComputedStyle(document.querySelector(".input-pill")).boxShadow };
+    });
+    // The shadow's reach below the pill is its offset plus its blur.
+    check("the shadow stays inside the frame", /0px 2px 6px/.test(reach.shadow) && reach.gap >= 8,
+          JSON.stringify(reach));
+
+    // A second question: the strip leaves while it is pending and comes
+    // back rewritten.
+    p.__delay = 1500;
+    await p.click(".quick-prompts .qp-tailored");
+    await sleep(450);
+    const pending = await p.evaluate(() => {
+      const strip = document.querySelector(".quick-prompts");
+      const b = strip.querySelector("button:not([style*='display: none'])");
+      return { away: strip.classList.contains("qp-away"),
+               op: [...strip.querySelectorAll(".qp-tailored")].map(x => getComputedStyle(x).opacity) };
+    });
+    check("the suggestions leave while the answer is pending",
+          pending.away && pending.op.every(o => +o < 0.05), JSON.stringify(pending));
+    await sleep(2600);
+    const back = await p.evaluate(() => {
+      const strip = document.querySelector(".quick-prompts");
+      return { away: strip.classList.contains("qp-away"),
+               chips: [...strip.querySelectorAll(".qp-tailored")].map(x => x.textContent) };
+    });
+    check("and come back, rewritten, once it is complete",
+          !back.away && back.chips.length > 0 && !back.chips.some(c => /time does (the )?school( day)? end/i.test(c)),
+          JSON.stringify(back));
+    p.__delay = 0;
     check("no page errors (desktop)", p.__err.length === 0, p.__err.join(" | "));
     await p.close();
   }
@@ -383,7 +483,7 @@ const landingFits = p => p.evaluate(() => {
   // ================= the conversation, phone =================
   console.log("\n== conversation, phone ==");
   {
-    const p = await newPage(browser, { width: 390, height: 700 }, true);
+    const p = await newPage(browser, { width: 390, height: 700 }, true, true);
     await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
     await sleep(300);
     await shot(p, "v3-landing-phone");
@@ -406,6 +506,26 @@ const landingFits = p => p.evaluate(() => {
     check("scrolled up, the button appears", btn.show && btn.op === "1", JSON.stringify(btn));
     check("a frosted circle", /blur/.test(btn.blur) && btn.radius === "50%", JSON.stringify(btn));
     await shot(p, "v3-scroll-button-phone");
+
+    // A phone keeps the sheet from the bottom for the notes.
+    await p.evaluate(() => document.getElementById("messages")
+      .scrollTo({ top: document.getElementById("messages").scrollHeight, behavior: "instant" }));
+    await sleep(400);
+    await p.tap('.ai-notes-row .ai-note[data-sheet="privacy"]');
+    await sleep(600);
+    const phoneSheet = await p.evaluate(() => {
+      const panel = document.querySelector(".sheet-panel");
+      const r = panel.getBoundingClientRect();
+      const b = panel.querySelector(".sheet-body");
+      return { bottom: Math.round(r.bottom), H: window.innerHeight,
+               scroll: b.scrollHeight - b.clientHeight };
+    });
+    check("on a phone the privacy note is a sheet from the bottom",
+          Math.abs(phoneSheet.bottom - phoneSheet.H) <= 1 && phoneSheet.scroll <= 0,
+          JSON.stringify(phoneSheet));
+    await shot(p, "v3-privacy-phone");
+    await p.tap(".sheet-close");
+    await sleep(600);
     await p.tap(".to-end");
     await sleep(1200);
     const end = await p.evaluate(() => {
@@ -415,6 +535,28 @@ const landingFits = p => p.evaluate(() => {
     });
     check("and brings the conversation back to its end", end.behind <= 2 && !end.show,
           JSON.stringify(end));
+    // The keyboard: the frame shrinks to what is above it, the composer
+    // sits on it and rises, and the conversation keeps its end.
+    await p.tap("#query");
+    await p.evaluate(() => { window.__kb = 320; window.visualViewport.dispatchEvent(new Event("resize")); });
+    await sleep(700);
+    const kb = await p.evaluate(() => {
+      const m = document.getElementById("messages");
+      return { html: document.documentElement.style.height,
+               pill: Math.round(document.querySelector(".input-pill").getBoundingClientRect().bottom),
+               pad: getComputedStyle(document.querySelector(".chat-input")).paddingBottom,
+               behind: Math.round(m.scrollHeight - m.scrollTop - m.clientHeight) };
+    });
+    check("with the keyboard up, the frame fits above it", kb.html === "380px" && kb.pill <= 380 - 30,
+          JSON.stringify(kb));
+    check("the composer rises further on a phone", kb.pad === "40px", kb.pad);
+    check("and the end of the conversation stays in view", kb.behind <= 2, `${kb.behind}px behind`);
+    await shot(p, "v3-keyboard-phone");
+    await p.evaluate(() => { window.__kb = 0; window.visualViewport.dispatchEvent(new Event("resize")); });
+    await sleep(300);
+    const kbDown = await p.evaluate(() => document.documentElement.style.height);
+    check("and the frame is given back when it goes", kbDown === "", JSON.stringify(kbDown));
+
     const overflow = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     check("no horizontal overflow", overflow <= 0, `${overflow}px`);
     check("no page errors (phone)", p.__err.length === 0, p.__err.join(" | "));
