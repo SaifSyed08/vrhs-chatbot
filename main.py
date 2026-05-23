@@ -66,6 +66,13 @@ SYSTEM_PROMPT = (
     "schedule\" is a worse answer than the mistake this rule exists to "
     "prevent: it is useless, and it is not even honest, because you do know."
     "\n\n"
+    "The front office's main number is always in the context. Give it only "
+    "when your answer sends the reader to the front office because the "
+    "context has nothing more specific for them - then give the number "
+    "rather than only naming the office. Never add it to an answer that "
+    "already names a person, an office, a page or a form to use, and never "
+    "as a sign-off."
+    "\n\n"
     "Who to ask, and nothing else. Requirements, steps, eligibility, "
     "credentials, forms and deadlines are not general knowledge even when "
     "they sound obvious, and guessing at them is how a reader is sent to do "
@@ -1414,6 +1421,26 @@ def suggest_followups(question, answer, context):
     return out[:3]
 
 
+# The front office's main number, and only the number. It is printed in the
+# footer of every page on the school site, so it outlives any one person on the
+# front desk; a named receptionist's address would go on being handed out
+# after they had moved on.
+#
+# It goes into the context of every question, not only into the system prompt.
+# The grounding checks read the context, so a number that lived only in the
+# prompt would be reported as a detail the sources do not support - on exactly
+# the answers that were right to give it.
+#
+# Worded as a fallback, because it is read as one. Stated plainly and first in
+# the context, with a prompt line saying "give it whenever you have no better
+# person", it went into 29 of the 40 suggested questions' answers, against 1
+# before - tacked onto answers that had already named the principal or linked
+# the form.
+FRONT_OFFICE = ("From the Vista Ridge High School website, for when nothing "
+                "more specific applies: the front office main number is "
+                "512-570-1800.")
+
+
 def context_block(context, stats, live=None, live_leads=True):
     """The retrieved text, with a word about how well it actually matched.
 
@@ -1586,6 +1613,14 @@ def ask():
     # If no KB yet, just send that and stop.
     if context.startswith("No knowledge base"):
         return jsonify({"answer": context})
+
+    # First, not last. It is one short line, so it pushes nothing out of
+    # anything that reads the whole context - and anything that reads only a
+    # prefix still sees it. The eval's judge reads the first 14,000
+    # characters, and with the line at the end it was cut off on long
+    # contexts and "call the front office at 512-570-1800" was graded as
+    # invented. See FRONT_OFFICE for why it is context and not only prompt.
+    context = FRONT_OFFICE + "\n\n" + context
 
     # History sits between the system prompt and the current turn, so a
     # follow-up resolves against what was actually said rather than being

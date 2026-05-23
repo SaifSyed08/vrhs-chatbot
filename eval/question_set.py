@@ -204,6 +204,10 @@ def answer_for(question):
         found = [{"url": c["url"], "label": c["label"]} for c in live]
         sources = found if live_leads else sources + found
 
+    # The front office's number rides on every context in /ask, so it rides
+    # on every context here - and the judges grade against the same text.
+    context = app.FRONT_OFFICE + "\n\n" + context
+
     messages = [{"role": "system", "content": app.dated_prompt()},
                 {"role": "user",
                  "content": app.context_block(context, stats, live, live_leads)
