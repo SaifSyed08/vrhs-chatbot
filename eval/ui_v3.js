@@ -321,6 +321,9 @@ const landingFits = p => p.evaluate(() => {
       return cs.backgroundColor + " / " + cs.color;
     });
     check("thumbs-down is red when chosen", downBg === "rgb(230, 0, 35) / rgb(255, 255, 255)", downBg);
+    const fills = await p.evaluate(() => [...document.querySelectorAll('.fb-btn[data-type="down"] svg path')]
+      .map(x => getComputedStyle(x).fill));
+    check("and its thumb stays an outline", fills.every(f => f === "none"), JSON.stringify(fills));
     await p.keyboard.press("Escape");
     await sleep(300);
 
@@ -477,6 +480,89 @@ const landingFits = p => p.evaluate(() => {
           JSON.stringify(back));
     p.__delay = 0;
     check("no page errors (desktop)", p.__err.length === 0, p.__err.join(" | "));
+    await p.close();
+  }
+
+  // ================= the hover outline leaving =================
+  console.log("\n== the hover outline ==");
+  {
+    const p = await newPage(browser, { width: 1100, height: 760 });
+    await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
+    await sleep(300);
+    const ring = () => p.evaluate(() => {
+      const svg = document.querySelector(".pill-snake");
+      const r = svg.querySelector("rect");
+      const cs = getComputedStyle(r);
+      return { op: +getComputedStyle(svg).opacity,
+               off: parseFloat(cs.strokeDashoffset),
+               w: parseFloat(cs.strokeWidth) };
+    });
+    await p.hover(".input-pill");
+    await sleep(800);
+    const drawn = await ring();
+    check("hovered, the ring draws on", drawn.op === 1 && drawn.off < 1, JSON.stringify(drawn));
+
+    await p.mouse.move(5, 5);
+    await sleep(200);
+    const mid = await ring();
+    check("pointer off, it undraws rather than vanishing",
+          mid.op === 1 && mid.off > 1 && mid.off < 99, JSON.stringify(mid));
+    await sleep(900);
+    const gone = await ring();
+    check("and is gone once it has", gone.op === 0, JSON.stringify(gone));
+
+    await p.hover(".input-pill");
+    await sleep(800);
+    await p.click("#query");
+    await sleep(140);
+    const thinning = await ring();
+    check("clicked, it thins into the red outline",
+          thinning.op === 1 && thinning.off < 1 && thinning.w > 0 && thinning.w < 1.1,
+          JSON.stringify(thinning));
+    await sleep(700);
+    const thin = await ring();
+    const border = await p.evaluate(() =>
+      getComputedStyle(document.querySelector(".input-pill")).borderTopColor);
+    check("leaving the red outline standing", thin.op === 0 && thin.w === 0
+          && border === "rgb(230, 0, 35)", JSON.stringify({ ...thin, border }));
+    await p.close();
+  }
+
+  // ================= a short frame, on a phone =================
+  console.log("\n== a short frame, on a phone ==");
+  for (const [h, want, zoom] of [[700, "", "1"], [520, "fit-1", "0.86"],
+                                 [420, "fit-2", "0.74"], [300, "fit-3", "0.62"]]) {
+    const p = await newPage(browser, { width: 390, height: h }, true);
+    await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
+    await sleep(300);
+    await ask(p, "when does school start");
+    await sleep(1500);
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    await sleep(500);
+    const fit = await p.evaluate(() => {
+      const cls = ["fit-1", "fit-2", "fit-3"].filter(c => document.body.classList.contains(c));
+      const pill = document.querySelector(".input-pill").getBoundingClientRect();
+      const input = document.getElementById("query");
+      return { cls: cls.join(), zoom: getComputedStyle(document.querySelector(".chat-container")).zoom,
+               pillBottom: Math.round(pill.bottom), H: window.innerHeight,
+               inputPx: Math.round(parseFloat(getComputedStyle(input).fontSize)
+                        * parseFloat(getComputedStyle(document.querySelector(".chat-container")).zoom)),
+               pan: document.documentElement.scrollWidth - window.innerWidth };
+    });
+    check(`${h}px tall: ${want || "full size"}`,
+          fit.cls === want && fit.zoom === zoom && fit.pillBottom <= fit.H && fit.pan <= 0,
+          JSON.stringify(fit));
+    check(`${h}px tall: the composer's text is still 16px on screen`,
+          fit.inputPx === 16, `${fit.inputPx}px`);
+    if (h === 300) await shot(p, "v3-short-phone");
+    await p.close();
+  }
+  {
+    const p = await newPage(browser, { width: 1280, height: 300 });
+    await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
+    const cls = await p.evaluate(() => ["fit-1", "fit-2", "fit-3"]
+      .filter(c => document.body.classList.contains(c)).join());
+    check("a short desktop frame is not scaled", cls === "", JSON.stringify(cls));
     await p.close();
   }
 

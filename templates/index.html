@@ -458,14 +458,16 @@
       width: calc(100% + 5px);
       height: calc(100% + 5px);
       pointer-events: none;
+      /* Faded only once the line has finished drawing itself back off -
+         the delay is the undraw's duration. Hovering in, the rule near the
+         end of the sheet takes the delay away. */
       opacity: 0;
-      transition: opacity 0.12s ease;
+      transition: opacity 0.15s ease 0.5s;
     }
 
     body.compact .input-pill { position: relative; }
-    /* The :hover half of this now lives in a (hover: hover) block near the
-       end of the sheet, with a tap-driven equivalent beside it. */
-    body.compact .input-pill:focus-within .pill-snake { opacity: 0; }
+    /* Every state of the outline - hover, tap, focus - lives in one block
+       near the end of the sheet. */
 
     .pill-snake rect {
       /* Sized here, not on the element. The rect must sit a pixel inside the
@@ -487,7 +489,8 @@
          box's own edge arriving. */
       stroke-dasharray: 100;
       stroke-dashoffset: 100;
-      transition: stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+      transition: stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                  stroke-width 0.32s ease;
     }
 
     /* rx and ry are set from script, not here, and the reason is worth
@@ -1252,16 +1255,13 @@
     .fb-btn svg { width: 17px; height: 17px; stroke-width: 1.85; }
     .fb-btn:hover { background: #f1f2f4; color: #5f6368; }
 
-    /* Filled, not recoloured. The fill is what reads as "chosen"; turning it
-       red as well made a rating look like a warning, which is the wrong tone
-       for someone who just told us the answer was fine. */
     /* Red when chosen, in the school's red: a filled glyph on grey read as
        barely different from a hover, and a rating or a copy is something
-       the reader should be able to see they did. The glyph stays filled -
-       white on red now. */
+       the reader should be able to see they did. The glyph stays an outline,
+       white on the red - the red is the "chosen", and a solid thumb on top of
+       it was heavier than the choice. */
     .fb-btn.active,
     .fb-btn.active:hover { color: #fff; background: #e60023; }
-    .fb-btn.active svg path { fill: currentColor; }
 
     /* A popover, anchored to the button that opens it and parented to the
        body rather than to the footer.
@@ -1752,17 +1752,42 @@
        fires a synthetic hover that sticks until the next tap somewhere else,
        so the outline would light up and stay lit. */
     @media (hover: hover) and (pointer: fine) {
-      body.compact .input-pill:hover .pill-snake { opacity: 1; }
+      body.compact .input-pill:hover .pill-snake {
+        opacity: 1;
+        transition: opacity 0.1s ease 0s;
+      }
       body.compact .input-pill:hover .pill-snake rect { stroke-dashoffset: 0; }
     }
 
-    body.compact .input-pill.snake-on .pill-snake { opacity: 1; }
+    body.compact .input-pill.snake-on .pill-snake {
+      opacity: 1;
+      transition: opacity 0.1s ease 0s;
+    }
     body.compact .input-pill.snake-on .pill-snake rect {
       stroke-dashoffset: 0;
     }
-    /* Beats the focus-within rule that hides the outline, because on a phone
-       the tap that asks for it is the same tap that takes focus. */
-    body.compact .input-pill.snake-on:focus-within .pill-snake { opacity: 1; }
+
+    /* How it leaves.
+       Pointer moves off: the rest state takes over, so the line runs back
+       round the pill the way it came and only then fades - it undraws, where
+       it used to vanish in a tenth of a second.
+       Box takes focus: the pill's own red outline arrives underneath, so the
+       ring does not undraw off it, it thins to nothing and leaves the red
+       outline standing where it was. Fully drawn first, so a keyboard focus
+       that never hovered thins a whole ring rather than a partial one - it is
+       invisible then anyway, the opacity never having come up.
+       Not while .snake-on holds it: on a phone the tap that draws it is the
+       tap that focuses the box, and it gets its full two seconds before
+       thinning away the same way. More specific than the hover rule, so a
+       pointer still resting on the box does not hold it up. */
+    body.compact .input-pill:focus-within:not(.snake-on) .pill-snake rect {
+      stroke-dashoffset: 0;
+      stroke-width: 0;
+    }
+    body.compact .input-pill:focus-within:not(.snake-on) .pill-snake {
+      opacity: 0;
+      transition: opacity 0.1s ease 0.3s;
+    }
 
     /* ===================================================================
        A question leaving the composer.
@@ -2306,6 +2331,26 @@
     @keyframes chipOut {
       to { opacity: 0; transform: translateY(6px) scale(0.94); }
     }
+
+    /* --- a short frame, on a phone ------------------------------------------
+       The whole interface scaled, in three steps, when the frame is short -
+       set by script as fit-1/2/3, see sizeFrame. zoom rather than transform,
+       because zoom takes layout with it: a scaled-down composer that still
+       occupied its full-size box would leave the space it was meant to give
+       back. The sheets are outside the container, so they take the same
+       step themselves.
+       The composer's text is scaled back up to 16px on screen. iOS zooms the
+       page into any focused field under 16px and does not zoom back out,
+       which is the one thing a smaller interface must not trigger. */
+    body.compact.v3.fit-1 .chat-container,
+    body.compact.v3.fit-1 .sheet-panel { zoom: 0.86; }
+    body.compact.v3.fit-2 .chat-container,
+    body.compact.v3.fit-2 .sheet-panel { zoom: 0.74; }
+    body.compact.v3.fit-3 .chat-container,
+    body.compact.v3.fit-3 .sheet-panel { zoom: 0.62; }
+    body.compact.v3.fit-1 .chat-input input { font-size: calc(16px / 0.86); }
+    body.compact.v3.fit-2 .chat-input input { font-size: calc(16px / 0.74); }
+    body.compact.v3.fit-3 .chat-input input { font-size: calc(16px / 0.62); }
 
     /* --- back to the end, on a phone ---------------------------------------
        A thumb scrolling up through a long answer has no scrollbar to grab
@@ -4461,6 +4506,30 @@
       vv.addEventListener("resize", onViewport);
       vv.addEventListener("scroll", onViewport);
     }
+
+    // --- a short frame, on a phone ------------------------------------------
+    // Embedded in a page that gives it a strip a few hundred pixels tall, or
+    // on a phone turned on its side, the third skin at its normal size is
+    // mostly composer and suggestions with a sliver of conversation between.
+    // So it scales down, in steps, as the frame gets shorter.
+    //
+    // Measured by script rather than by a media query, and only while the
+    // composer does not have focus. Android shrinks the window when the
+    // keyboard opens, and a height query would see that as a short frame and
+    // shrink everything under the reader's thumb every time they went to
+    // type; a height taken before they did stays put until they are done.
+    const phoneish = window.matchMedia("(max-width: 720px), (pointer: coarse)");
+    const FITS = [[340, "fit-3"], [440, "fit-2"], [560, "fit-1"]];
+    const sizeFrame = () => {
+      if (box && document.activeElement === box) return;
+      const h = window.innerHeight;
+      const step = phoneish.matches
+        ? (FITS.find(f => h <= f[0]) || [0, ""])[1] : "";
+      FITS.forEach(f => body.classList.toggle(f[1], f[1] === step));
+    };
+    sizeFrame();
+    window.addEventListener("resize", sizeFrame);
+    if (box) box.addEventListener("blur", () => setTimeout(sizeFrame, 300));
 
     // --- suggestions written for the last answer ---------------------------
     // The server writes three from the pages the answer was retrieved from
