@@ -530,12 +530,26 @@ const landingFits = p => p.evaluate(() => {
 
   // ================= a short frame, on a phone =================
   console.log("\n== a short frame, on a phone ==");
-  for (const [h, want, zoom] of [[700, "", "1"], [520, "fit-1", "0.86"],
-                                 [420, "fit-2", "0.74"], [300, "fit-3", "0.62"]]) {
+  for (const [h, want, zoom] of [[700, "", "1"], [520, "fit-1", "0.92"],
+                                 [420, "fit-2", "0.84"], [300, "fit-3", "0.77"]]) {
     const p = await newPage(browser, { width: 390, height: h }, true);
     await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
     await sleep(300);
-    await ask(p, "when does school start");
+    const landingZoom = await p.evaluate(() =>
+      getComputedStyle(document.querySelector(".chat-container")).zoom);
+    check(`${h}px tall: the landing screen is not scaled`, landingZoom === "1", landingZoom);
+
+    // The first-question notice takes the same step.
+    await p.focus("#query");
+    await p.keyboard.type("when does school start", { delay: 3 });
+    await p.keyboard.press("Enter");
+    await sleep(450);
+    const noticeZoom = await p.evaluate(() => {
+      const c = document.querySelector(".disclaimer .disclaimer-card");
+      return c ? getComputedStyle(c).zoom : "none";
+    });
+    check(`${h}px tall: the notice takes the step too`, noticeZoom === zoom, noticeZoom);
+    await p.click(".disclaimer .accept");
     await sleep(1500);
     await p.evaluate(() => document.activeElement && document.activeElement.blur());
     await sleep(500);
@@ -554,6 +568,12 @@ const landingFits = p => p.evaluate(() => {
           JSON.stringify(fit));
     check(`${h}px tall: the composer's text is still 16px on screen`,
           fit.inputPx === 16, `${fit.inputPx}px`);
+    const corner = await p.evaluate(() => {
+      const r = document.querySelector(".pill-snake rect");
+      return { rx: +r.getAttribute("rx"), half: r.getBBox().height / 2 };
+    });
+    check(`${h}px tall: the hover ring's corners are still a pill`,
+          Math.abs(corner.rx - corner.half) <= 0.5, JSON.stringify(corner));
     if (h === 300) await shot(p, "v3-short-phone");
     await p.close();
   }

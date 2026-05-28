@@ -2342,15 +2342,23 @@
        The composer's text is scaled back up to 16px on screen. iOS zooms the
        page into any focused field under 16px and does not zoom back out,
        which is the one thing a smaller interface must not trigger. */
-    body.compact.v3.fit-1 .chat-container,
-    body.compact.v3.fit-1 .sheet-panel { zoom: 0.86; }
-    body.compact.v3.fit-2 .chat-container,
-    body.compact.v3.fit-2 .sheet-panel { zoom: 0.74; }
-    body.compact.v3.fit-3 .chat-container,
-    body.compact.v3.fit-3 .sheet-panel { zoom: 0.62; }
-    body.compact.v3.fit-1 .chat-input input { font-size: calc(16px / 0.86); }
-    body.compact.v3.fit-2 .chat-input input { font-size: calc(16px / 0.74); }
-    body.compact.v3.fit-3 .chat-input input { font-size: calc(16px / 0.62); }
+    /* The conversation and the notices over it, not the landing screen:
+       that one already sizes its headline and spacing by the frame's
+       height, and scaling it again on top made the one screen with room to
+       spare look shrunken. Gentler steps than the first version, which went
+       to 0.62 and read as a different, smaller product. */
+    body.compact.v3.fit-1:not(.awaiting) .chat-container,
+    body.compact.v3.fit-1 .sheet-panel,
+    body.compact.v3.fit-1 .disclaimer-card { zoom: 0.92; }
+    body.compact.v3.fit-2:not(.awaiting) .chat-container,
+    body.compact.v3.fit-2 .sheet-panel,
+    body.compact.v3.fit-2 .disclaimer-card { zoom: 0.84; }
+    body.compact.v3.fit-3:not(.awaiting) .chat-container,
+    body.compact.v3.fit-3 .sheet-panel,
+    body.compact.v3.fit-3 .disclaimer-card { zoom: 0.77; }
+    body.compact.v3.fit-1:not(.awaiting) .chat-input input { font-size: calc(16px / 0.92); }
+    body.compact.v3.fit-2:not(.awaiting) .chat-input input { font-size: calc(16px / 0.84); }
+    body.compact.v3.fit-3:not(.awaiting) .chat-input input { font-size: calc(16px / 0.77); }
 
     /* --- back to the end, on a phone ---------------------------------------
        A thumb scrolling up through a long answer has no scrollbar to grab
@@ -4049,15 +4057,21 @@
     if (!pill || !rect) return;
 
     const fit = () => {
-      // Half the rect's own height, measured. The rect sits 1px inside the
-      // SVG so its stroke is not clipped, so it is the SVG's height less two.
-      // Measured rather than derived from the pill, because the SVG's offsets
-      // resolve inside the pill's border and the border's rendered width
-      // depends on the screen's pixel density - a formula from offsetHeight
-      // was a pixel out, and a radius a pixel over half the height is
-      // clamped on one axis only, which draws an oval.
-      const svg = rect.ownerSVGElement;
-      const r = Math.max(0, (svg.getBoundingClientRect().height - 2) / 2);
+      // Half the rect's own height, measured. Measured rather than derived
+      // from the pill, because the SVG's offsets resolve inside the pill's
+      // border and the border's rendered width depends on the screen's pixel
+      // density - a formula from offsetHeight was a pixel out, and a radius a
+      // pixel over half the height is clamped on one axis only, which draws
+      // an oval.
+      // getBBox, not getBoundingClientRect: rx is in the SVG's own units,
+      // and the bounding rect is in screen pixels. They agree until the
+      // interface is zoomed down for a short frame, and then the screen
+      // measure is the zoomed one - a radius 0.62 of what it should be, and
+      // corners visibly squarer than the pill they trace.
+      let h = 0;
+      try { h = rect.getBBox().height; } catch (err) { h = 0; }
+      if (!h) h = rect.ownerSVGElement.getBoundingClientRect().height - 2;
+      const r = Math.max(0, h / 2);
       rect.setAttribute("rx", r);
       rect.setAttribute("ry", r);
     };
