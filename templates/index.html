@@ -273,7 +273,9 @@
       padding: 2px 16px 8px 16px;
     }
     body.compact .chat-input input { font-size: 0.82rem; padding: 7px 11px; }
-    body.compact .input-pill { padding: 3px 3px 3px 7px; }
+    /* 7px on the right, from 3: the send button sat hard against the end of
+       the pill and read as pushed off to the right. */
+    body.compact .input-pill { padding: 3px 7px 3px 7px; }
     body.compact .chat-input button { width: 30px; height: 30px; }
     body.compact .quick-prompts {
       padding: 3px 0 2px 0;
@@ -2140,26 +2142,36 @@
     }
     .sheet.open .sheet-panel { transform: none; }
 
-    /* The two notes' explanations, on a desktop: a small card in the middle
-       of the window instead. They are two sentences, and a sheet rising the
-       full height of a wide screen for two sentences is a lot of motion for
-       very little. A phone keeps the sheet, which is where a thumb is. */
-    @media (min-width: 721px) {
-      .sheet.center { align-items: center; padding: 20px; }
-      .sheet.center .sheet-panel {
-        max-width: 380px;
-        border: 1px solid #e3e5e8;
-        border-radius: 18px;
-        box-shadow: 0 18px 50px rgba(32, 33, 36, 0.18),
-                    0 2px 8px rgba(32, 33, 36, 0.06);
-        opacity: 0;
-        transform: translateY(10px) scale(0.97);
-        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-                    opacity 0.22s ease;
-      }
-      .sheet.center.open .sheet-panel { opacity: 1; transform: none; }
-      .sheet.center .sheet-body { padding-bottom: 20px; }
+    /* The two notes' explanations: a small card in the middle of the
+       window, on a phone as well as a desktop. They are a sentence or two,
+       and a sheet rising from the bottom edge for that is a lot of motion
+       for very little. Sources keep the sheet - that one is a list, and can
+       be long.
+       The page behind is blurred and never darkened: the tint is white, and
+       the card's own shadow is kept light and short so it does not pool into
+       a grey halo. Instead the edges of the window glow faintly white on
+       the inside, which frames the card by lifting the page rather than by
+       shading it. */
+    .sheet.center {
+      align-items: center;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.22);
+      box-shadow: inset 0 0 60px 8px rgba(255, 255, 255, 0.85),
+                  inset 0 0 14px 2px rgba(255, 255, 255, 0.9);
     }
+    .sheet.center .sheet-panel {
+      max-width: 380px;
+      border: 1px solid #e3e5e8;
+      border-radius: 18px;
+      box-shadow: 0 8px 28px rgba(32, 33, 36, 0.09),
+                  0 1px 4px rgba(32, 33, 36, 0.05);
+      opacity: 0;
+      transform: translateY(10px) scale(0.97);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.22s ease;
+    }
+    .sheet.center.open .sheet-panel { opacity: 1; transform: none; }
+    .sheet.center .sheet-body { padding-bottom: 20px; }
 
     .sheet-head {
       display: flex;
@@ -2349,16 +2361,22 @@
        to 0.62 and read as a different, smaller product. */
     body.compact.v3.fit-1:not(.awaiting) .chat-container,
     body.compact.v3.fit-1 .sheet-panel,
-    body.compact.v3.fit-1 .disclaimer-card { zoom: 0.92; }
+    body.compact.v3.fit-1 .disclaimer-card,
+    body.compact.v3.fit-1 .fb-panel { zoom: 0.92; }
     body.compact.v3.fit-2:not(.awaiting) .chat-container,
     body.compact.v3.fit-2 .sheet-panel,
-    body.compact.v3.fit-2 .disclaimer-card { zoom: 0.84; }
+    body.compact.v3.fit-2 .disclaimer-card,
+    body.compact.v3.fit-2 .fb-panel { zoom: 0.84; }
     body.compact.v3.fit-3:not(.awaiting) .chat-container,
     body.compact.v3.fit-3 .sheet-panel,
-    body.compact.v3.fit-3 .disclaimer-card { zoom: 0.77; }
-    body.compact.v3.fit-1:not(.awaiting) .chat-input input { font-size: calc(16px / 0.92); }
-    body.compact.v3.fit-2:not(.awaiting) .chat-input input { font-size: calc(16px / 0.84); }
-    body.compact.v3.fit-3:not(.awaiting) .chat-input input { font-size: calc(16px / 0.77); }
+    body.compact.v3.fit-3 .disclaimer-card,
+    body.compact.v3.fit-3 .fb-panel { zoom: 0.77; }
+    body.compact.v3.fit-1:not(.awaiting) .chat-input input,
+    body.compact.v3.fit-1 .fb-panel .fb-input { font-size: calc(16px / 0.92); }
+    body.compact.v3.fit-2:not(.awaiting) .chat-input input,
+    body.compact.v3.fit-2 .fb-panel .fb-input { font-size: calc(16px / 0.84); }
+    body.compact.v3.fit-3:not(.awaiting) .chat-input input,
+    body.compact.v3.fit-3 .fb-panel .fb-input { font-size: calc(16px / 0.77); }
 
     /* --- back to the end, on a phone ---------------------------------------
        A thumb scrolling up through a long answer has no scrollbar to grab
@@ -2672,36 +2690,63 @@
         return Promise.resolve(fallback());
       }
 
-      // The site a source lives on, without the www.
-      function hostOf(url) {
-        try {
-          return new URL(url, window.location.href).hostname
-                   .replace(/^www\./, "");
-        } catch (err) {
-          return "";
+      // What a source is, for labelling it: a key to group by, a name to
+      // show, and an icon.
+      //
+      // Google's products are told apart by path as well as host. Docs,
+      // Sheets, Slides and Forms all live on docs.google.com, and the favicon
+      // service answers every one of them with the same "G" - so a stack of
+      // three sources read as three of one thing when it was a schedule, a
+      // spreadsheet and a form. Each gets its product's own icon, from
+      // Google's static host, and its own group in the sources sheet.
+      const G_ICON = "https://ssl.gstatic.com/images/branding/product/1x/";
+      const SITE_NAMES = {
+        "vrhs.leanderisd.org": "Vista Ridge High School",
+        "leanderisd.org": "Leander ISD",
+        "news.leanderisd.org": "Leander ISD news"
+      };
+      function siteOf(url) {
+        let u;
+        try { u = new URL(url, window.location.href); }
+        catch (err) { return { key: "", label: "", icon: "", host: "" }; }
+        const host = u.hostname.replace(/^www\./, "");
+        const path = u.pathname;
+        const google = (key, label) => ({ key: key, label: label, host: host,
+          icon: G_ICON + key + "_2020q4_32dp.png" });
+        if (host === "docs.google.com") {
+          if (path.startsWith("/spreadsheets")) return google("sheets", "Google Sheets");
+          if (path.startsWith("/presentation")) return google("slides", "Google Slides");
+          if (path.startsWith("/forms")) return google("forms", "Google Forms");
+          return google("docs", "Google Docs");
         }
+        if (host === "forms.gle") return google("forms", "Google Forms");
+        if (host === "drive.google.com") return google("drive", "Google Drive");
+        if (host === "sites.google.com") return google("sites", "Google Sites");
+        if (host === "calendar.google.com") return google("calendar", "Google Calendar");
+        return { key: host, label: SITE_NAMES[host] || host, host: host,
+                 icon: "https://www.google.com/s2/favicons?sz=64&domain="
+                       + encodeURIComponent(host) };
       }
 
-      // A site's own icon in a small disc. From Google's favicon service,
+      // A source's icon in a small disc. Google's products get their own
+      // (see siteOf); anything else comes from Google's favicon service,
       // because the school and district sites serve theirs from paths that
-      // differ page to page; if it fails to load, the disc shows the site's
+      // differ page to page. If it fails to load, the disc shows the site's
       // first letter rather than a broken image.
-      function makeFav(urlOrHost) {
-        const host = /^[a-z0-9.-]+$/i.test(urlOrHost) ? urlOrHost
-                                                      : hostOf(urlOrHost);
+      function makeFav(url) {
+        const site = siteOf(url);
         const disc = document.createElement("span");
         disc.className = "fav";
         disc.setAttribute("aria-hidden", "true");
-        if (!host) return disc;
+        if (!site.icon) return disc;
         const img = document.createElement("img");
         img.alt = "";
         img.loading = "lazy";
         img.referrerPolicy = "no-referrer";
-        img.src = "https://www.google.com/s2/favicons?sz=64&domain="
-                  + encodeURIComponent(host);
+        img.src = site.icon;
         img.addEventListener("error", () => {
           img.remove();
-          disc.textContent = host.charAt(0).toUpperCase();
+          disc.textContent = site.label.charAt(0).toUpperCase();
         });
         disc.appendChild(img);
         return disc;
@@ -2823,8 +2868,14 @@
             // there either, sit against the top edge.
             top = Math.max(offY + margin, a.top - box.height - 8);
           }
-          panel.style.left = Math.round(left) + "px";
-          panel.style.top = Math.round(top) + "px";
+          // In the panel's own units. On a short phone frame the panel is
+          // zoomed down with the rest of the third skin, and a zoomed
+          // element's left and top are zoomed too - the measurements above
+          // are screen pixels, so written back as they are they would place
+          // it at 0.77 of where it belongs.
+          const z = parseFloat(getComputedStyle(panel).zoom) || 1;
+          panel.style.left = Math.round(left / z) + "px";
+          panel.style.top = Math.round(top / z) + "px";
         };
 
         let outside = null;
@@ -3348,12 +3399,15 @@
 
             const icons = document.createElement("span");
             icons.className = "stack";
-            const hosts = [];
+            // One icon per kind of source - a Doc and a Sheet are two, where
+            // two pages of the school site are one.
+            const kinds = [];
+            const seen = {};
             meta.sources.forEach(src => {
-              const h = hostOf(src.url);
-              if (h && hosts.indexOf(h) === -1) hosts.push(h);
+              const k = siteOf(src.url).key;
+              if (k && !seen[k]) { seen[k] = true; kinds.push(src.url); }
             });
-            hosts.slice(0, 3).forEach(h => icons.appendChild(makeFav(h)));
+            kinds.slice(0, 3).forEach(u => icons.appendChild(makeFav(u)));
             stack.appendChild(icons);
 
             const word = document.createElement("span");
@@ -4197,8 +4251,8 @@
     // hidden dialog for the two skins that never show one.
     let current = null;
 
-    // centered: a card in the middle of a desktop window rather than a sheet
-    // from the bottom edge. A phone still gets the sheet - see .sheet.center.
+    // centered: a card in the middle of the window rather than a sheet from
+    // the bottom edge, on any screen - see .sheet.center.
     function openSheet(title, centered, fill) {
       if (current) current(true);
 
@@ -4331,28 +4385,20 @@
     });
 
     // --- sources, by site ----------------------------------------------------
-    const SITE = {
-      "vrhs.leanderisd.org": "Vista Ridge High School",
-      "leanderisd.org": "Leander ISD",
-      "news.leanderisd.org": "Leander ISD news",
-      "docs.google.com": "Google Docs",
-      "drive.google.com": "Google Drive",
-      "sites.google.com": "Google Sites",
-      "calendar.google.com": "Google Calendar"
-    };
-
     window.openSourcesSheet = function (sources) {
-      // Grouped by site, in the order their best source was ranked - the
-      // site the answer leaned on most comes first.
+      // Grouped by site - by product, for Google's, so Docs and Sheets are
+      // two groups though they share a host - in the order their best source
+      // was ranked, so the one the answer leaned on most comes first.
       const groups = [];
-      const byHost = {};
+      const byKey = {};
       sources.forEach(src => {
-        const host = hostOf(src.url) || "other";
-        if (!byHost[host]) {
-          byHost[host] = { host: host, items: [] };
-          groups.push(byHost[host]);
+        const site = siteOf(src.url);
+        const key = site.key || "other";
+        if (!byKey[key]) {
+          byKey[key] = { site: site, url: src.url, items: [] };
+          groups.push(byKey[key]);
         }
-        byHost[host].items.push(src);
+        byKey[key].items.push(src);
       });
 
       openSheet("Sources", false, (el) => {
@@ -4361,10 +4407,10 @@
           d.className = "src-group";
           d.open = true;
           const sum = document.createElement("summary");
-          sum.appendChild(makeFav(g.host));
+          sum.appendChild(makeFav(g.url));
           const name = document.createElement("span");
-          name.textContent = SITE[g.host] || g.host;
-          name.title = g.host;
+          name.textContent = g.site.label || "Other";
+          name.title = g.site.host;
           sum.appendChild(name);
           const n = document.createElement("span");
           n.className = "n";

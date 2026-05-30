@@ -279,6 +279,11 @@ const landingFits = p => p.evaluate(() => {
     check("three sources fold into one pill", /flex/.test(src.stack || "") && src.row === "none",
           JSON.stringify(src));
     check("carrying one icon per site", src.favs === 2, `${src.favs} icons`);
+    const icons = await p.evaluate(() => [...document.querySelectorAll(".source-stack .fav img")]
+      .map(i => i.getAttribute("src").replace(/^https:\/\/[^/]+/, "")));
+    check("a Google Doc gets the Docs icon, not Google's G",
+          icons.some(s => /docs_2020q4/.test(s)) && icons.some(s => /s2\/favicons/.test(s)),
+          JSON.stringify(icons));
 
     const btn = await p.evaluate(() => {
       const r = s => { const el = document.querySelector(s); return el && getComputedStyle(el).borderRadius; };
@@ -575,6 +580,43 @@ const landingFits = p => p.evaluate(() => {
     check(`${h}px tall: the hover ring's corners are still a pill`,
           Math.abs(corner.rx - corner.half) <= 0.5, JSON.stringify(corner));
     if (h === 300) await shot(p, "v3-short-phone");
+    if (h === 300) {
+      // The "what went wrong" panel takes the step too, and still opens
+      // against the button that opened it.
+      await p.tap('.fb-btn[data-type="down"]');
+      await sleep(500);
+      const fbp = await p.evaluate(() => {
+        const panel = document.querySelector(".fb-panel:not([hidden])");
+        const down = document.querySelector('.fb-btn[data-type="down"]').getBoundingClientRect();
+        const r = panel.getBoundingClientRect();
+        return { zoom: getComputedStyle(panel).zoom,
+                 left: Math.round(r.left), right: Math.round(r.right), downRight: Math.round(down.right),
+                 top: Math.round(r.top), bottom: Math.round(r.bottom),
+                 downTop: Math.round(down.top), downBottom: Math.round(down.bottom),
+                 W: window.innerWidth, H: window.innerHeight,
+                 inputPx: Math.round(parseFloat(getComputedStyle(panel.querySelector(".fb-input")).fontSize)
+                          * parseFloat(getComputedStyle(panel).zoom)) };
+      });
+      // Under the button, or flipped above it, or held against the top
+      // edge when neither fits; and right-aligned to it unless that would
+      // run off the screen. Unscaled positions would land at 0.77 of these.
+      // A few pixels of slack vertically: the panel is placed while its
+      // opening scale is still in flight, so its measured height is a
+      // little short of the settled one. Unscaled positions are off by
+      // tens of pixels, which this still catches.
+      const vertical = Math.abs(fbp.top - (fbp.downBottom + 8)) <= 5
+                    || Math.abs(fbp.bottom - (fbp.downTop - 8)) <= 5
+                    || Math.abs(fbp.top - 12) <= 5;
+      const horizontal = Math.abs(fbp.right - fbp.downRight) <= 2
+                      || Math.abs(fbp.right - (fbp.W - 12)) <= 2
+                      || Math.abs(fbp.left - 12) <= 2;
+      const beside = vertical && horizontal;
+      check("300px tall: the what-went-wrong panel takes the step",
+            fbp.zoom === "0.77" && fbp.right <= fbp.W && fbp.bottom <= fbp.H && fbp.top >= 0 && beside,
+            JSON.stringify(fbp));
+      check("300px tall: its comment box is still 16px on screen", fbp.inputPx === 16, `${fbp.inputPx}px`);
+      await shot(p, "v3-short-phone-feedback");
+    }
     await p.close();
   }
   {
@@ -613,7 +655,7 @@ const landingFits = p => p.evaluate(() => {
     check("a frosted circle", /blur/.test(btn.blur) && btn.radius === "50%", JSON.stringify(btn));
     await shot(p, "v3-scroll-button-phone");
 
-    // A phone keeps the sheet from the bottom for the notes.
+    // On a phone too, the notes open as a card in the middle.
     await p.evaluate(() => document.getElementById("messages")
       .scrollTo({ top: document.getElementById("messages").scrollHeight, behavior: "instant" }));
     await sleep(400);
@@ -623,12 +665,20 @@ const landingFits = p => p.evaluate(() => {
       const panel = document.querySelector(".sheet-panel");
       const r = panel.getBoundingClientRect();
       const b = panel.querySelector(".sheet-body");
-      return { bottom: Math.round(r.bottom), H: window.innerHeight,
-               scroll: b.scrollHeight - b.clientHeight };
+      const wrap = document.querySelector(".sheet");
+      const cs = getComputedStyle(wrap);
+      return { mid: Math.round(r.top + r.height / 2), H: window.innerHeight,
+               scroll: b.scrollHeight - b.clientHeight,
+               bg: cs.backgroundColor, glow: cs.boxShadow, blur: cs.backdropFilter };
     });
-    check("on a phone the privacy note is a sheet from the bottom",
-          Math.abs(phoneSheet.bottom - phoneSheet.H) <= 1 && phoneSheet.scroll <= 0,
-          JSON.stringify(phoneSheet));
+    check("on a phone the privacy note is a card in the middle",
+          Math.abs(phoneSheet.mid - phoneSheet.H / 2) <= 4 && phoneSheet.scroll <= 0,
+          JSON.stringify({ mid: phoneSheet.mid, H: phoneSheet.H, scroll: phoneSheet.scroll }));
+    check("over a blur that lightens rather than darkens",
+          /^rgba\(255, 255, 255/.test(phoneSheet.bg) && /blur/.test(phoneSheet.blur),
+          phoneSheet.bg + " / " + phoneSheet.blur);
+    check("with a white glow on the window's inside edges",
+          /rgba\(255, 255, 255[^)]*\)[^,]*inset/.test(phoneSheet.glow), phoneSheet.glow);
     await shot(p, "v3-privacy-phone");
     await p.tap(".sheet-close");
     await sleep(600);
