@@ -80,7 +80,7 @@ const overflow = p => p.evaluate(() => {
   // ================= DESKTOP =================
   console.log("\n== desktop /widget ==");
   let p = await newPage(browser, false);
-  await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+  await p.goto(BASE + "/widget?v=2", { waitUntil: "networkidle2" });
   await sleep(600);
 
   const ENGLISH = /^Try asking here\.{0,3}$/;
@@ -158,7 +158,7 @@ const overflow = p => p.evaluate(() => {
   await p.close();
 
   // ================= MOBILE =================
-  for (const route of ["/widget", "/"]) {
+  for (const route of ["/widget?v=2", "/"]) {
     console.log(`\n== mobile ${route} ==`);
     p = await newPage(browser, true);
     await p.goto(BASE + route, { waitUntil: "networkidle2" });

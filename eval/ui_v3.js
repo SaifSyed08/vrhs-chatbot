@@ -92,7 +92,10 @@ async function newPage(browser, vp, mobile, keyboard) {
       const send = () => req.respond({ status: 200,
         contentType: "text/plain; charset=utf-8",
         body: ANSWER + ":::meta" + META });
-      if (p.__delay) { setTimeout(send, p.__delay); return; }
+      // A queue of per-request delays when a test needs answers to finish
+      // out of order; otherwise the one delay for every request.
+      const wait = (p.__delays && p.__delays.length) ? p.__delays.shift() : p.__delay;
+      if (wait) { setTimeout(send, wait); return; }
       return send();
     }
     if (req.url().endsWith("/feedback")) {
@@ -123,8 +126,14 @@ const landingFits = p => p.evaluate(() => {
     const el = document.querySelector(s);
     return el ? Math.round(el.getBoundingClientRect().bottom) : null;
   });
+  // The body too, not only the document: a phone lets an embedded frame be
+  // scrolled to anything below it even with overflow hidden, and a stray
+  // character after a script tag once hung a 19px line of text down there.
+  const title = document.querySelector(".landing-title");
   return { H, bottoms, fits: bottoms.every(b => b === null || b <= H),
-           scroll: document.documentElement.scrollHeight - H };
+           scroll: Math.max(document.documentElement.scrollHeight,
+                            document.body.scrollHeight) - H,
+           size: Math.round(parseFloat(getComputedStyle(title).fontSize)) };
 });
 
 (async () => {
@@ -140,6 +149,13 @@ const landingFits = p => p.evaluate(() => {
     check("?v=3 opens the third skin", /\bv3\b/.test(cls) && /compact/.test(cls), cls);
 
     await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    const plain = await p.evaluate(() => document.body.className);
+    check("and so does a plain /widget, the default now", /\bv3\b/.test(plain), plain);
+    await p.goto(BASE + "/widget?v=2", { waitUntil: "networkidle2" });
+    const second = await p.evaluate(() => document.body.className);
+    check("?v=2 opens the second", !/\bv3\b/.test(second) && /compact/.test(second), second);
+
+    await p.goto(BASE + "/widget?v=2", { waitUntil: "networkidle2" });
     await p.evaluate(() => document.activeElement && document.activeElement.blur());
     await p.keyboard.press("3");
     const on = await p.evaluate(() => document.body.className);
@@ -160,7 +176,7 @@ const landingFits = p => p.evaluate(() => {
   console.log("\n== landing, desktop ==");
   {
     const p = await newPage(browser, { width: 1280, height: 860 });
-    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await p.goto(BASE + "/widget?v=2", { waitUntil: "networkidle2" });
     await sleep(300);
     const restColour = await p.evaluate(() =>
       getComputedStyle(document.getElementById("query"), "::placeholder").color);
@@ -192,16 +208,45 @@ const landingFits = p => p.evaluate(() => {
   // ================= landing, short frames =================
   console.log("\n== landing, short frames ==");
   for (const [label, vp, mobile, v] of [
-    ["desktop 1280x240", { width: 1280, height: 240 }, false, ""],
+    ["desktop 1280x240", { width: 1280, height: 240 }, false, "?v=2"],
     ["desktop 1280x240, third skin", { width: 1280, height: 240 }, false, "?v=3"],
-    ["phone 390x300", { width: 390, height: 300 }, true, ""],
+    ["phone 390x300", { width: 390, height: 300 }, true, "?v=2"],
     ["phone 390x300, third skin", { width: 390, height: 300 }, true, "?v=3"],
+    ["phone 390x220, third skin", { width: 390, height: 220 }, true, "?v=3"],
+    ["phone 390x150, third skin", { width: 390, height: 150 }, true, "?v=3"],
+    ["desktop 1280x180, third skin", { width: 1280, height: 180 }, false, "?v=3"],
+    ["desktop 800x150, third skin", { width: 800, height: 150 }, false, "?v=3"],
+    ["desktop 800x110, third skin", { width: 800, height: 110 }, false, "?v=3"],
   ]) {
     const p = await newPage(browser, vp, mobile);
     await p.goto(BASE + "/widget" + v, { waitUntil: "networkidle2" });
     await sleep(500);
     const fit = await landingFits(p);
     check(`${label}: everything fits`, fit.fits && fit.scroll <= 0, JSON.stringify(fit));
+    // Full size wherever the frame has room for it, and where it has not,
+    // stepped down only as far as it must. Which case applies is measured,
+    // not guessed: the headline wraps differently at different sizes, so
+    // whether full size fits is a question for the layout.
+    const sizing = await p.evaluate(() => {
+      const t = document.querySelector(".landing-title");
+      const row = document.querySelector(".chat-input");
+      const pill = document.querySelector(".input-pill");
+      const fitsAt = (px) => {
+        const was = t.style.fontSize;
+        t.style.fontSize = px ? px + "px" : "";
+        const gap = parseFloat(getComputedStyle(t).marginBottom) || 0;
+        const ok = t.offsetHeight <= row.clientHeight - pill.offsetHeight - gap - 8;
+        t.style.fontSize = was;
+        return ok;
+      };
+      const size = parseFloat(getComputedStyle(t).fontSize);
+      const full = (() => { const was = t.style.fontSize; t.style.fontSize = "";
+        const f = parseFloat(getComputedStyle(t).fontSize); t.style.fontSize = was; return f; })();
+      return { size, full, fullFits: fitsAt(null), biggerFits: size < full && fitsAt(size + 3) };
+    });
+    check(`${label}: the headline is as large as the frame allows`,
+          sizing.fullFits ? sizing.size === sizing.full : !sizing.biggerFits && sizing.size >= 16,
+          JSON.stringify(sizing));
     await p.focus("#query");
     await p.keyboard.type("sch", { delay: 5 });
     await sleep(450);
@@ -488,6 +533,115 @@ const landingFits = p => p.evaluate(() => {
     await p.close();
   }
 
+  // ================= the headline at its own size =================
+  console.log("\n== the landing headline ==");
+  for (const [label, vp, mobile, want] of [
+    ["phone 390x844", { width: 390, height: 844 }, true, 32],
+    ["desktop 1280x860", { width: 1280, height: 860 }, false, 56],
+  ]) {
+    const p = await newPage(browser, vp, mobile);
+    await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
+    const px = await p.evaluate(() =>
+      Math.round(parseFloat(getComputedStyle(document.querySelector(".landing-title")).fontSize)));
+    check(`${label}: the headline is its normal size`, px === want, `${px}px`);
+    await p.close();
+  }
+
+  // ================= the feedback panel on a phone =================
+  console.log("\n== the feedback panel on a phone ==");
+  {
+    const p = await newPage(browser, { width: 390, height: 760 }, true);
+    await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
+    await sleep(300);
+    await ask(p, "when does school start");
+    await sleep(1500);
+    await p.tap('.fb-btn[data-type="down"]');
+    await sleep(500);
+    const fp = await p.evaluate(() => {
+      const panel = document.querySelector(".fb-panel:not([hidden])");
+      const ta = panel.querySelector(".fb-input");
+      const pr = panel.getBoundingClientRect(), tr = ta.getBoundingClientRect();
+      const send = panel.querySelector(".fb-send").getBoundingClientRect();
+      return { w: Math.round(pr.width), h: Math.round(pr.height),
+               font: parseFloat(getComputedStyle(ta).fontSize),
+               drawn: Math.round(parseFloat(getComputedStyle(ta).fontSize) * tr.width / ta.offsetWidth * 10) / 10,
+               taRight: Math.round(tr.right), inner: Math.round(pr.right - 10),
+               gapToSend: Math.round(send.top - tr.bottom) };
+    });
+    check("it is compact", fp.w <= 232 && fp.h <= 190, JSON.stringify(fp));
+    check("its comment box is 16px to iOS and drawn smaller",
+          fp.font === 16 && fp.drawn < 13.5, JSON.stringify({ font: fp.font, drawn: fp.drawn }));
+    check("and fills the panel without spilling or leaving a gap",
+          Math.abs(fp.taRight - fp.inner) <= 2 && fp.gapToSend >= 0 && fp.gapToSend <= 26,
+          JSON.stringify(fp));
+    await shot(p, "v3-feedback-phone");
+    await p.close();
+  }
+
+  // ================= the notes wait for the first answer =================
+  console.log("\n== the notes wait for the first answer ==");
+  {
+    const p = await newPage(browser, { width: 1100, height: 760 });
+    await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
+    await sleep(300);
+    p.__delay = 1500;
+    await ask(p, "when does school start");
+    await sleep(500);
+    const during = await p.evaluate(() =>
+      getComputedStyle(document.querySelector(".ai-notes-row .ai-notes")).display);
+    check("the notes are hidden while the first answer is pending", during === "none", during);
+    await sleep(2600);
+    const after = await p.evaluate(() => {
+      const n = document.querySelector(".ai-notes-row .ai-notes");
+      return { display: getComputedStyle(n).display,
+               copy: (() => { const cs = getComputedStyle(document.querySelector(".fb-copy"));
+                              return cs.backgroundColor + " / " + cs.borderTopStyle; })(),
+               pair: (() => { const cs = getComputedStyle(document.querySelector(".fb-rate"));
+                              return cs.backgroundColor + " / " + cs.borderTopStyle; })() };
+    });
+    check("and appear once it has finished", after.display === "flex", after.display);
+    check("the copy and rating controls are grey discs with no outline",
+          after.copy === "rgb(241, 243, 244) / none" && after.pair === "rgb(241, 243, 244) / none",
+          JSON.stringify(after));
+    await p.click('.ai-notes-row .ai-note[data-sheet="privacy"]');
+    await sleep(600);
+    const priv = await p.evaluate(() => ({
+      text: document.querySelector(".sheet").textContent,
+      icons: [...document.querySelectorAll(".sheet .pt-icon")].map(i => getComputedStyle(i).backgroundColor) }));
+    check("the privacy note names no provider", !/openai/i.test(priv.text), priv.text.slice(0, 160));
+    check("and its icons sit on light grey", priv.icons.every(c => c === "rgb(241, 243, 244)"),
+          JSON.stringify(priv.icons));
+    await p.close();
+  }
+
+  // ================= a question sent before the last one finished ========
+  console.log("\n== asking again before the last answer finishes ==");
+  {
+    const p = await newPage(browser, { width: 1100, height: 760 });
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await sleep(300);
+    // The first answer is held back; the second arrives at once and finishes
+    // first. The first one's sources and rating must still land under it.
+    p.__delays = [1800, 0];
+    await ask(p, "when does school start");
+    await sleep(200);
+    await ask(p, "where is the library website");
+    await sleep(3200);
+    const order = await p.evaluate(() => [...document.getElementById("messages").children]
+      .map(el => el.classList.contains("user") ? "Q"
+               : el.classList.contains("bot") ? "A"
+               : el.classList.contains("answer-footer") ? "F"
+               : el.classList.contains("verify-card") ? "C"
+               : el.className).join(" "));
+    check("each answer keeps its own row of sources under it",
+          order === "Q A F Q A F", order);
+    const rows = await p.evaluate(() =>
+      [...document.querySelectorAll(".answer-footer")].map(f =>
+        f.previousElementSibling && f.previousElementSibling.classList.contains("bot")));
+    check("no answer has two rows", rows.length === 2 && rows.every(Boolean), JSON.stringify(rows));
+    await p.close();
+  }
+
   // ================= the hover outline leaving =================
   console.log("\n== the hover outline ==");
   {
@@ -580,6 +734,21 @@ const landingFits = p => p.evaluate(() => {
     check(`${h}px tall: the hover ring's corners are still a pill`,
           Math.abs(corner.rx - corner.half) <= 0.5, JSON.stringify(corner));
     if (h === 300) await shot(p, "v3-short-phone");
+    {
+      // The scroll-to-end button sits lower the shorter the frame.
+      await p.evaluate(() => document.getElementById("messages").scrollTo({ top: 0, behavior: "instant" }));
+      await sleep(400);
+      const te = await p.evaluate(() => {
+        const b = document.querySelector(".to-end");
+        return { show: b.classList.contains("show"), bottom: getComputedStyle(b).bottom };
+      });
+      const wantBottom = { "": "34px", "fit-1": "26px", "fit-2": "18px", "fit-3": "10px" }[want];
+      check(`${h}px tall: the scroll button sits ${wantBottom} up`,
+            te.show && te.bottom === wantBottom, JSON.stringify(te));
+      await p.evaluate(() => document.getElementById("messages")
+        .scrollTo({ top: document.getElementById("messages").scrollHeight, behavior: "instant" }));
+      await sleep(300);
+    }
     if (h === 300) {
       // The "what went wrong" panel takes the step too, and still opens
       // against the button that opened it.
@@ -595,7 +764,14 @@ const landingFits = p => p.evaluate(() => {
                  downTop: Math.round(down.top), downBottom: Math.round(down.bottom),
                  W: window.innerWidth, H: window.innerHeight,
                  inputPx: Math.round(parseFloat(getComputedStyle(panel.querySelector(".fb-input")).fontSize)
-                          * parseFloat(getComputedStyle(panel).zoom)) };
+                          * parseFloat(getComputedStyle(panel).zoom)),
+                 // What the eye sees: the font, the zoom, and the drawing
+                 // scale on top.
+                 drawnPx: Math.round(parseFloat(getComputedStyle(panel.querySelector(".fb-input")).fontSize)
+                          * parseFloat(getComputedStyle(panel).zoom)
+                          * panel.querySelector(".fb-input").getBoundingClientRect().width
+                          / (panel.querySelector(".fb-input").offsetWidth
+                             * parseFloat(getComputedStyle(panel).zoom)) * 10) / 10 };
       });
       // Under the button, or flipped above it, or held against the top
       // edge when neither fits; and right-aligned to it unless that would
@@ -614,7 +790,10 @@ const landingFits = p => p.evaluate(() => {
       check("300px tall: the what-went-wrong panel takes the step",
             fbp.zoom === "0.77" && fbp.right <= fbp.W && fbp.bottom <= fbp.H && fbp.top >= 0 && beside,
             JSON.stringify(fbp));
-      check("300px tall: its comment box is still 16px on screen", fbp.inputPx === 16, `${fbp.inputPx}px`);
+      check("300px tall: its comment box is still 16px to iOS", fbp.inputPx === 16, `${fbp.inputPx}px`);
+      // 12.8px at full size, times the 0.77 step: shrunk with the panel.
+      check("300px tall: and drawn as small as the rest of the panel",
+            Math.abs(fbp.drawnPx - 12.8 * 0.77) <= 0.3, `${fbp.drawnPx}px`);
       await shot(p, "v3-short-phone-feedback");
     }
     await p.close();

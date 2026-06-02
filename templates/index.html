@@ -305,7 +305,7 @@
          760px Bebas broke it after "LOOKING" and left "FOR?" alone on the
          second, which is the one wrap a two-line headline must not make. */
       max-width: 940px;
-      margin: 0 auto clamp(10px, 6vh, 44px) auto;
+      margin: 0 auto min(44px, 10vh) auto;
       padding: 0 8px;
       /* And when it does have to wrap - a narrow window, a longer headline -
          the browser evens the lines out rather than filling the first and
@@ -332,10 +332,10 @@
          the strokes are lighter and the counters more open. */
       font-family: 'Oswald', 'Public Sans', Impact, sans-serif;
       text-transform: uppercase;
-      /* Bounded by the height too. This skin is embedded in pages that give
-         it very little of that, and a headline sized by width alone pushed
-         the composer out of the bottom of a short frame. */
-      font-size: clamp(1.4rem, min(5.4vw, 11vh), 3.5rem);
+      /* Its full size. A frame too short to hold it is handled by
+         fitLanding, which steps it down only as far as it has to - a cap
+         tied to the height shrank it in frames that had the room. */
+      font-size: clamp(2.15rem, 5.4vw, 3.5rem);
       line-height: 1.03;
       font-weight: 400;
       /* Slightly tighter than the 300 wanted. Heavier strokes close the
@@ -450,15 +450,14 @@
          as over-constrained. That is the tall narrow box it was drawing.
          Percentages resolve against the pill, which is the containing block,
          so the pill's size plus twice the outset is the box we want.
-         2.5px of outset, from 3. The offsets resolve against the pill's
-         padding box, inside its border, so this is about a pixel beyond the
-         border's outer edge - at 3 the ring stood a visible step taller than
-         the pill it traces; at 2 the stroke landed on the border itself and
-         read as the border changing colour. */
-      top: -2.5px;
-      left: -2.5px;
-      width: calc(100% + 5px);
-      height: calc(100% + 5px);
+         1.6px of outset, from 3 by way of 2.5 and 2, each step asked for by
+         eye. The offsets resolve against the pill's padding box, inside its
+         border, so the ring now just overlaps the border's outer edge - as
+         close as it can sit and still read as a line drawn round the box. */
+      top: -1.6px;
+      left: -1.6px;
+      width: calc(100% + 3.2px);
+      height: calc(100% + 3.2px);
       pointer-events: none;
       /* Faded only once the line has finished drawing itself back off -
          the delay is the undraw's duration. Hovering in, the rule near the
@@ -1712,8 +1711,10 @@
          44px of margin plus the centring pushed the composer well down the
          screen and left the two reading as unrelated. */
       body.compact.awaiting .landing-title {
-        margin-bottom: clamp(8px, 4vh, 18px);
-        font-size: clamp(1.35rem, min(8.2vw, 10vh), 2.65rem);
+        /* The size it always had on a phone - see fitLanding for a frame
+           too short to hold it. */
+        margin-bottom: min(18px, 5vh);
+        font-size: clamp(1.85rem, 8.2vw, 2.65rem);
       }
 
       /* A smaller resting composer that grows into the normal one. Only the
@@ -1905,29 +1906,28 @@
       color: #5f6368;
     }
     body.compact.v3 .fb-btn svg { width: 15px; height: 15px; }
-    body.compact.v3 .fb-btn:hover { background: #f1f2f4; color: #202124; }
+    body.compact.v3 .fb-btn:hover { background: #e3e5e8; color: #202124; }
 
-    /* The copy circle has its own edge; the two thumbs share one. Outer
-       sizes match - 30 + 2 x 1 border for the lone circle, 26 + 2 x 2 padding
-       + 2 x 1 border for the pair - so the row lines up along the middle. */
+    /* Light grey discs, no edge. An outline round each control drew three
+       more shapes under every answer; a fill says "button" with less.
+       The copy circle has its own disc and the two thumbs share one. Outer
+       sizes match - 32 for the lone circle, 26 + 2 x 3 padding for the pair -
+       so the row lines up along the middle. */
     body.compact.v3 .fb-copy {
       width: 32px;
       height: 32px;
-      border: 1px solid #dadce0;
-      background: #fff;
+      background: #f1f3f4;
     }
     body.compact.v3 .fb-copy.copied,
     body.compact.v3 .fb-copy.copied:hover {
       color: #fff;
       background: #e60023;
-      border-color: #e60023;
     }
     body.compact.v3 .fb-rate {
       gap: 0;
-      padding: 2px;
-      border: 1px solid #dadce0;
+      padding: 3px;
       border-radius: 999px;
-      background: #fff;
+      background: #f1f3f4;
     }
     body.compact.v3 .fb-rate .fb-btn { width: 26px; height: 26px; }
     body.compact.v3 .fb-rate .fb-btn svg { width: 14px; height: 14px; }
@@ -2022,6 +2022,14 @@
       z-index: 5;
     }
     body.compact.v3.awaiting .ai-notes-row .ai-notes { display: none; }
+
+    /* And not until the first answer has finished. While it is being
+       written the reader is watching the answer; the notes are about the
+       answer, so they arrive after it, fading up with the row under it. */
+    body.compact.v3:not(.answered) .ai-notes-row .ai-notes { display: none; }
+    body.compact.v3.answered .ai-notes-row .ai-notes {
+      animation: settleIn 0.4s ease 0.25s both;
+    }
 
     .ai-note {
       display: inline-flex;
@@ -2236,11 +2244,12 @@
       width: 30px;
       height: 30px;
       border-radius: 50%;
-      background: #e8f0fe;
-      color: #1a57c9;
+      /* Light grey, like the controls under an answer. Tinted blue and
+         green they read as status badges - good news, done - which is more
+         than a line of plain information should claim. */
+      background: #f1f3f4;
+      color: #5f6368;
     }
-    .sheet-points .pt-icon.green { background: #e6f4ea; color: #1e7e34; }
-    .sheet-points .pt-icon.amber { background: #fef7e0; color: #a05a00; }
     .sheet-points .pt-icon svg { width: 15px; height: 15px; }
     .sheet-points strong {
       display: block;
@@ -2378,6 +2387,58 @@
     body.compact.v3.fit-3:not(.awaiting) .chat-input input,
     body.compact.v3.fit-3 .fb-panel .fb-input { font-size: calc(16px / 0.77); }
 
+    /* --- the "what went wrong" panel, on a phone ---------------------------
+       Sized for a cursor, it took most of a phone's width and its comment
+       box a third of its height. Tighter throughout.
+       The comment box is the awkward one. Its text has to be 16px as far as
+       iOS is concerned, or tapping it zooms the page - the embedding page,
+       too, when this is in an iframe. So it stays 16px and is drawn at 0.8
+       with a transform, which iOS does not count: a font-size is what it
+       checks, and a transform does not change one. A transform does not
+       change layout either, so the box is made 1/0.8 as wide to come out
+       the panel's width, and gives back the height it no longer shows
+       through a negative margin worked from its real height, which fit()
+       keeps in --h. */
+    @media (max-width: 720px), (pointer: coarse) {
+      body.compact.v3 .fb-panel {
+        width: 232px;
+        padding: 10px;
+        gap: 7px;
+        border-radius: 12px;
+      }
+      body.compact.v3 .fb-title { font-size: 0.64rem; }
+      body.compact.v3 .fb-reasons { gap: 5px; }
+      body.compact.v3 .fb-reason {
+        font-size: 0.7rem;
+        line-height: 16px;
+        padding: 2px 8px;
+      }
+      body.compact.v3 .fb-send {
+        font-size: 0.72rem;
+        line-height: 16px;
+        min-height: 26px;
+        padding: 4px 12px;
+      }
+      body.compact.v3 .fb-hint { font-size: 0.64rem; }
+      body.compact.v3 .fb-panel .fb-input {
+        --ts: 0.8;
+        min-height: 44px;
+        width: calc(100% / var(--ts));
+        max-width: none;
+        transform: scale(var(--ts));
+        transform-origin: 0 0;
+        margin-bottom: calc(var(--h, 44px) * (var(--ts) - 1));
+      }
+      /* In a short frame the panel is zoomed down, and its comment box's
+         font is raised to keep 16px as iOS measures it - which left the
+         placeholder the one thing in the panel that did not shrink. The
+         drawing scale takes the zoom out again: 0.8 times the step, so the
+         text lands where it would if it had been zoomed with the rest. */
+      body.compact.v3.fit-1 .fb-panel .fb-input { --ts: 0.736; }
+      body.compact.v3.fit-2 .fb-panel .fb-input { --ts: 0.672; }
+      body.compact.v3.fit-3 .fb-panel .fb-input { --ts: 0.616; }
+    }
+
     /* --- back to the end, on a phone ---------------------------------------
        A thumb scrolling up through a long answer has no scrollbar to grab
        and a long way to flick back. The circle is frosted rather than
@@ -2420,6 +2481,15 @@
                     visibility 0s linear 0s;
       }
       .to-end svg { width: 18px; height: 18px; }
+
+      /* Lower in a short frame. 34px up is a real share of a conversation
+         only a couple of hundred pixels tall, and the button sat in the
+         middle of the text it was offering to skip. Shown only once the
+         reader has scrolled up, which is when the notes it would crowd are
+         already stepping aside for the text under them. */
+      body.compact.v3.fit-1:not(.awaiting) .to-end { bottom: 26px; }
+      body.compact.v3.fit-2:not(.awaiting) .to-end { bottom: 18px; }
+      body.compact.v3.fit-3:not(.awaiting) .to-end { bottom: 10px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -2502,6 +2572,7 @@
       <button onclick="quickAsk('Is tomorrow an A day or B day?')">Is tomorrow an A day or B day?</button>
       <button onclick="quickAsk('How can I sign up for ACC classes?')">How can I sign up for ACC classes?</button>
       <button onclick="quickAsk('How can I start a club?')">How can I start a club?</button>
+      <button onclick="quickAsk('When does the ML Club meet?')">When does the ML Club meet?</button>
 
       <button onclick="quickAsk('How do I get a parking permit?')">How do I get a parking permit?</button>
       <button onclick="quickAsk('How can I make up hours?')">How can I make up hours?</button>
@@ -3071,6 +3142,10 @@
           // either side of them.
           input.style.height =
             Math.max(26, Math.min(88, input.scrollHeight + 2)) + "px";
+          // For the third skin on a phone, which draws the box at a scale
+          // and needs its real height to give back the space the scale
+          // frees. See .fb-panel .fb-input there.
+          input.style.setProperty("--h", input.offsetHeight + "px");
         };
 
         input.addEventListener("input", () => {
@@ -3167,6 +3242,11 @@
         // 2️⃣ show the user bubble
         appendMessage(message, 'user');
         if (window.stashPrompts) window.stashPrompts();
+        // Which question this is. A reader can ask again before the last
+        // answer has finished, and only the newest one gets to rewrite the
+        // suggestions - an older answer landing late would otherwise put
+        // back a strip written for a question they have moved on from.
+        const seq = (window.__askSeq = (window.__askSeq || 0) + 1);
         input.value = "";
         if (window.updateSendState) window.updateSendState();
 
@@ -3202,10 +3282,17 @@
         const decoder = new TextDecoder("utf-8");
 
         // remove “…” and make the bot bubble
-        if (thinking) thinking.remove();
         const bubble = document.createElement("div");
         bubble.className = "chat-bubble bot";
-        msgContainer.appendChild(bubble);
+        // In the typing indicator's place, which is under this answer's own
+        // question - not at the end of the list. Appended there, an answer
+        // held up longer than the question asked after it came out below
+        // the later one's answer.
+        if (thinking && thinking.isConnected) {
+          thinking.replaceWith(bubble);
+        } else {
+          msgContainer.appendChild(bubble);
+        }
 
         // 6️⃣ stream + regex‐driven link parsing + inline markdown
         let buffer = "";
@@ -3441,7 +3528,9 @@
             line.innerText = point;
             card.appendChild(line);
           });
-          msgContainer.appendChild(card);
+          // Under its own answer, not at the end of the list. See the
+          // footer below.
+          bubble.after(card);
         }
         msgContainer.scrollTop = msgContainer.scrollHeight;
         // Every answer, including the first.
@@ -3462,7 +3551,17 @@
           // it still opened and still looked right until the answer being
           // rated was near the bottom of the conversation.
           footer.appendChild(fb);
-          msgContainer.appendChild(footer);
+          // Directly under the answer it belongs to, after its caution if
+          // it has one - not appended to the end of the conversation. The
+          // sources and the rating arrive a second or two after the text,
+          // once the answer has been checked, and a question sent in that
+          // gap had already put its own bubble and answer at the end: the
+          // late row landed under the new answer, so it looked like the
+          // new answer had two rows of sources.
+          const card = bubble.nextElementSibling
+            && bubble.nextElementSibling.classList.contains("verify-card")
+            ? bubble.nextElementSibling : null;
+          (card || bubble).after(footer);
 
           // Copy and the rating arrive after whatever sources are showing:
           // the pills one by one, or the single folded pill in the third
@@ -3491,15 +3590,18 @@
           });
         }
 
-        if (window.tailorPrompts) {
+        if (window.tailorPrompts && seq === window.__askSeq) {
           window.tailorPrompts(message, bubble.innerText, meta.followups);
         }
+
+        // The third skin's notes wait for this - see .answered.
+        document.body.classList.add("answered");
 
 
 
       }
 
-      </script>>
+      </script>
 
 <script>
   // ===================================================================
@@ -3541,6 +3643,17 @@
       "How do I start a new club?",
       "Who sponsors the Astronomy Club?",
       "When does the AI Club meet?",
+      // All three checked through the answer path against the clubs sheet
+      // (Dana El Zein, room 2126, every other Wednesday in Ranger Time).
+      // The short form is used twice because it is what a reader types, and
+      // retrieval matches it as well as the full name. Asking what the club
+      // does was left out: it was answered with a sentence about machine
+      // learning projects the sheet does not say. No quotation marks in
+      // this comment - eval/question_set.py reads every quoted string in
+      // this list as a question.
+      "When does the ML Club meet?",
+      "Where does the ML Club meet?",
+      "Who sponsors the Machine Learning Club?",
       "How do I sign up to volunteer?",
       "How do I get a parking permit?",
       "Where can I find bus information?",
@@ -4097,6 +4210,55 @@
 
 <script>
   // ===================================================================
+  // The landing headline, in a frame too short for it.
+  // ===================================================================
+  // The headline is its full size unless the frame cannot hold it and the
+  // composer together - an embed a couple of hundred pixels tall - and then
+  // it steps down only as far as it has to. A size tied to the frame's
+  // height shrank it in frames that had room, and a headline left at full
+  // size in one that did not pushed the composer off the bottom, where a
+  // phone lets the frame be scrolled to it even with scrolling turned off.
+  // Measured rather than predicted, because the headline wraps to two lines
+  // on a phone and one on a desktop, and a smaller size can take a line
+  // back.
+  (function () {
+    const body = document.body;
+    const title = document.querySelector(".landing-title");
+    const row = document.querySelector(".chat-input");
+    const pill = document.querySelector(".input-pill");
+    if (!title || !row || !pill) return;
+
+    const fitLanding = () => {
+      title.style.fontSize = "";
+      if (!body.classList.contains("compact")
+          || !body.classList.contains("awaiting")) return;
+      for (let i = 0; i < 8; i++) {
+        const gap = parseFloat(getComputedStyle(title).marginBottom) || 0;
+        const room = row.clientHeight - pill.offsetHeight - gap - 8;
+        const size = parseFloat(getComputedStyle(title).fontSize);
+        if (title.offsetHeight <= room || size <= 16) break;
+        // Proportional, then one pixel at a time if a rewrap undid it.
+        const next = Math.max(16, Math.min(size - 1,
+          Math.floor(size * room / title.offsetHeight)));
+        title.style.fontSize = next + "px";
+      }
+    };
+
+    fitLanding();
+    window.addEventListener("resize", fitLanding);
+    // Oswald arrives after first paint, and it sets narrower than the
+    // fallback, so the measurement taken before it is not the one that
+    // counts.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(fitLanding);
+    }
+    new MutationObserver(fitLanding).observe(body,
+      { attributes: true, attributeFilter: ["class"] });
+  })();
+  </script>
+
+<script>
+  // ===================================================================
   // Keep the outline a pill.
   // ===================================================================
   // rx and ry on a <rect> are clamped independently - rx to half the width,
@@ -4359,9 +4521,14 @@
         points(el, [
           { icon: ICON.lock, tone: "", title: "Secure",
             text: "Encrypted, with no sign-in." },
-          { icon: ICON.clock, tone: "green", title: "Limited retention",
-            text: "No chat history is kept. Server logs and OpenAI may keep "
-                + "what you ask for a limited time." }
+          { icon: ICON.clock, tone: "", title: "Limited retention",
+            // Not "our AI providers do not retain your prompts". The API
+            // keeps requests for up to 30 days for abuse monitoring unless
+            // the account has Zero Data Retention, which this one does not
+            // have; if that is ever granted, this line can say so.
+            text: "No chat history is kept. Our AI provider doesn't train "
+                + "on what you ask, and keeps it only for a limited time "
+                + "for safety checks." }
         ]);
       }]
     };

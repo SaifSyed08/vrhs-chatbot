@@ -22,7 +22,7 @@ const puppeteer = require("puppeteer-core");
 
 const CHROME = process.env.CHROME ||
   "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const URL = process.env.URL || "http://127.0.0.1:8082/widget";
+const URL = process.env.URL || "http://127.0.0.1:8082/widget?v=2";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -135,8 +135,8 @@ function check(name, pass, detail) {
   check("outline box wraps the composer",
         // Clear of the pill on every side, by less than the 2px it used to
         // stand off - the ring was a tad taller than the pill it traces.
-        snake.svgW - snake.pillW >= 1 && snake.svgW - snake.pillW <= 3 &&
-        snake.svgH - snake.pillH >= 1 && snake.svgH - snake.pillH <= 3,
+        snake.svgW - snake.pillW >= 0 && snake.svgW - snake.pillW <= 3 &&
+        snake.svgH - snake.pillH >= 0 && snake.svgH - snake.pillH <= 3,
         `svg ${snake.svgW}x${snake.svgH}, pill ${snake.pillW}x${snake.pillH}`);
   check("corners are a pill, not an ellipse",
         snake.rx === snake.ry &&

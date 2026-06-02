@@ -1251,11 +1251,12 @@ def widget():
     obvious name triggered a full re-scrape and a few thousand embedding calls
     instead.
 
-    ?v=3 opens the third skin, which is also what pressing 3 switches to - so
-    a page embedding that skin does not need the reader to know the key.
+    The third skin is the default; ?v=2 opens the second, plain compact, for
+    a page that still embeds it. Pressing 2 and 3 switch between them either
+    way, so this only chooses where a reader starts.
     """
     return render_template("index.html", compact=True,
-                           v3=request.args.get("v") == "3")
+                           v3=request.args.get("v") != "2")
 
 
 @app.route("/report", methods=["POST"])
