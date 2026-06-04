@@ -898,16 +898,33 @@ const landingFits = p => p.evaluate(() => {
     await p.close();
   }
 
-  // The scroll button is a phone control.
-  {
-    const p = await newPage(browser, { width: 1100, height: 700 });
-    await p.goto(BASE + "/widget?v=3", { waitUntil: "networkidle2" });
+  // The scroll button: desktops and phones, not tablets, at the right.
+  for (const [label, vp, mobile, want] of [
+    ["desktop", { width: 1100, height: 520 }, false, true],
+    ["phone", { width: 390, height: 700 }, true, true],
+    ["iPad-sized touch screen", { width: 820, height: 1180 }, true, false],
+  ]) {
+    const p = await newPage(browser, vp, mobile);
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
     await ask(p, "when does school start");
     await sleep(1500);
     await p.evaluate(() => document.getElementById("messages").scrollTo({ top: 0, behavior: "instant" }));
-    await sleep(400);
-    const d = await p.evaluate(() => getComputedStyle(document.querySelector(".to-end")).display);
-    check("no scroll button on a desktop", d === "none", d);
+    await sleep(500);
+    const b = await p.evaluate(() => {
+      const el = document.querySelector(".to-end");
+      const r = el.getBoundingClientRect();
+      const m = document.getElementById("messages").getBoundingClientRect();
+      return { display: getComputedStyle(el).display, op: getComputedStyle(el).opacity,
+               fromRight: Math.round(m.right - r.right), fromLeft: Math.round(r.left - m.left) };
+    });
+    if (want) {
+      check(`${label}: scrolled up, the button appears at the right`,
+            b.display === "flex" && b.op === "1" && b.fromRight <= 24 && b.fromLeft > b.fromRight,
+            JSON.stringify(b));
+    } else {
+      check(`${label}: no scroll button`, b.display === "none", JSON.stringify(b));
+    }
+    if (label === "desktop") await shot(p, "v3-scroll-button-desktop");
     await p.close();
   }
 

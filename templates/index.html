@@ -2439,25 +2439,31 @@
       body.compact.v3.fit-3 .fb-panel .fb-input { --ts: 0.616; }
     }
 
-    /* --- back to the end, on a phone ---------------------------------------
+    /* --- back to the end ----------------------------------------------------
        A thumb scrolling up through a long answer has no scrollbar to grab
-       and a long way to flick back. The circle is frosted rather than
-       solid, so the text it floats over still reads through it as text
-       rather than being blotted out. A desktop has a wheel and the End key,
-       and gets none of this. */
+       and a long way to flick back, and the scrollbar here is hidden for a
+       mouse too. The circle is frosted rather than solid, so the text it
+       floats over still reads through it as text rather than being blotted
+       out.
+       On phones and on anything with a fine pointer; not on a tablet, which
+       is a coarse pointer on a screen wider than a phone's - that is the
+       only way CSS can tell an iPad apart, and it misses one with a
+       trackpad attached, which then reports a fine pointer and gets the
+       button like a laptop would.
+       At the right-hand end of the row, where a thumb on a phone already
+       is and where it clears the centred notes. */
     .to-end { display: none; }
-    @media (max-width: 720px), (pointer: coarse) {
+    @media (max-width: 720px), (pointer: fine) {
       body.compact.v3:not(.awaiting) .to-end {
         display: flex;
         align-items: center;
         justify-content: center;
         position: absolute;
-        left: 50%;
+        right: 18px;
         bottom: 34px;
         z-index: 6;
         width: 38px;
         height: 38px;
-        margin-left: -19px;
         padding: 0;
         border: 1px solid rgba(32, 33, 36, 0.1);
         border-radius: 50%;
@@ -2739,16 +2745,42 @@
       // needs a secure context and, inside an embedding page's iframe, that
       // page's permission - neither of which this widget controls. A hidden
       // textarea and execCommand still works in both places it does not.
+      //
+      // Synchronous first, now. This used to ask navigator.clipboard and fall
+      // back only once it had been refused - and embedded, it is refused
+      // unless the host page grants clipboard-write, sometimes slowly while
+      // the browser decides. The fallback then ran late, outside the click
+      // that allowed it, and the tick came late or not at all: "I have to
+      // click it a few times". A copy event raised inside the click itself
+      // needs no permission, no selection and no focus change, and it has
+      // succeeded or failed before the click handler returns.
       function copyText(text) {
-        const fallback = () => {
+        let viaEvent = false;
+        const onCopy = (e) => {
+          e.clipboardData.setData("text/plain", text);
+          e.preventDefault();
+          viaEvent = true;
+        };
+        document.addEventListener("copy", onCopy, true);
+        try { document.execCommand("copy"); } catch (err) { viaEvent = false; }
+        document.removeEventListener("copy", onCopy, true);
+        if (viaEvent) return Promise.resolve(true);
+
+        // A selected hidden box, for browsers that raise no copy event from
+        // execCommand. Not readonly: iOS will not select text in a readonly
+        // field, so that version copied nothing on a phone. 16px so iOS does
+        // not zoom to it for the instant it has focus.
+        const viaSelection = () => {
           const ta = document.createElement("textarea");
           ta.value = text;
-          ta.setAttribute("readonly", "");
           ta.style.position = "fixed";
-          ta.style.opacity = "0";
           ta.style.top = "0";
+          ta.style.opacity = "0";
+          ta.style.fontSize = "16px";
           document.body.appendChild(ta);
+          ta.focus({ preventScroll: true });
           ta.select();
+          ta.setSelectionRange(0, text.length);
           let ok = false;
           try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
           ta.remove();
@@ -2756,9 +2788,9 @@
         };
         if (navigator.clipboard && window.isSecureContext) {
           return navigator.clipboard.writeText(text)
-            .then(() => true, () => fallback());
+            .then(() => true, () => viaSelection());
         }
-        return Promise.resolve(fallback());
+        return Promise.resolve(viaSelection());
       }
 
       // What a source is, for labelling it: a key to group by, a name to
