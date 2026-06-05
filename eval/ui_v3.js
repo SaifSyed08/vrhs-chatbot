@@ -898,11 +898,12 @@ const landingFits = p => p.evaluate(() => {
     await p.close();
   }
 
-  // The scroll button: desktops and phones, not tablets, at the right.
-  for (const [label, vp, mobile, want] of [
-    ["desktop", { width: 1100, height: 520 }, false, true],
-    ["phone", { width: 390, height: 700 }, true, true],
-    ["iPad-sized touch screen", { width: 820, height: 1180 }, true, false],
+  // The scroll button: on every screen, centred on a desktop or a tablet,
+  // at the right on a phone.
+  for (const [label, vp, mobile, where] of [
+    ["desktop", { width: 1100, height: 520 }, false, "center"],
+    ["phone", { width: 390, height: 700 }, true, "right"],
+    ["iPad-sized touch screen", { width: 820, height: 620 }, true, "center"],
   ]) {
     const p = await newPage(browser, vp, mobile);
     await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
@@ -917,13 +918,11 @@ const landingFits = p => p.evaluate(() => {
       return { display: getComputedStyle(el).display, op: getComputedStyle(el).opacity,
                fromRight: Math.round(m.right - r.right), fromLeft: Math.round(r.left - m.left) };
     });
-    if (want) {
-      check(`${label}: scrolled up, the button appears at the right`,
-            b.display === "flex" && b.op === "1" && b.fromRight <= 24 && b.fromLeft > b.fromRight,
-            JSON.stringify(b));
-    } else {
-      check(`${label}: no scroll button`, b.display === "none", JSON.stringify(b));
-    }
+    const placed = where === "right"
+      ? b.fromRight <= 24 && b.fromLeft > b.fromRight
+      : Math.abs(b.fromLeft - b.fromRight) <= 4;
+    check(`${label}: scrolled up, the button appears, ${where === "right" ? "at the right" : "centred"}`,
+          b.display === "flex" && b.op === "1" && placed, JSON.stringify(b));
     if (label === "desktop") await shot(p, "v3-scroll-button-desktop");
     await p.close();
   }
