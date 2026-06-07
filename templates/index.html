@@ -2153,8 +2153,8 @@
     /* The two notes' explanations: a small card in the middle of the
        window, on a phone as well as a desktop. They are a sentence or two,
        and a sheet rising from the bottom edge for that is a lot of motion
-       for very little. Sources keep the sheet - that one is a list, and can
-       be long.
+       for very little. Sources open the same way, a little wider for a
+       list.
        The page behind is blurred and never darkened: the tint is white, and
        the card's own shadow is kept light and short so it does not pool into
        a grey halo. Instead the edges of the window glow faintly white on
@@ -2179,6 +2179,7 @@
                   opacity 0.22s ease;
     }
     .sheet.center.open .sheet-panel { opacity: 1; transform: none; }
+    .sheet.center.sources .sheet-panel { max-width: 440px; }
     .sheet.center .sheet-body { padding-bottom: 20px; }
 
     .sheet-head {
@@ -2437,6 +2438,58 @@
       body.compact.v3.fit-1 .fb-panel .fb-input { --ts: 0.736; }
       body.compact.v3.fit-2 .fb-panel .fb-input { --ts: 0.672; }
       body.compact.v3.fit-3 .fb-panel .fb-input { --ts: 0.616; }
+
+      /* A tiny frame - 440px and under - has no room for the suggestion
+         strip: at that height it was a third of what was left for the
+         conversation. The composer and the answer are what matter there. */
+      body.compact.v3.fit-2:not(.awaiting) .quick-prompts,
+      body.compact.v3.fit-3:not(.awaiting) .quick-prompts { display: none; }
+
+      /* And the three cards come in tight enough to read without scrolling:
+         less padding, smaller type, one line of each source's quotation
+         instead of two or three. The panel is zoomed down already; this is
+         the room the zoom alone did not find. */
+      body.compact.v3.fit-2 .sheet.center,
+      body.compact.v3.fit-3 .sheet.center { padding: 10px; }
+      body.compact.v3.fit-2 .sheet-head,
+      body.compact.v3.fit-3 .sheet-head { padding: 12px 46px 6px 16px; }
+      body.compact.v3.fit-2 .sheet-head h3,
+      body.compact.v3.fit-3 .sheet-head h3 { font-size: 0.9rem; }
+      body.compact.v3.fit-2 .sheet-close,
+      body.compact.v3.fit-3 .sheet-close {
+        top: 8px; right: 8px; width: 30px; height: 30px;
+      }
+      body.compact.v3.fit-2 .sheet-body,
+      body.compact.v3.fit-3 .sheet-body {
+        padding: 2px 16px 14px 16px;
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+      body.compact.v3.fit-2 .sheet-body .sheet-lead,
+      body.compact.v3.fit-3 .sheet-body .sheet-lead { font-size: 0.84rem; }
+      body.compact.v3.fit-2 .sheet-points,
+      body.compact.v3.fit-3 .sheet-points { margin: 0; }
+      body.compact.v3.fit-2 .sheet-points li,
+      body.compact.v3.fit-3 .sheet-points li { padding: 6px 0; gap: 10px; }
+      body.compact.v3.fit-2 .sheet-points .pt-icon,
+      body.compact.v3.fit-3 .sheet-points .pt-icon { width: 26px; height: 26px; }
+      body.compact.v3.fit-2 .sheet-points .pt-text,
+      body.compact.v3.fit-3 .sheet-points .pt-text { font-size: 0.78rem; line-height: 1.4; }
+      body.compact.v3.fit-2 .src-group,
+      body.compact.v3.fit-3 .src-group { margin-bottom: 6px; border-radius: 11px; }
+      body.compact.v3.fit-2 .src-group summary,
+      body.compact.v3.fit-3 .src-group summary { padding: 7px 12px; font-size: 0.8rem; }
+      body.compact.v3.fit-2 .src-item,
+      body.compact.v3.fit-3 .src-item { padding: 6px 12px 7px 40px; }
+      body.compact.v3.fit-2 .src-item .t,
+      body.compact.v3.fit-3 .src-item .t { font-size: 0.8rem; }
+      body.compact.v3.fit-2 .src-item .s,
+      body.compact.v3.fit-3 .src-item .s {
+        font-size: 0.74rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
 
     /* --- back to the end ----------------------------------------------------
@@ -4457,6 +4510,7 @@
 
       const wrap = document.createElement("div");
       wrap.className = centered ? "sheet center" : "sheet";
+      if (title === "Sources") wrap.classList.add("sources");
       const panel = document.createElement("div");
       panel.className = "sheet-panel";
       panel.setAttribute("role", "dialog");
@@ -4605,7 +4659,7 @@
         byKey[key].items.push(src);
       });
 
-      openSheet("Sources", false, (el) => {
+      openSheet("Sources", true, (el) => {
         groups.forEach(g => {
           const d = document.createElement("details");
           d.className = "src-group";

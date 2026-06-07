@@ -414,11 +414,13 @@ const landingFits = p => p.evaluate(() => {
                groups: [...s.querySelectorAll(".src-group summary span:nth-child(2)")].map(x => x.textContent),
                counts: [...s.querySelectorAll(".src-group")].map(g => g.querySelectorAll(".src-item").length),
                blur: getComputedStyle(s).backdropFilter,
-               bottom: Math.round(r.bottom), H: window.innerHeight,
+               mid: Math.round(r.top + r.height / 2), H: window.innerHeight,
+               w: Math.round(r.width),
                close: !!s.querySelector(".sheet-close") };
     });
-    check("the pill opens a sheet from the bottom",
-          sheet && sheet.title === "Sources" && Math.abs(sheet.bottom - sheet.H) <= 1,
+    check("the pill opens a card in the middle",
+          sheet && sheet.title === "Sources" && Math.abs(sheet.mid - sheet.H / 2) <= 4
+          && sheet.w <= 440 && sheet.close,
           JSON.stringify(sheet));
     check("over a blurred page", sheet && /blur/.test(sheet.blur), sheet && sheet.blur);
     check("grouped by site", sheet && sheet.groups.length === 2
@@ -743,11 +745,43 @@ const landingFits = p => p.evaluate(() => {
         return { show: b.classList.contains("show"), bottom: getComputedStyle(b).bottom };
       });
       const wantBottom = { "": "34px", "fit-1": "26px", "fit-2": "18px", "fit-3": "10px" }[want];
+      const strip = await p.evaluate(() =>
+        getComputedStyle(document.querySelector(".quick-prompts")).display);
+      const tiny = want === "fit-2" || want === "fit-3";
+      check(`${h}px tall: the suggestion strip ${tiny ? "is gone" : "stays"}`,
+            tiny ? strip === "none" : strip !== "none", strip);
       check(`${h}px tall: the scroll button sits ${wantBottom} up`,
             te.show && te.bottom === wantBottom, JSON.stringify(te));
       await p.evaluate(() => document.getElementById("messages")
         .scrollTo({ top: document.getElementById("messages").scrollHeight, behavior: "instant" }));
       await sleep(300);
+    }
+    if (h === 300 || h === 420) {
+      // The three cards read without scrolling in a tiny frame.
+      for (const [label, open] of [
+        ["privacy", '.ai-notes-row .ai-note[data-sheet="privacy"]'],
+        ["how AI works", '.ai-notes-row .ai-note[data-sheet="ai"]'],
+        ["sources", ".source-stack"],
+      ]) {
+        await p.evaluate(() => document.getElementById("messages")
+          .scrollTo({ top: document.getElementById("messages").scrollHeight, behavior: "instant" }));
+        await sleep(400);
+        await p.evaluate((sel) => document.querySelector(sel).click(), open);
+        await sleep(600);
+        const card = await p.evaluate(() => {
+          const panel = document.querySelector(".sheet-panel");
+          const b = panel.querySelector(".sheet-body");
+          const r = panel.getBoundingClientRect();
+          return { scroll: b.scrollHeight - b.clientHeight, top: Math.round(r.top),
+                   bottom: Math.round(r.bottom), H: window.innerHeight,
+                   zoom: getComputedStyle(panel).zoom };
+        });
+        check(`${h}px tall: the ${label} card needs no scrolling`,
+              card.scroll <= 0 && card.top >= 0 && card.bottom <= card.H, JSON.stringify(card));
+        if (h === 300) await shot(p, "v3-tiny-" + label.replace(/ /g, "-"));
+        await p.evaluate(() => document.querySelector(".sheet-close").click());
+        await sleep(600);
+      }
     }
     if (h === 300) {
       // The "what went wrong" panel takes the step too, and still opens
