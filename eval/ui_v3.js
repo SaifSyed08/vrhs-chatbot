@@ -854,6 +854,11 @@ const landingFits = p => p.evaluate(() => {
     await sleep(500);
     await shot(p, "v3-answer-phone");
 
+    // A phone leaves the reader at the start of the answer now, so the end
+    // is somewhere they have to go.
+    await p.evaluate(() => document.getElementById("messages")
+      .scrollTo({ top: document.getElementById("messages").scrollHeight, behavior: "instant" }));
+    await sleep(400);
     const hidden = await p.evaluate(() => document.querySelector(".to-end").classList.contains("show"));
     check("no scroll button at the end", hidden === false);
     await p.evaluate(() => document.getElementById("messages").scrollTo({ top: 0, behavior: "instant" }));
@@ -929,6 +934,42 @@ const landingFits = p => p.evaluate(() => {
     const overflow = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     check("no horizontal overflow", overflow <= 0, `${overflow}px`);
     check("no page errors (phone)", p.__err.length === 0, p.__err.join(" | "));
+    await p.close();
+  }
+
+  // How far the conversation follows a long answer as it arrives.
+  for (const [label, vp, mobile] of [["phone", { width: 390, height: 700 }, true],
+                                     ["desktop", { width: 1100, height: 520 }, false]]) {
+    const p = await newPage(browser, vp, mobile);
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await ask(p, "when does school start");
+    await sleep(1600);
+    const f = await p.evaluate(() => {
+      const m = document.getElementById("messages");
+      const q = [...m.querySelectorAll(".chat-bubble.user")].pop();
+      return { qTop: Math.round(q.getBoundingClientRect().top - m.getBoundingClientRect().top),
+               behind: Math.round(m.scrollHeight - m.scrollTop - m.clientHeight) };
+    });
+    if (mobile) {
+      check("phone: the answer is not followed to its end - its question sits at the top",
+            f.qTop >= 0 && f.qTop <= 20 && f.behind > 40, JSON.stringify(f));
+      // Scrolled to the very end: about half the blank the desktop keeps
+      // under the last answer, and the notes still over white.
+      await p.evaluate(() => document.getElementById("messages")
+        .scrollTo({ top: document.getElementById("messages").scrollHeight, behavior: "instant" }));
+      await sleep(500);
+      const tail = await p.evaluate(() => {
+        const m = document.getElementById("messages");
+        const last = m.lastElementChild.getBoundingClientRect();
+        return { blank: Math.round(m.getBoundingClientRect().bottom - last.bottom),
+                 covered: [...document.querySelectorAll(".ai-notes-row .ai-note")]
+                   .map(n => n.classList.contains("covered")) };
+      });
+      check("phone: the blank under the last answer is about half the desktop's",
+            tail.blank >= 24 && tail.blank <= 32 && tail.covered.every(c => !c), JSON.stringify(tail));
+    } else {
+      check("desktop: the answer is followed to its end", f.behind <= 2, JSON.stringify(f));
+    }
     await p.close();
   }
 

@@ -1882,6 +1882,15 @@
        composer, so at rest - scrolled to the end - they stand on white. */
     body.compact.v3:not(.awaiting) .chat-messages { padding-bottom: 42px; }
 
+    /* About half as much on a phone. The 42px and the last answer's 16px of
+       margin were almost 60px of blank at the bottom of a list that is only
+       a few hundred tall; 24px still clears the notes, which stand 6px up
+       and are 18px tall. */
+    @media (max-width: 720px) {
+      body.compact.v3:not(.awaiting) .chat-messages { padding-bottom: 24px; }
+      body.compact.v3 .chat-messages > .answer-footer:last-child { margin-bottom: 6px; }
+    }
+
     /* Sources, then copy, then the rating, in one row from the left. The
        column is full width now, and space-between would have thrown the
        buttons to the far edge, a long way from the answer they act on. */
@@ -3350,6 +3359,33 @@
         msgContainer.appendChild(thinking);
         msgContainer.scrollTop = msgContainer.scrollHeight;
 
+        // How far the conversation follows the answer as it arrives.
+        // On a desktop, to the end, as it always has. On a touch screen,
+        // only until this question reaches the top of the list, and no
+        // further: following to the end scrolled the start of the answer off
+        // the top while it was being read, on a screen where the reader has
+        // a thumb to scroll with and every line is precious. The answer then
+        // fills in below its question, from its first line, and the
+        // scroll-to-end button is there for anyone who wants the rest.
+        const asked = [...msgContainer.querySelectorAll(".chat-bubble.user")].pop();
+        const touch = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
+        const follow = () => {
+          const end = msgContainer.scrollHeight - msgContainer.clientHeight;
+          if (!touch || !asked) { msgContainer.scrollTop = end; return; }
+          // Layout position, not the drawn one: the question is still
+          // rising into place from 38px below when the answer starts, and a
+          // measure that includes that transform stopped the list 30-odd
+          // pixels past it. offsetTop ignores transforms and scrolling; both
+          // elements share the container as offset parent.
+          const top = asked.offsetTop - msgContainer.offsetTop - 12;
+          const target = Math.min(end, Math.max(0, top));
+          // Short of the end: let go of the pin that holds the list there
+          // while the composer rises, or it pulls straight back down.
+          if (target < end - 28 && window.releaseEnd) window.releaseEnd();
+          // Down only. A reader who has scrolled further on is left there.
+          if (msgContainer.scrollTop < target) msgContainer.scrollTop = target;
+        };
+
         // 4️⃣ fire the POST properly
         // A request that never arrives leaves nothing to rewrite the
         // suggestions from, so they come back as they were rather than
@@ -3474,7 +3510,7 @@
             buffer = "";
           }
 
-          msgContainer.scrollTop = msgContainer.scrollHeight;
+          follow();
         }
 
         // 3) final flush of anything left
@@ -3622,7 +3658,7 @@
           // footer below.
           bubble.after(card);
         }
-        msgContainer.scrollTop = msgContainer.scrollHeight;
+        follow();
         // Every answer, including the first.
         //
         // This was guarded on firstBotMessageShown, which is set by
@@ -4771,6 +4807,14 @@
     // Instant rather than smooth: the list is smooth-scrolling by default,
     // and a smooth correction every frame of a transition trails behind it.
     let atEnd = true;
+    // Called by the send path when, on a touch screen, it has chosen to
+    // stop at the question rather than follow the answer to the end. The
+    // list's own scroll event arrives a frame or more later - the list
+    // scrolls smoothly - and until then this still believed the reader was
+    // at the end, so every frame of the composer's rise, which is still
+    // animating as the first answer lands, dragged the list back down to
+    // the bottom past the question it had just stopped at.
+    window.releaseEnd = () => { atEnd = false; };
     if (msgs) {
       msgs.addEventListener("scroll", () => {
         atEnd = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 28;
