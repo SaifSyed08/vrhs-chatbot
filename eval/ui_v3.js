@@ -411,7 +411,7 @@ const landingFits = p => p.evaluate(() => {
       const panel = s.querySelector(".sheet-panel");
       const r = panel.getBoundingClientRect();
       return { title: s.querySelector("h3").textContent,
-               groups: [...s.querySelectorAll(".src-group summary span:nth-child(2)")].map(x => x.textContent),
+               groups: [...s.querySelectorAll(".src-head span:nth-child(2)")].map(x => x.textContent),
                counts: [...s.querySelectorAll(".src-group")].map(g => g.querySelectorAll(".src-item").length),
                blur: getComputedStyle(s).backdropFilter,
                mid: Math.round(r.top + r.height / 2), H: window.innerHeight,
@@ -426,10 +426,24 @@ const landingFits = p => p.evaluate(() => {
     check("grouped by site", sheet && sheet.groups.length === 2
           && sheet.counts.join() === "2,1", JSON.stringify(sheet && { g: sheet.groups, c: sheet.counts }));
     await shot(p, "v3-sources-sheet");
-    await p.click(".src-group summary");
-    await sleep(200);
-    const folded = await p.evaluate(() => document.querySelector(".src-group").open);
-    check("each group folds", folded === false);
+    const fullH = await p.evaluate(() =>
+      document.querySelector(".src-items").getBoundingClientRect().height);
+    await p.click(".src-head");
+    await sleep(110);
+    const midH = await p.evaluate(() =>
+      document.querySelector(".src-items").getBoundingClientRect().height);
+    await sleep(400);
+    const fold = await p.evaluate(() => {
+      const g = document.querySelector(".src-group");
+      return { open: g.classList.contains("open"),
+               expanded: g.querySelector(".src-head").getAttribute("aria-expanded"),
+               h: g.querySelector(".src-items").getBoundingClientRect().height,
+               inert: g.querySelector(".src-items-inner").inert };
+    });
+    check("each group folds", !fold.open && fold.expanded === "false" && fold.h === 0 && fold.inert,
+          JSON.stringify(fold));
+    check("and folds as an animation, not a cut",
+          midH > 0 && midH < fullH, JSON.stringify({ fullH, midH }));
     await p.click(".sheet-close");
     await sleep(600);
     check("the X closes it", await p.evaluate(() => !document.querySelector(".sheet")));
@@ -445,7 +459,8 @@ const landingFits = p => p.evaluate(() => {
     const aiIcons = await p.evaluate(() => document.querySelectorAll(".sheet svg").length);
     check("with no icons but the close button", aiIcons === 1, `${aiIcons} svg`);
     check("How AI works opens its sheet",
-          ai && ai.title === "How AI works" && /official sources/.test(ai.lead),
+          ai && ai.title === "How AI works" && /official sources/.test(ai.lead)
+          && /Responses don't dictate official policy\./.test(ai.lead),
           JSON.stringify(ai));
     const card = await p.evaluate(() => {
       const panel = document.querySelector(".sheet-panel");
@@ -473,10 +488,12 @@ const landingFits = p => p.evaluate(() => {
     await sleep(600);
     check("a click outside closes it", await p.evaluate(() => !document.querySelector(".sheet")));
 
-    // The composer rises and the end stays in view.
+    // The composer rises, and the answer the reader is looking at stays put.
     const rise0 = await p.evaluate(() => ({
       pad: getComputedStyle(document.querySelector(".chat-input")).paddingBottom,
-      pill: Math.round(document.querySelector(".input-pill").getBoundingClientRect().top) }));
+      pill: Math.round(document.querySelector(".input-pill").getBoundingClientRect().top),
+      answer: Math.round([...document.querySelectorAll(".chat-bubble.bot")].pop()
+        .getBoundingClientRect().top) }));
     await p.click("#query");
     await sleep(700);
     const rise1 = await p.evaluate(() => {
@@ -484,12 +501,15 @@ const landingFits = p => p.evaluate(() => {
       return { pad: getComputedStyle(document.querySelector(".chat-input")).paddingBottom,
                pill: Math.round(document.querySelector(".input-pill").getBoundingClientRect().top),
                behind: Math.round(m.scrollHeight - m.scrollTop - m.clientHeight),
+               answer: Math.round([...document.querySelectorAll(".chat-bubble.bot")].pop()
+                 .getBoundingClientRect().top),
                bg: getComputedStyle(document.querySelector(".input-pill")).backgroundColor,
                shadow: getComputedStyle(document.querySelector(".input-pill")).boxShadow !== "none" };
     });
     check("the composer rises on focus", rise1.pill < rise0.pill,
           `${rise0.pill} -> ${rise1.pill} (padding ${rise0.pad} -> ${rise1.pad})`);
-    check("and the conversation keeps its end in view", rise1.behind <= 2, `${rise1.behind}px behind`);
+    check("and the answer does not move with it", rise1.answer === rise0.answer,
+          `${rise0.answer} -> ${rise1.answer}`);
     const edge = await p.evaluate(() =>
       getComputedStyle(document.querySelector(".input-pill")).borderTopColor);
     check("the composer's outline is darker", edge === "rgb(154, 160, 166)" ||
@@ -641,6 +661,106 @@ const landingFits = p => p.evaluate(() => {
       [...document.querySelectorAll(".answer-footer")].map(f =>
         f.previousElementSibling && f.previousElementSibling.classList.contains("bot")));
     check("no answer has two rows", rows.length === 2 && rows.every(Boolean), JSON.stringify(rows));
+    await p.close();
+  }
+
+  // ================= this round's details =================
+  console.log("\n== pills, entrances, notice, streamed text ==");
+  {
+    const p = await newPage(browser, { width: 1100, height: 760 });
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await sleep(300);
+    await p.focus("#query");
+    await p.keyboard.type("when does school start", { delay: 3 });
+    await p.keyboard.press("Enter");
+    await sleep(70);
+    const notice = await p.evaluate(() => {
+      const c = document.querySelector(".disclaimer .disclaimer-card");
+      return c && { op: +getComputedStyle(c).opacity, tf: getComputedStyle(c).transform,
+                    words: c.querySelector("p").textContent.trim().split(/\s+/).length };
+    });
+    check("the first-question notice arrives rather than appearing",
+          notice && notice.op < 1 && notice.tf !== "none", JSON.stringify(notice));
+    check("and says it in fewer words", notice && notice.words <= 30, JSON.stringify(notice));
+    await sleep(500);
+    await p.click(".disclaimer .accept");
+    await sleep(120);
+    const streamed = await p.evaluate(() => {
+      const span = document.querySelector(".chat-bubble.bot > span");
+      return span && { anim: getComputedStyle(span).animationName, filter: getComputedStyle(span).filter };
+    });
+    check("streamed text comes into focus", streamed && streamed.anim === "streamIn",
+          JSON.stringify(streamed));
+    await sleep(1500);
+    const pill = await p.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector(".source-stack"));
+      return cs.backgroundColor + " / " + cs.borderTopStyle;
+    });
+    check("the sources pill is grey with no outline, like copy",
+          pill === "rgb(241, 243, 244) / none", pill);
+    await p.click(".source-stack");
+    await sleep(90);
+    const entering = await p.evaluate(() => {
+      const panel = document.querySelector(".sheet-panel");
+      return { op: +getComputedStyle(panel).opacity, tf: getComputedStyle(panel).transform };
+    });
+    check("the sources card has a real entrance", entering.op < 1 && entering.tf !== "none",
+          JSON.stringify(entering));
+    await sleep(600);
+    const settled = await p.evaluate(() => {
+      const s = document.querySelector(".sheet");
+      return { op: +getComputedStyle(s.querySelector(".sheet-panel")).opacity,
+               touch: getComputedStyle(s).touchAction,
+               bodyTouch: getComputedStyle(s.querySelector(".sheet-body")).touchAction,
+               over: getComputedStyle(document.documentElement).overscrollBehaviorY };
+    });
+    check("and settles; nothing behind it pans, its own list still can",
+          settled.op === 1 && settled.touch === "none" && settled.bodyTouch === "pan-y"
+          && settled.over === "none", JSON.stringify(settled));
+    await p.close();
+  }
+  {
+    const p = await newPage(browser, { width: 390, height: 300 }, true);
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await sleep(300);
+    const land = await p.evaluate(() => ({
+      touch: getComputedStyle(document.body).touchAction,
+      over: getComputedStyle(document.documentElement).overscrollBehaviorY }));
+    check("a short landing screen on a phone cannot be panned",
+          land.touch === "none" && land.over === "none", JSON.stringify(land));
+    await ask(p, "when does school start");
+    await sleep(1500);
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    const seen = new Set();
+    for (let i = 0; i < 16; i++) {
+      seen.add(await p.evaluate(() => document.getElementById("query").getAttribute("placeholder")));
+      await sleep(500);
+    }
+    check("a tiny frame shows the suggestions in the composer instead of the strip",
+          FOLLOWUPS.some(f => seen.has(f)) && seen.has("Ask about VRHS..."), JSON.stringify([...seen]));
+    await p.tap("#query");
+    await sleep(350);
+    const tapped = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
+    check("and goes back to the usual prompt the moment the box is tapped",
+          tapped === "Ask about VRHS...", tapped);
+    await sleep(3000);
+    const held = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
+    check("and stays there while it has focus", held === "Ask about VRHS...", held);
+    await p.close();
+  }
+  {
+    const p = await newPage(browser, { width: 390, height: 760 }, true);
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await ask(p, "when does school start");
+    await sleep(1500);
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    const seen = new Set();
+    for (let i = 0; i < 10; i++) {
+      seen.add(await p.evaluate(() => document.getElementById("query").getAttribute("placeholder")));
+      await sleep(500);
+    }
+    check("a frame with room keeps the strip and leaves the prompt alone",
+          seen.size === 1 && seen.has("Ask about VRHS..."), JSON.stringify([...seen]));
     await p.close();
   }
 
@@ -966,7 +1086,7 @@ const landingFits = p => p.evaluate(() => {
                    .map(n => n.classList.contains("covered")) };
       });
       check("phone: the blank under the last answer is about half the desktop's",
-            tail.blank >= 24 && tail.blank <= 32 && tail.covered.every(c => !c), JSON.stringify(tail));
+            tail.blank >= 32 && tail.blank <= 38 && tail.covered.every(c => !c), JSON.stringify(tail));
     } else {
       check("desktop: the answer is followed to its end", f.behind <= 2, JSON.stringify(f));
     }

@@ -550,6 +550,25 @@
     .disclaimer.open { opacity: 1; }
     .disclaimer.open .disclaimer-card { transform: none; opacity: 1; }
 
+    /* The rule above never had a starting state to come from. The classic
+       overlay's ".disclaimer-card" further down redefines the class with
+       transform and opacity at rest, and as the later rule it won - so this
+       card appeared fully formed. Scoped here, it arrives the way the other
+       cards do. */
+    .disclaimer .disclaimer-card {
+      opacity: 0;
+      transform: translateY(26px) scale(0.9);
+      transition: transform 0.48s cubic-bezier(0.34, 1.36, 0.64, 1),
+                  opacity 0.24s ease;
+    }
+    .disclaimer.open .disclaimer-card { transform: none; opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .disclaimer .disclaimer-card, .sheet.center .sheet-panel {
+        transition: opacity 0.2s ease;
+        transform: none;
+      }
+    }
+
     .disclaimer-card h3 {
       margin: 0 0 10px 0;
       font-size: 1rem;
@@ -908,6 +927,20 @@
     @keyframes typingDot {
       0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
       30%           { transform: translateY(-4px); opacity: 1; }
+    }
+
+    /* Each piece of an answer comes into focus as it arrives, rather than
+       appearing sharp. No fill mode: once it has played the piece carries no
+       filter at all, so a long answer is not left as hundreds of filtered
+       spans. */
+    .chat-bubble.bot > span,
+    .chat-bubble.bot > a { animation: streamIn 0.55s ease; }
+    @keyframes streamIn {
+      from { filter: blur(5px); opacity: 0.35; }
+      to   { filter: blur(0); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .chat-bubble.bot > span, .chat-bubble.bot > a { animation: none; }
     }
 
     .chat-bubble.bot .word {
@@ -1887,7 +1920,7 @@
        a few hundred tall; 24px still clears the notes, which stand 6px up
        and are 18px tall. */
     @media (max-width: 720px) {
-      body.compact.v3:not(.awaiting) .chat-messages { padding-bottom: 24px; }
+      body.compact.v3:not(.awaiting) .chat-messages { padding-bottom: 28px; }
       body.compact.v3 .chat-messages > .answer-footer:last-child { margin-bottom: 6px; }
     }
 
@@ -1955,20 +1988,21 @@
       gap: 7px;
       height: 32px;
       padding: 0 12px 0 5px;
-      border: 1px solid #dadce0;
+      /* Grey and edgeless, like copy and the rating pair beside it, so the
+         row under an answer reads as one set of controls. */
+      border: none;
       border-radius: 999px;
-      background: #fff;
+      background: #f1f3f4;
       font-family: inherit;
       font-size: 0.78rem;
       font-weight: 500;
       color: #3c4043;
       cursor: pointer;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: background-color 0.15s ease;
     }
-    body.compact.v3 .source-stack:hover {
-      border-color: #c4c7cc;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-    }
+    body.compact.v3 .source-stack:hover { background: #e3e5e8; }
+    /* The ring that separates stacked icons is the pill's own grey now. */
+    body.compact.v3 .source-stack .fav { box-shadow: 0 0 0 2px #f1f3f4; }
     .source-stack .stack { display: flex; }
     .source-stack .count { color: #80868b; font-weight: 400; }
 
@@ -2001,9 +2035,12 @@
       gap: 6px;
       padding: 0 11px 0 5px;
       height: 32px;
-      border-color: #dadce0;
+      border: none;
+      background: #f1f3f4;
       color: #3c4043;
+      transition: background-color 0.15s ease;
     }
+    body.compact.v3 .source-pill:hover { background: #e3e5e8; color: #202124; }
     body.compact.v3 .source-pill .fav { display: inline-flex; box-shadow: none; }
     body.compact.v3 .source-lead { display: none; }
 
@@ -2099,12 +2136,14 @@
       color: transparent;
     }
 
-    /* Clicked, the composer rises. The space under it grows, the message
-       list gives up the same height, and the end of the conversation is kept
-       in view as it does - so the last thing said stays readable above the
-       box instead of sliding under it. The padding is what moves, not a
-       transform, because a transform would lift the pill over the text
-       without the list making room for it. */
+    /* Clicked, the composer rises. The space under it grows and the message
+       list gives up the same height from its bottom edge, so what the reader
+       was looking at stays exactly where it was - the list is not scrolled
+       to follow. It used to be, to keep the last line in view, and that
+       moved the whole answer up under the reader's eyes every time they went
+       to type. The padding is what moves, not a transform, because a
+       transform would lift the pill over the text without the list making
+       room for it. */
     body.compact.v3:not(.awaiting) .chat-input {
       transition: padding-bottom 0.34s cubic-bezier(0.22, 1, 0.36, 1);
     }
@@ -2182,10 +2221,13 @@
       border-radius: 18px;
       box-shadow: 0 8px 28px rgba(32, 33, 36, 0.09),
                   0 1px 4px rgba(32, 33, 36, 0.05);
+      /* Rises and grows into place with a little overshoot. At 10px and
+         0.97 over 0.3s the arrival was too small to register - it read as
+         the card simply being there. */
       opacity: 0;
-      transform: translateY(10px) scale(0.97);
-      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-                  opacity 0.22s ease;
+      transform: translateY(26px) scale(0.9);
+      transition: transform 0.48s cubic-bezier(0.34, 1.36, 0.64, 1),
+                  opacity 0.24s ease;
     }
     .sheet.center.open .sheet-panel { opacity: 1; transform: none; }
     .sheet.center.sources .sheet-panel { max-width: 440px; }
@@ -2269,42 +2311,70 @@
     }
     .sheet-points .pt-text { font-size: 0.84rem; line-height: 1.5; }
 
-    /* Sources in the sheet: one group per site, each folding shut on its
-       own. <details> rather than script, so it works for a keyboard and a
-       screen reader with nothing added. */
+    /* Sources in the card: one group per site, each folding shut on its
+       own. A button and a grid row rather than <details>, because a
+       <details> shuts by removing its content in one frame and there is
+       nothing to animate; a grid row transitions between 0fr and 1fr, which
+       is a height animation with no measuring. The button carries
+       aria-expanded, and a shut group's links are inert, so a keyboard and
+       a screen reader get what <details> gave them. */
     .src-group {
       border: 1px solid #e8eaed;
       border-radius: 14px;
       margin-bottom: 10px;
       overflow: hidden;
     }
-    .src-group summary {
+    .src-head {
       display: flex;
       align-items: center;
       gap: 10px;
+      width: 100%;
       padding: 11px 14px;
-      cursor: pointer;
-      list-style: none;
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: inherit;
       font-weight: 600;
       color: #202124;
+      text-align: left;
+      cursor: pointer;
       user-select: none;
+      transition: background-color 0.13s ease;
     }
-    .src-group summary::-webkit-details-marker { display: none; }
-    .src-group summary .fav { box-shadow: none; }
-    .src-group summary .n {
+    .src-head .fav { box-shadow: none; }
+    .src-head .n {
       margin-left: auto;
       font-weight: 400;
       font-size: 0.78rem;
       color: #80868b;
     }
-    .src-group summary .chev {
+    .src-head .chev {
       width: 16px;
       height: 16px;
       color: #80868b;
-      transition: transform 0.2s ease;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .src-group[open] summary .chev { transform: rotate(180deg); }
-    .src-group summary:hover { background: #f8f9fa; }
+    .src-group.open .src-head .chev { transform: rotate(180deg); }
+    .src-head:hover { background: #f8f9fa; }
+
+    .src-items {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .src-group.open .src-items { grid-template-rows: 1fr; }
+    .src-items-inner { min-height: 0; overflow: hidden; }
+    /* The links fade as the row closes over them, rather than being cut by
+       its edge at full strength. */
+    .src-items-inner .src-item {
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s ease, transform 0.26s ease;
+    }
+    .src-group.open .src-items-inner .src-item { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .src-items, .src-head .chev, .src-items-inner .src-item { transition: none; }
+    }
 
     .src-item {
       display: block;
@@ -2486,8 +2556,8 @@
       body.compact.v3.fit-3 .sheet-points .pt-text { font-size: 0.78rem; line-height: 1.4; }
       body.compact.v3.fit-2 .src-group,
       body.compact.v3.fit-3 .src-group { margin-bottom: 6px; border-radius: 11px; }
-      body.compact.v3.fit-2 .src-group summary,
-      body.compact.v3.fit-3 .src-group summary { padding: 7px 12px; font-size: 0.8rem; }
+      body.compact.v3.fit-2 .src-head,
+      body.compact.v3.fit-3 .src-head { padding: 7px 12px; font-size: 0.8rem; }
       body.compact.v3.fit-2 .src-item,
       body.compact.v3.fit-3 .src-item { padding: 6px 12px 7px 40px; }
       body.compact.v3.fit-2 .src-item .t,
@@ -2510,6 +2580,24 @@
        Centred on a desktop or a tablet, under the conversation it belongs
        to. On a phone, at the right-hand end of the row instead, where the
        thumb already is. */
+    /* Nothing to scroll on the landing screen in a short frame, or behind a
+       notice. The page fits its frame; this takes away the bounce and the
+       hand-off to the embedding page that a swipe still produced, which on
+       a frame a couple of hundred pixels tall moved the whole widget.
+       Only in a short frame, the fit steps: on a normal one a swipe over
+       the landing screen should still scroll the school's page. Taps are
+       not affected - touch-action governs panning, not pressing. */
+    html:has(body.compact.awaiting.fit-1), html:has(body.compact.awaiting.fit-2),
+    html:has(body.compact.awaiting.fit-3),
+    html:has(.sheet), html:has(.disclaimer) { overscroll-behavior: none; }
+    body.compact.awaiting.fit-1, body.compact.awaiting.fit-2,
+    body.compact.awaiting.fit-3 { overscroll-behavior: none; touch-action: none; }
+    .sheet, .disclaimer { overscroll-behavior: none; touch-action: none; }
+    /* A list of sources long enough to need it still scrolls inside its
+       card: the allowed gestures are counted only up to the element that
+       scrolls. */
+    .sheet-body { touch-action: pan-y; }
+
     .to-end { display: none; }
     body.compact.v3:not(.awaiting) .to-end {
       display: flex;
@@ -3688,6 +3776,13 @@
             && bubble.nextElementSibling.classList.contains("verify-card")
             ? bubble.nextElementSibling : null;
           (card || bubble).after(footer);
+          // Once more now the row is in, and again once a composer rising
+          // underneath has settled - the list no longer follows the
+          // composer by itself, and on a desktop the answer is followed to
+          // its very end. On a touch screen follow() stops at the question
+          // and these change nothing.
+          follow();
+          setTimeout(follow, 420);
 
           // Copy and the rating arrive after whatever sources are showing:
           // the pills one by one, or the single folded pill in the third
@@ -4642,7 +4737,8 @@
         para(el, "This site uses AI to explain school and district "
                + "information from official sources. It can miss details or "
                + "be out of date, so check the linked sources before making "
-               + "decisions.", "sheet-lead");
+               + "decisions. Responses don't dictate official policy.",
+             "sheet-lead");
       }],
       privacy: ["Your privacy", true, (el) => {
         points(el, [
@@ -4697,10 +4793,12 @@
 
       openSheet("Sources", true, (el) => {
         groups.forEach(g => {
-          const d = document.createElement("details");
-          d.className = "src-group";
-          d.open = true;
-          const sum = document.createElement("summary");
+          const d = document.createElement("div");
+          d.className = "src-group open";
+          const sum = document.createElement("button");
+          sum.type = "button";
+          sum.className = "src-head";
+          sum.setAttribute("aria-expanded", "true");
           sum.appendChild(makeFav(g.url));
           const name = document.createElement("span");
           name.textContent = g.site.label || "Other";
@@ -4714,6 +4812,19 @@
           sum.insertAdjacentHTML("beforeend",
             ICON.chev.replace("<svg", '<svg class="chev"'));
           d.appendChild(sum);
+
+          const rows = document.createElement("div");
+          rows.className = "src-items";
+          const inner = document.createElement("div");
+          inner.className = "src-items-inner";
+          rows.appendChild(inner);
+          d.appendChild(rows);
+          sum.addEventListener("click", () => {
+            const open = !d.classList.contains("open");
+            d.classList.toggle("open", open);
+            sum.setAttribute("aria-expanded", open ? "true" : "false");
+            inner.inert = !open;
+          });
 
           g.items.forEach(src => {
             const a = document.createElement("a");
@@ -4732,7 +4843,7 @@
               sn.textContent = src.snippet;
               a.appendChild(sn);
             }
-            d.appendChild(a);
+            inner.appendChild(a);
           });
           el.appendChild(d);
         });
@@ -4807,6 +4918,7 @@
     // Instant rather than smooth: the list is smooth-scrolling by default,
     // and a smooth correction every frame of a transition trails behind it.
     let atEnd = true;
+    let holdEndUntil = 0;
     // Called by the send path when, on a touch screen, it has chosen to
     // stop at the question rather than follow the answer to the end. The
     // list's own scroll event arrives a frame or more later - the list
@@ -4819,10 +4931,17 @@
       msgs.addEventListener("scroll", () => {
         atEnd = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 28;
       }, { passive: true });
+      // Resizes only re-check the notes. The list is not pinned to its end
+      // as it shrinks - the composer rising should not move the answer the
+      // reader is looking at. The keyboard is the one case that does keep
+      // the end in view; see fitKeyboard.
       if (window.ResizeObserver) {
         new ResizeObserver(() => {
-          if (!v3() || !atEnd) return;
-          msgs.scrollTo({ top: msgs.scrollHeight, behavior: "instant" });
+          // Held at the end only for the moment after a keyboard opens,
+          // while the composer is still rising over it - see fitKeyboard.
+          if (performance.now() < holdEndUntil) {
+            msgs.scrollTo({ top: msgs.scrollHeight, behavior: "instant" });
+          }
           soon();
         }).observe(msgs);
       }
@@ -4853,6 +4972,11 @@
         frame = 0;
         const zoomed = Math.abs((vv.scale || 1) - 1) > 0.01;
         const covered = window.innerHeight - vv.height;
+        // Taken before the frame changes size: a reader at the end of the
+        // conversation when the keyboard opens is put back at the end once
+        // the list has shrunk to the space above it, since otherwise the
+        // last answer would be under the keyboard.
+        const wasAtEnd = atEnd;
         if (!zoomed && covered > 80) {
           root.style.height = Math.round(vv.height) + "px";
           root.classList.add("kb-up");
@@ -4860,6 +4984,13 @@
         } else if (root.classList.contains("kb-up")) {
           root.style.height = "";
           root.classList.remove("kb-up");
+        }
+        if (wasAtEnd && v3() && msgs) {
+          // For the length of the composer's rise, which is usually still
+          // going when the keyboard's resize arrives.
+          holdEndUntil = performance.now() + 500;
+          requestAnimationFrame(() =>
+            msgs.scrollTo({ top: msgs.scrollHeight, behavior: "instant" }));
         }
       };
       const onViewport = () => {
@@ -4892,6 +5023,69 @@
     sizeFrame();
     window.addEventListener("resize", sizeFrame);
     if (box) box.addEventListener("blur", () => setTimeout(sizeFrame, 300));
+
+    // --- the suggestions, in the composer, in a tiny frame ------------------
+    // A tiny phone frame has no room for the suggestion strip, so the same
+    // suggestions take turns in the composer's placeholder instead,
+    // alternating with the usual prompt and fading between. They are only a
+    // hint - a placeholder cannot be tapped - but they say what the site can
+    // answer next without costing any of the little height there is.
+    // The moment the box is touched it says "Ask about VRHS..." again and the
+    // hints stop, and they resume after it is let go of empty.
+    // Not anywhere the strip is showing: the same three questions in two
+    // places is one of them too many. And not while the reader is typing,
+    // where a list would open under the keyboard - that is why the landing
+    // suggestions are off on a phone too.
+    const CHAT_PH = "Ask about VRHS...";
+    let hints = [];
+    let hintAt = 0;
+    let hintTimer = null;
+    const hintsOn = () => v3() && !body.classList.contains("awaiting")
+      && (body.classList.contains("fit-2") || body.classList.contains("fit-3"))
+      && box && !box.value && document.activeElement !== box && hints.length;
+    const restPh = () => {
+      if (!box || body.classList.contains("awaiting")) return;
+      box.classList.remove("ph-fade");
+      box.setAttribute("placeholder", CHAT_PH);
+      hintAt = hints.length;
+    };
+    // One timer for the whole cycle, and every step checks again before it
+    // writes, so a tap that lands mid-fade is never overwritten by the hint
+    // that was on its way in.
+    const stepHint = () => {
+      clearTimeout(hintTimer);
+      if (!hintsOn()) {
+        if (box && box.getAttribute("placeholder") !== CHAT_PH) restPh();
+        return;
+      }
+      hintAt = (hintAt + 1) % (hints.length + 1);
+      const text = hintAt === hints.length ? CHAT_PH : hints[hintAt];
+      // The prompt itself gets a shorter turn than each suggestion.
+      const hold = hintAt === hints.length ? 2600 : 3600;
+      box.classList.add("ph-fade");
+      hintTimer = setTimeout(() => {
+        if (!hintsOn()) { restPh(); return; }
+        box.setAttribute("placeholder", text);
+        box.classList.remove("ph-fade");
+        hintTimer = setTimeout(stepHint, hold);
+      }, 260);
+    };
+    window.setChatHints = (list) => {
+      hints = (list || []).slice(0, 3);
+      hintAt = hints.length;
+      clearTimeout(hintTimer);
+      hintTimer = setTimeout(stepHint, 2600);
+    };
+    if (box) {
+      box.addEventListener("focus", () => {
+        clearTimeout(hintTimer);
+        restPh();
+      });
+      box.addEventListener("blur", () => {
+        clearTimeout(hintTimer);
+        hintTimer = setTimeout(stepHint, 2600);
+      });
+    }
 
     // --- suggestions written for the last answer ---------------------------
     // The server writes three from the pages the answer was retrieved from
@@ -4984,6 +5178,7 @@
         strip.prepend(b);
       });
       strip.classList.toggle("tailored", chosen.length > 0);
+      if (window.setChatHints) window.setChatHints(chosen);
       strip.scrollLeft = 0;
       strip.dispatchEvent(new Event("scroll"));
     };
@@ -5075,10 +5270,9 @@
         '<div class="disclaimer-card" role="dialog" aria-modal="true" ',
         'aria-labelledby="disclaimer-title">',
         '<h3 id="disclaimer-title">Before you ask</h3>',
-        '<p>This assistant answers from pages on the Vista Ridge High School ',
-        'website. It can be wrong, out of date, or miss things the site does ',
-        'not cover. Check anything that matters &mdash; a deadline, a fee, a ',
-        'room &mdash; against the source it cites, or with the front office.',
+        '<p>Answers come from the Vista Ridge High School website and can be ',
+        'wrong or out of date. Check anything important against the linked ',
+        'source or with the front office.',
         '</p>',
         '<div class="disclaimer-actions">',
         '<button type="button" class="cancel">Cancel</button>',
