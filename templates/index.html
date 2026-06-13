@@ -557,9 +557,9 @@
        cards do. */
     .disclaimer .disclaimer-card {
       opacity: 0;
-      transform: translateY(26px) scale(0.9);
-      transition: transform 0.48s cubic-bezier(0.34, 1.36, 0.64, 1),
-                  opacity 0.24s ease;
+      transform: translateY(14px) scale(0.96);
+      transition: transform 0.24s cubic-bezier(0.2, 0, 0, 1),
+                  opacity 0.18s ease-out;
     }
     .disclaimer.open .disclaimer-card { transform: none; opacity: 1; }
     @media (prefers-reduced-motion: reduce) {
@@ -934,9 +934,9 @@
        filter at all, so a long answer is not left as hundreds of filtered
        spans. */
     .chat-bubble.bot > span,
-    .chat-bubble.bot > a { animation: streamIn 0.55s ease; }
+    .chat-bubble.bot > a { animation: streamIn 0.4s ease; }
     @keyframes streamIn {
-      from { filter: blur(5px); opacity: 0.35; }
+      from { filter: blur(1.5px); opacity: 0.6; }
       to   { filter: blur(0); opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -2172,8 +2172,8 @@
       -webkit-backdrop-filter: blur(0px);
       backdrop-filter: blur(0px);
       opacity: 0;
-      transition: opacity 0.28s ease, backdrop-filter 0.28s ease,
-                  -webkit-backdrop-filter 0.28s ease;
+      transition: opacity 0.2s ease, backdrop-filter 0.2s ease,
+                  -webkit-backdrop-filter 0.2s ease;
     }
     .sheet.open {
       opacity: 1;
@@ -2221,13 +2221,15 @@
       border-radius: 18px;
       box-shadow: 0 8px 28px rgba(32, 33, 36, 0.09),
                   0 1px 4px rgba(32, 33, 36, 0.05);
-      /* Rises and grows into place with a little overshoot. At 10px and
-         0.97 over 0.3s the arrival was too small to register - it read as
-         the card simply being there. */
+      /* Rises and grows into place, quickly and plainly: 14px and 0.96
+         over a quarter of a second, easing out with no overshoot. At 10px
+         and 0.97 the arrival read as the card simply being there; a bounce
+         on top of a larger move read as playful, which is the wrong tone for
+         a notice about privacy. */
       opacity: 0;
-      transform: translateY(26px) scale(0.9);
-      transition: transform 0.48s cubic-bezier(0.34, 1.36, 0.64, 1),
-                  opacity 0.24s ease;
+      transform: translateY(14px) scale(0.96);
+      transition: transform 0.24s cubic-bezier(0.2, 0, 0, 1),
+                  opacity 0.18s ease-out;
     }
     .sheet.center.open .sheet-panel { opacity: 1; transform: none; }
     .sheet.center.sources .sheet-panel { max-width: 440px; }
@@ -4684,7 +4686,7 @@
         document.removeEventListener("keydown", onKey, true);
         if (instant) { wrap.remove(); return; }
         wrap.classList.remove("open");
-        setTimeout(() => wrap.remove(), 420);
+        setTimeout(() => wrap.remove(), 260);
         // Back to what opened it, except the composer on a phone - focusing
         // that raises the keyboard nobody asked for.
         if (before && before !== box && before.focus) {
@@ -5024,69 +5026,6 @@
     window.addEventListener("resize", sizeFrame);
     if (box) box.addEventListener("blur", () => setTimeout(sizeFrame, 300));
 
-    // --- the suggestions, in the composer, in a tiny frame ------------------
-    // A tiny phone frame has no room for the suggestion strip, so the same
-    // suggestions take turns in the composer's placeholder instead,
-    // alternating with the usual prompt and fading between. They are only a
-    // hint - a placeholder cannot be tapped - but they say what the site can
-    // answer next without costing any of the little height there is.
-    // The moment the box is touched it says "Ask about VRHS..." again and the
-    // hints stop, and they resume after it is let go of empty.
-    // Not anywhere the strip is showing: the same three questions in two
-    // places is one of them too many. And not while the reader is typing,
-    // where a list would open under the keyboard - that is why the landing
-    // suggestions are off on a phone too.
-    const CHAT_PH = "Ask about VRHS...";
-    let hints = [];
-    let hintAt = 0;
-    let hintTimer = null;
-    const hintsOn = () => v3() && !body.classList.contains("awaiting")
-      && (body.classList.contains("fit-2") || body.classList.contains("fit-3"))
-      && box && !box.value && document.activeElement !== box && hints.length;
-    const restPh = () => {
-      if (!box || body.classList.contains("awaiting")) return;
-      box.classList.remove("ph-fade");
-      box.setAttribute("placeholder", CHAT_PH);
-      hintAt = hints.length;
-    };
-    // One timer for the whole cycle, and every step checks again before it
-    // writes, so a tap that lands mid-fade is never overwritten by the hint
-    // that was on its way in.
-    const stepHint = () => {
-      clearTimeout(hintTimer);
-      if (!hintsOn()) {
-        if (box && box.getAttribute("placeholder") !== CHAT_PH) restPh();
-        return;
-      }
-      hintAt = (hintAt + 1) % (hints.length + 1);
-      const text = hintAt === hints.length ? CHAT_PH : hints[hintAt];
-      // The prompt itself gets a shorter turn than each suggestion.
-      const hold = hintAt === hints.length ? 2600 : 3600;
-      box.classList.add("ph-fade");
-      hintTimer = setTimeout(() => {
-        if (!hintsOn()) { restPh(); return; }
-        box.setAttribute("placeholder", text);
-        box.classList.remove("ph-fade");
-        hintTimer = setTimeout(stepHint, hold);
-      }, 260);
-    };
-    window.setChatHints = (list) => {
-      hints = (list || []).slice(0, 3);
-      hintAt = hints.length;
-      clearTimeout(hintTimer);
-      hintTimer = setTimeout(stepHint, 2600);
-    };
-    if (box) {
-      box.addEventListener("focus", () => {
-        clearTimeout(hintTimer);
-        restPh();
-      });
-      box.addEventListener("blur", () => {
-        clearTimeout(hintTimer);
-        hintTimer = setTimeout(stepHint, 2600);
-      });
-    }
-
     // --- suggestions written for the last answer ---------------------------
     // The server writes three from the pages the answer was retrieved from
     // when this skin asks it to. When it has none - a pre-written answer, a
@@ -5178,7 +5117,6 @@
         strip.prepend(b);
       });
       strip.classList.toggle("tailored", chosen.length > 0);
-      if (window.setChatHints) window.setChatHints(chosen);
       strip.scrollLeft = 0;
       strip.dispatchEvent(new Event("scroll"));
     };

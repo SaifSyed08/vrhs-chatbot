@@ -689,7 +689,8 @@ const landingFits = p => p.evaluate(() => {
       const span = document.querySelector(".chat-bubble.bot > span");
       return span && { anim: getComputedStyle(span).animationName, filter: getComputedStyle(span).filter };
     });
-    check("streamed text comes into focus", streamed && streamed.anim === "streamIn",
+    check("streamed text comes into focus, lightly", streamed && streamed.anim === "streamIn"
+          && /blur\((0|1(\.\d+)?|0\.\d+)px\)|none/.test(streamed.filter),
           JSON.stringify(streamed));
     await sleep(1500);
     const pill = await p.evaluate(() => {
@@ -699,7 +700,23 @@ const landingFits = p => p.evaluate(() => {
     check("the sources pill is grey with no outline, like copy",
           pill === "rgb(241, 243, 244) / none", pill);
     await p.click(".source-stack");
-    await sleep(90);
+    // Sampled through the opening: it should move, finish inside 300ms, and
+    // never pass full size on the way - a scale above 1 is the bounce.
+    const scales = [];
+    for (let i = 0; i < 8; i++) {
+      scales.push(await p.evaluate(() => {
+        const m = getComputedStyle(document.querySelector(".sheet-panel")).transform;
+        return m === "none" ? 1 : +m.slice(7).split(",")[0];
+      }));
+      await sleep(40);
+    }
+    check("it opens with no bounce", scales.every(v => v <= 1.0001) && scales[0] < 1,
+          JSON.stringify(scales.map(v => Math.round(v * 1000) / 1000)));
+    check("and opens quickly", scales[scales.length - 1] === 1, JSON.stringify(scales.slice(-2)));
+    await p.click(".sheet-close");
+    await sleep(400);
+    await p.click(".source-stack");
+    await sleep(60);
     const entering = await p.evaluate(() => {
       const panel = document.querySelector(".sheet-panel");
       return { op: +getComputedStyle(panel).opacity, tf: getComputedStyle(panel).transform };
@@ -736,30 +753,9 @@ const landingFits = p => p.evaluate(() => {
       seen.add(await p.evaluate(() => document.getElementById("query").getAttribute("placeholder")));
       await sleep(500);
     }
-    check("a tiny frame shows the suggestions in the composer instead of the strip",
-          FOLLOWUPS.some(f => seen.has(f)) && seen.has("Ask about VRHS..."), JSON.stringify([...seen]));
-    await p.tap("#query");
-    await sleep(350);
-    const tapped = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
-    check("and goes back to the usual prompt the moment the box is tapped",
-          tapped === "Ask about VRHS...", tapped);
-    await sleep(3000);
-    const held = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
-    check("and stays there while it has focus", held === "Ask about VRHS...", held);
-    await p.close();
-  }
-  {
-    const p = await newPage(browser, { width: 390, height: 760 }, true);
-    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
-    await ask(p, "when does school start");
-    await sleep(1500);
-    await p.evaluate(() => document.activeElement && document.activeElement.blur());
-    const seen = new Set();
-    for (let i = 0; i < 10; i++) {
-      seen.add(await p.evaluate(() => document.getElementById("query").getAttribute("placeholder")));
-      await sleep(500);
-    }
-    check("a frame with room keeps the strip and leaves the prompt alone",
+    // Suggestions in the placeholder were tried in a tiny frame and taken
+    // out again; the composer keeps its one prompt.
+    check("a tiny frame leaves the composer's prompt alone",
           seen.size === 1 && seen.has("Ask about VRHS..."), JSON.stringify([...seen]));
     await p.close();
   }
