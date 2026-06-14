@@ -689,8 +689,11 @@ const landingFits = p => p.evaluate(() => {
       const span = document.querySelector(".chat-bubble.bot > span");
       return span && { anim: getComputedStyle(span).animationName, filter: getComputedStyle(span).filter };
     });
-    check("streamed text comes into focus, lightly", streamed && streamed.anim === "streamIn"
-          && /blur\((0|1(\.\d+)?|0\.\d+)px\)|none/.test(streamed.filter),
+    // At most 1px, sampled while it settles.
+    const blurPx = streamed && /blur\(([\d.]+)px\)/.exec(streamed.filter);
+    check("streamed text comes into focus, from barely a blur",
+          streamed && streamed.anim === "streamIn"
+          && (streamed.filter === "none" || (blurPx && +blurPx[1] <= 1)),
           JSON.stringify(streamed));
     await sleep(1500);
     const pill = await p.evaluate(() => {

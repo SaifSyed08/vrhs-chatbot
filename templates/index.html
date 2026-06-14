@@ -930,13 +930,16 @@
     }
 
     /* Each piece of an answer comes into focus as it arrives, rather than
-       appearing sharp. No fill mode: once it has played the piece carries no
-       filter at all, so a long answer is not left as hundreds of filtered
-       spans. */
+       appearing sharp. Barely: 1px of blur, after 5px and then 1.5px were
+       both more than it needed. An answer arrives as many small pieces a
+       second, so its trailing edge is always settling, and a heavier blur
+       left the words being read out of focus. No fill mode: once it has
+       played the piece carries no filter at all, so a long answer is not
+       left as hundreds of filtered spans. */
     .chat-bubble.bot > span,
-    .chat-bubble.bot > a { animation: streamIn 0.4s ease; }
+    .chat-bubble.bot > a { animation: streamIn 0.35s ease-out; }
     @keyframes streamIn {
-      from { filter: blur(1.5px); opacity: 0.6; }
+      from { filter: blur(1px); opacity: 0.6; }
       to   { filter: blur(0); opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
