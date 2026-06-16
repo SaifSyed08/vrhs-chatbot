@@ -846,6 +846,24 @@ const landingFits = p => p.evaluate(() => {
     check(`${h}px tall: ${want || "full size"}`,
           fit.cls === want && fit.zoom === zoom && fit.pillBottom <= fit.H && fit.pan <= 0,
           JSON.stringify(fit));
+    if (want === "fit-2" || want === "fit-3") {
+      // The composer as low and slim as it goes, and nearly still on a tap.
+      const low = await p.evaluate(() => {
+        const pill = document.querySelector(".input-pill").getBoundingClientRect();
+        const m = document.getElementById("messages");
+        return { gap: Math.round(window.innerHeight - pill.bottom),
+                 pillH: Math.round(pill.height), list: m.clientHeight };
+      });
+      await p.tap("#query");
+      await sleep(500);
+      const tapped = await p.evaluate(() =>
+        Math.round(window.innerHeight - document.querySelector(".input-pill").getBoundingClientRect().bottom));
+      await p.evaluate(() => document.activeElement.blur());
+      await sleep(400);
+      check(`${h}px tall: the composer sits at the bottom and barely rises`,
+            low.gap >= 1 && low.gap <= 4 && tapped - low.gap <= 4,
+            JSON.stringify({ ...low, tappedGap: tapped }));
+    }
     check(`${h}px tall: the composer's text is still 16px on screen`,
           fit.inputPx === 16, `${fit.inputPx}px`);
     const corner = await p.evaluate(() => {
