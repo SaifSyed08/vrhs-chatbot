@@ -861,7 +861,7 @@ const landingFits = p => p.evaluate(() => {
       await p.evaluate(() => document.activeElement.blur());
       await sleep(400);
       check(`${h}px tall: the composer sits at the bottom and barely rises`,
-            low.gap >= 1 && low.gap <= 4 && tapped - low.gap <= 4,
+            low.gap >= 0 && low.gap <= 1 && tapped - low.gap <= 4,
             JSON.stringify({ ...low, tappedGap: tapped }));
     }
     check(`${h}px tall: the composer's text is still 16px on screen`,

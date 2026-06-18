@@ -2529,15 +2529,19 @@
       body.compact.v3.fit-2:not(.awaiting) .quick-prompts,
       body.compact.v3.fit-3:not(.awaiting) .quick-prompts { display: none; }
 
-      /* And the composer sits as low and as slim as it can. 4px under it,
-         enough for its shadow and no more, a slimmer field, and a rise of
-         4px rather than 40 when it is tapped - at this height the rise was
-         the single largest thing taken from the conversation, and the
-         keyboard arriving says "you are typing" plainly enough. */
+      /* And the composer sits as low and as slim as it can. 1px under it -
+         its edge, not its shadow, is what has to stay in the frame - a
+         slimmer field, and a rise of 4px rather than 40 when it is tapped:
+         at this height the rise was the single largest thing taken from the
+         conversation, and the keyboard arriving says "you are typing"
+         plainly enough. */
       body.compact.v3.fit-2:not(.awaiting) .chat-input,
-      body.compact.v3.fit-3:not(.awaiting) .chat-input { padding-bottom: 4px; }
+      body.compact.v3.fit-3:not(.awaiting) .chat-input {
+        padding-top: 1px;
+        padding-bottom: 1px;
+      }
       body.compact.v3.fit-2:not(.awaiting) .chat-input:focus-within,
-      body.compact.v3.fit-3:not(.awaiting) .chat-input:focus-within { padding-bottom: 8px; }
+      body.compact.v3.fit-3:not(.awaiting) .chat-input:focus-within { padding-bottom: 5px; }
       body.compact.v3.fit-2:not(.awaiting) .chat-input input,
       body.compact.v3.fit-3:not(.awaiting) .chat-input input {
         padding-top: 4px;
