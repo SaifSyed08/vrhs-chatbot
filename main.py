@@ -14,6 +14,8 @@ import re
 import traceback
 from collections import OrderedDict, deque
 from urllib.parse import parse_qs, unquote, urlparse
+from zoneinfo import ZoneInfo
+import abdays
 import config
 import feeds
 import livesearch
@@ -110,7 +112,10 @@ SYSTEM_PROMPT = (
     "plainly that you do not have that information, and point the user to "
     "the [Staff Directory](https://vrhs.leanderisd.org/directory) or the "
     "front office. A short honest answer is better than a confident wrong "
-    "one."
+    "one. Do not explain why the information is missing or guess at when "
+    "it will be published - \"dates are usually announced closer to the "
+    "testing period\" is an invention, not a kindness. Give the most "
+    "relevant link from the context, if there is one, and stop."
     "\n\n"
     "The school mascot is the Ranger. Students, staff and teams are the "
     "Vista Ridge Rangers, which is why the flexible period is called "
@@ -125,9 +130,13 @@ SYSTEM_PROMPT = (
     "\n\n"
     "Only cite links as [label](url) if they appear in the context. Never "
     "construct a URL yourself, even when the address looks predictable. If a "
-    "question is unclear, ask a clarifying question. End your replies on a "
-    "positive note. Your creators are Saif Syed and Junayd Elhassan, who are "
-    "both in the class of 2026."
+    "question is unclear, ask a clarifying question. Never mention \"the "
+    "context\" to the reader - it is a word for how you work, not one they "
+    "know; say the school's pages, or simply that you could not find it. "
+    "Stop when the answer is "
+    "complete: no closing offer of more help, no \"let me know if...\" "
+    "line. Your creators are Saif Syed and Junayd Elhassan, who are both in "
+    "the class of 2026."
 )
 
 def school_year(today=None):
@@ -145,9 +154,23 @@ def school_year(today=None):
     return f"{start}-{start + 1}"
 
 
+SCHOOL_TZ = ZoneInfo("America/Chicago")
+
+
+def local_today():
+    """Today in Cedar Park, not on the server.
+
+    The server's clock is UTC, which is a day ahead of Texas from seven in the
+    evening. Asked at nine at night whether tomorrow was an A day, the bot
+    would have answered for the day after - the one question where being off
+    by one is the whole answer.
+    """
+    return datetime.datetime.now(SCHOOL_TZ).date()
+
+
 def dated_prompt():
     """The system prompt with today's date and school year filled in."""
-    today = datetime.date.today()
+    today = local_today()
     return SYSTEM_PROMPT + chr(10) + chr(10) + (
         f"Today is {today:%A, %d %B %Y}, so the current school year is "
         f"{school_year(today)}. Pages on this site are not all updated at the "
@@ -485,6 +508,86 @@ def crawl_urls():
     return found
 
 
+GSITE_ROOT = re.compile(
+    r"^https://sites\.google\.com/(leanderisd\.org/[^/?#]+|view/[^/?#]+)")
+# Per site and overall. The biggest of these sites is about twenty pages; the
+# caps are there so a site that turns out to be an archive cannot swamp the
+# corpus or the fortnightly rebuild.
+GSITE_MAX_PAGES = 30
+GSITE_TOTAL_PAGES = 200
+GSITE_CHROME = re.compile(
+    r"Search this site|Embedded Files|Skip to main content|Skip to navigation"
+    r"|Report abuse|Page details|Page updated|Google Sites")
+
+
+def google_sites(links):
+    """Read the Google Sites the school links to: (chunks, links, embeds).
+
+    Each linked site is crawled from its home page, within the site only.
+    Google Sites write internal links relative to sites.google.com, which
+    absolute() would have resolved against the school's own domain, so they
+    are made absolute here before anything else reads the page.
+
+    Each site's menu is stripped on its own. The corpus-wide pass in
+    corpus.py removes text repeated across most pages of the whole corpus,
+    and a twelve-page site's menu is repeated across twelve pages - nowhere
+    near that bar - so without this every chunk would open with the site's
+    navigation.
+    """
+    roots = []
+    for _, href, _ in links:
+        m = GSITE_ROOT.match(href or "")
+        if m:
+            root = "https://sites.google.com/" + m.group(1)
+            if root not in roots:
+                roots.append(root)
+
+    chunks, found_links, found_embeds = [], [], []
+    total = 0
+    for root in roots:
+        if total >= GSITE_TOTAL_PAGES:
+            break
+        seen, queue, site_chunks, pages = {root}, deque([(root, 0)]), [], 0
+        while queue and pages < GSITE_MAX_PAGES and total < GSITE_TOTAL_PAGES:
+            url, depth = queue.popleft()
+            try:
+                soup = fetch(url)
+            except Exception as e:
+                log.warning(f"Could not read {url}: {e}")
+                continue
+            pages += 1
+            total += 1
+            for a in soup.find_all("a", href=True):
+                if a["href"].startswith("/"):
+                    a["href"] = "https://sites.google.com" + a["href"]
+            found_links.extend(page_links(soup, url))
+            found_embeds.extend(page_embeds(soup, url))
+            if depth < 2:
+                for a in soup.find_all("a", href=True):
+                    link = normalise(unwrap_redirect(a["href"]))
+                    if (link.startswith(root) and link not in seen
+                            and not link.lower().endswith(SKIP_SUFFIXES)):
+                        seen.add(link)
+                        queue.append((link, depth + 1))
+            title = page_title(soup, url)
+            # Google Sites' own chrome, which is on every page of every site
+            # and so too short and too common for the shingle pass to see as
+            # one site's menu.
+            text = GSITE_CHROME.sub(" ", page_markdown(soup))
+            words = text.split()
+            for k in range(0, len(words), 150):
+                piece = " ".join(words[k:k + 150])
+                if piece:
+                    site_chunks.append({"text": f"{title}. {piece}",
+                                        "source": url, "label": title})
+        if len({c["source"] for c in site_chunks}) > 1:
+            site_chunks = corpus.strip_boilerplate(site_chunks)
+        log.info(f"read {pages} pages and kept {len(site_chunks)} chunks "
+                 f"from {root}")
+        chunks.extend(site_chunks)
+    return chunks, found_links, found_embeds
+
+
 def scrape_vrhs_pages():
     urls = crawl_urls()
     log.info(f"crawled {len(urls)} pages from the live site")
@@ -526,6 +629,16 @@ def scrape_vrhs_pages():
                                    "label": title})
         except Exception as e:
             log.warning(f"Failed to scrape {url}: {e}")
+
+    # The district's Google Sites the school links to: the AP office, the
+    # assistant principals, attendance, counselling, the library. The crawl
+    # is same-domain, so it walked past every one of them, and they hold the
+    # answers readers kept asking for - how to verify enrollment, who to
+    # email about hours owed, how to register for an AP exam.
+    site_chunks, site_links, site_embeds = google_sites(all_links)
+    chunks.extend(site_chunks)
+    all_links.extend(site_links)
+    all_embeds.extend(site_embeds)
 
     # Two files on this site are both labelled "A/B Calendar" and one of them
     # is last year's. Nothing in the page text distinguishes them, so the model
@@ -631,6 +744,99 @@ MANUAL_CHUNKS = [
 ]
 
 
+# Facts the scrape can reach but cannot read: pages whose content is a
+# picture. Each carries the page it was transcribed from, so the answer cites
+# the page and the reader can check the transcription against the original.
+# Yearly, like abdays.py.
+SOURCED_MANUAL_CHUNKS = [
+    {
+        # The AP site's exam-schedule page is one image of a table with no
+        # text behind it, so crawling the site finds a title and nothing
+        # else. A reader asking when their AP Biology exam was got "not
+        # listed" and an invented excuse; it is on that page. The dates fall
+        # on these weekdays in 2027, and the A/B letters printed beside them
+        # agree with the A/B calendar.
+        "label": "AP Exam Schedule",
+        "source": "https://sites.google.com/leanderisd.org/advanced-placement/"
+                  "ap-courses-exams/exam-schedule",
+        "text": (
+            "AP Exam Schedule, May 2027, from the Vista Ridge Advanced "
+            "Placement site. Morning (AM) exams begin at 8:00 AM and "
+            "afternoon (PM) exams at 12:00 PM unless otherwise indicated. "
+            "Monday May 3 (A day): AM Human Geography, Physics C: Mechanics; "
+            "PM Biology. Tuesday May 4 (B day): AM US Government & Politics; "
+            "PM European History, Microeconomics. Wednesday May 5 (A day): AM "
+            "English Literature; PM Physics 1: Algebra-Based, Physics C: "
+            "Electricity and Magnetism. Thursday May 6 (B day): AM French "
+            "Language, World History; PM Chemistry. Friday May 7 (A day): AM "
+            "US History; PM Macroeconomics. Monday May 10 (B day): AM "
+            "Calculus AB, Calculus BC; PM Music Theory, Seminar. Tuesday May "
+            "11 (A day): AM Precalculus; PM Statistics. Wednesday May 12 (B "
+            "day): AM English Language; PM Art History, Computer Science A. "
+            "Thursday May 13 (A day): AM Spanish Language; PM Environmental "
+            "Science. Friday May 14 (B day): AM Spanish Literature, Computer "
+            "Science Principles; PM Psychology. Deadlines: Friday April 30, "
+            "11:59 PM ET, for AP Seminar and AP Research students to submit "
+            "performance tasks as final and for AP Computer Science "
+            "Principles students to submit their Create performance task as "
+            "final; Friday May 7, 8:00 PM ET, for AP Art & Design students to "
+            "submit their three portfolio components as final."),
+    },
+]
+
+
+DIRECTORY_ROW = re.compile(
+    r"^From the linked document (?P<doc>[^:]*Directory[^:]*): (?P<name>[^.]+)\. "
+    r"Department: (?P<dept>.*?) Position: (?P<pos>.*?)"
+    r"(?: Phone: (?P<phone>\S+))?(?: Email: (?P<email>\S+))?(?: Website: \S+)?\s*$")
+# Titles that are the same office under another name. The associate principal
+# takes the last letters of the alphabet exactly as the four assistant
+# principals take the rest, and a reader asking for "the APs" means all five;
+# the lead counselor has a letter range like every other counselor.
+SAME_OFFICE = {"Associate Principal": "Assistant Principal",
+               "Lead Counselor": "Counselor"}
+
+
+def roster_chunks(chunks):
+    """One chunk per job title held by several people, listing all of them.
+
+    The staff directory is one row per person, and a question about a role
+    rather than a name - "email of ap", "who are the counselors" - matches
+    every row for that role about equally. Five prose slots do not hold five
+    near-identical rows plus anything else, so the answer named one assistant
+    principal's email and said it had not found the other four. A roster
+    chunk answers the role question in one place; the individual rows still
+    answer questions about a person.
+    """
+    groups, doc_source = {}, {}
+    for c in chunks:
+        m = DIRECTORY_ROW.match(c.get("text", ""))
+        if not m:
+            continue
+        pos = m.group("pos").strip()
+        base = re.sub(r"\s*\([^)]*\)", "", pos).strip()
+        key = SAME_OFFICE.get(base, base)
+        entry = m.group("name").strip()
+        if pos != key:
+            entry += " (" + pos + ")"
+        details = [x for x in (m.group("email"), m.group("phone")) if x]
+        if details:
+            entry += ", " + ", ".join(details)
+        groups.setdefault((m.group("doc"), key), []).append(entry)
+        doc_source[m.group("doc")] = (c.get("source"), c.get("label"))
+    out = []
+    for (doc, key), people in groups.items():
+        if len(people) < 2:
+            continue
+        source, label = doc_source[doc]
+        out.append({
+            "text": (f"From the linked document {doc}: every {key} at Vista "
+                     f"Ridge High School ({len(people)}): " + "; ".join(people)
+                     + "."),
+            "source": source, "label": label or doc, "kind": "document"})
+    return out
+
+
 def build_chunks(clean=True):
     """Scrape, optionally run the hygiene pass, and add the manual chunks.
 
@@ -643,8 +849,24 @@ def build_chunks(clean=True):
         # scraped words; leaving it in is what drove unrelated chunks to a 0.88
         # median cosine and made absolute similarity gating impossible.
         chunks = corpus.prepare(chunks)
+    chunks += roster_chunks(chunks)
     chunks += [{"text": t, "source": "manual"} for t in MANUAL_CHUNKS]
+    chunks += [dict(c, kind="document") for c in SOURCED_MANUAL_CHUNKS]
     return chunks
+
+
+# Decimal places kept in a stored embedding. json.dump writes every float at
+# full repr - eighteen digits for a component of a unit vector - which made
+# the index 66 MB once the Google Sites doubled the corpus: past GitHub's 50 MB
+# warning, a new 66 MB blob in the history every fortnight, and several
+# hundred megabytes of parse on a 512 MB instance. Six places moves a cosine
+# by about 1e-6, against gate thresholds set in hundredths, and leaves every
+# eval question's top ten unchanged; see eval/results/rounding.txt.
+EMBED_DECIMALS = 6
+
+
+def compact_embedding(vector):
+    return [round(x, EMBED_DECIMALS) for x in vector]
 
 
 @app.route("/embed")
@@ -652,7 +874,7 @@ def embed_chunks():
     chunks = build_chunks()
 
     for chunk, vector in zip(chunks, embed_texts([c["text"] for c in chunks])):
-        chunk["embedding"] = vector
+        chunk["embedding"] = compact_embedding(vector)
 
     os.makedirs("data", exist_ok=True)
     with open("data/vrhs_embeddings.json", "w", encoding="utf-8") as f:
@@ -1054,6 +1276,40 @@ def best_sentence(chunk, query, limit=110):
     return best[:limit] + ("..." if len(best) > limit else "")
 
 
+# Share of the smaller chunk's shingles two chunks must have in common to
+# count as the same passage. The weekly Insider copies share well over 0.8;
+# two different pages that merely mention the same office stay far below.
+NEAR_DUP = 0.6
+_SHINGLE_CACHE = {}
+
+
+def _shingles(i, docs):
+    """Four-word shingles of a chunk's text, cached per index position."""
+    hit = _SHINGLE_CACHE.get(i)
+    if hit is not None and hit[0] is docs:
+        return hit[1]
+    words = re.findall(r"[a-z0-9]+", docs[i]["text"].lower())
+    sh = {" ".join(words[k:k + 4]) for k in range(max(0, len(words) - 3))}
+    _SHINGLE_CACHE[i] = (docs, sh)
+    return sh
+
+
+def with_address(doc):
+    """A chunk's text, followed by where it came from as a citable link.
+
+    Text from a page or a document arrived with no URL - "From the linked
+    document Bell Schedule 26-27:" and the times, but no address - so the
+    model could quote the schedule and not link it, which is the "failed to
+    give link" a reader filed. Link chunks already end in their URL and
+    hand-written ones have none.
+    """
+    url = doc.get("source") or ""
+    if doc.get("kind") == "link" or not url.startswith("http"):
+        return doc["text"]
+    label = doc.get("label") or source_label(url)
+    return doc["text"] + "\nSource: [" + label + "](" + url + ")"
+
+
 def get_relevant_context(query):
     """Return the top chunks, similarity stats, and the pages they came from."""
     docs, matrix = load_index()
@@ -1082,12 +1338,28 @@ def get_relevant_context(query):
     slots = (PROSE_SLOTS if best_prose >= hallucination.SIMILARITY_SOLID
              else config.WIDE_PROSE_SLOTS)
 
-    prose = ordered_prose[:slots]
+    # Not the same passage twice. The weekly ParentSquare Insider repeats its
+    # standing paragraphs every Friday, and two copies of the D-Hall schedule
+    # live in two Drive files, so the five prose slots could hold four
+    # copies of one paragraph. Asked what happens below 90% attendance, four
+    # of five slots were the same Insider blurb and the attendance office's
+    # own contact never made it in. A chunk mostly made of shingles already
+    # taken is skipped and the next one gets the slot.
+    prose, taken = [], []
+    for i in ordered_prose:
+        sh = _shingles(i, docs)
+        if any(len(sh & t) >= NEAR_DUP * min(len(sh), len(t)) for t in taken
+               if sh and t):
+            continue
+        prose.append(i)
+        taken.append(sh)
+        if len(prose) >= slots:
+            break
     links = [i for i in ranked if is_link[i]][:LINK_SLOTS]
 
     # Keep overall similarity order so the strongest match leads the context.
     order = sorted(set(prose) | set(links), key=lambda i: -sims[i])
-    context = "\n\n".join(docs[i]["text"] for i in order)
+    context = "\n\n".join(with_address(docs[i]) for i in order)
 
     # The standard-score margin has to be computed here, while similarities to
     # every chunk are still in hand - it cannot be recovered from the top 3.
@@ -1318,6 +1590,27 @@ def clean_history(raw):
     return turns
 
 
+# "AP" is two things here. About exams, courses and scores it is Advanced
+# Placement; about an email, an office, hours or a form it is the assistant
+# principals. The embedding only ever heard the first: "email of ap" retrieved
+# Advanced Placement pages and never the five assistant-principal rows in the
+# staff directory, which carry exactly the emails being asked for. So when a
+# question says AP and nothing course-shaped, the search also says "assistant
+# principal". The prompt already tells the model which sense it answered.
+AP_WORD = re.compile(r"\bAPs?\b", re.I)
+AP_COURSE = re.compile(
+    r"exam|test|class|course|score|credit|bio|chem|calc|physics|histor|"
+    r"lang|lit|gov|psych|stat|art\b|music|seminar|research|regist|placement",
+    re.I)
+
+
+def expand_ap(text):
+    if (AP_WORD.search(text) and not AP_COURSE.search(text)
+            and "assistant principal" not in text.lower()):
+        return text + " assistant principal"
+    return text
+
+
 def retrieval_query(question, history):
     """What to embed, which is not always what the user typed.
 
@@ -1338,20 +1631,20 @@ def retrieval_query(question, history):
     asking about the principal should retrieve bell schedules.
     """
     if not history:
-        return question
+        return expand_ap(question)
 
     words = question.split()
     dependent = len(words) <= 4 or bool(PRONOUN.search(question))
     if not dependent:
-        return question
+        return expand_ap(question)
 
     previous = next((t["content"] for t in reversed(history)
                      if t["role"] == "user"), None)
     if not previous:
-        return question
+        return expand_ap(question)
 
     log.info("[followup] embedding with prior turn: %s", question[:50])
-    return previous + " " + question
+    return expand_ap(previous + " " + question)
 
 
 FOLLOWUP_PROMPT = (
@@ -1440,6 +1733,21 @@ def suggest_followups(question, answer, context):
 FRONT_OFFICE = ("From the Vista Ridge High School website, for when nothing "
                 "more specific applies: the front office main number is "
                 "512-570-1800.")
+
+
+# A question about a particular school day. "today"/"tomorrow", the rotation's
+# own words, and "B day"/"C day" on their own - but "a day" only as "an A day",
+# or every "twice a day" would trip it.
+AB_QUESTION = re.compile(
+    r"\b(?:today|tonight|tomorrow|yesterday)\b|\ba\s*/\s*b\b|\ba\s+or\s+b\b"
+    r"|\b[bc][\s-]?days?\b|\ban?\s+a[\s-]?day\b|\brotation\b", re.I)
+
+
+def ab_day_note(question):
+    """The A/B days around today, for a question about a day; else ""."""
+    if not question or not AB_QUESTION.search(question):
+        return ""
+    return abdays.context_line(local_today())
 
 
 def context_block(context, stats, live=None, live_leads=True):
@@ -1533,7 +1841,11 @@ def ask():
     # Not for a follow-up. The cache is keyed on the question alone and knows
     # nothing about what came before, so serving "who is he" a pre-written
     # answer would answer a different question than the one asked.
-    hit = cached_answer(question) if question and not history else None
+    # Nor for a question about a particular day. "Is tomorrow an A day?"
+    # answered once and served from memory is right for one day of the year.
+    hit = (cached_answer(question)
+           if question and not history and not AB_QUESTION.search(question)
+           else None)
     if hit:
         def replay():
             # Sent as one chunk. The streaming shape exists so a reader is not
@@ -1622,6 +1934,14 @@ def ask():
     # contexts and "call the front office at 512-570-1800" was graded as
     # invented. See FRONT_OFFICE for why it is context and not only prompt.
     context = FRONT_OFFICE + "\n\n" + context
+
+    # The A/B day around today, for any question that is about a day. The
+    # rotation exists only as a picture on Drive - see abdays.py - so it is
+    # computed rather than retrieved, and it goes in the context for the same
+    # reason the front office does: the checks read the context.
+    note = ab_day_note(question)
+    if note:
+        context = note + "\n\n" + context
 
     # History sits between the system prompt and the current turn, so a
     # follow-up resolves against what was actually said rather than being
@@ -1941,7 +2261,9 @@ def file_issue(entry):
             "",
             "**Comment**",
             comment or "_(none)_",
-        ]
+            "",
+            "**Sources shown**",
+        ] + (["- " + u for u in entry.get("sources") or []] or ["_(none)_"])
     else:
         # Deliberately close to useless. An issue that cannot say what was
         # asked is hard to act on, and that is the pressure pointing at a
@@ -2057,6 +2379,12 @@ def submit_feedback():
         # long one is not cut mid-sentence, and well below anything that
         # could be used to push a payload through the endpoint.
         "answer": (data.get("answer") or "")[:4000] or None,
+        # The pages offered under the answer. A "wrong link" or "out of date"
+        # complaint could not be checked without them: the answer text lost
+        # its URLs on the way here, so nobody could tell which link the
+        # reader meant.
+        "sources": [str(u)[:300] for u in (data.get("sources") or [])
+                    if isinstance(u, str)][:6],
         "retrieval_top": data.get("retrieval_top"),
         "retrieval_level": data.get("retrieval_level"),
         "flagged": bool(data.get("flagged")),

@@ -88,7 +88,8 @@ def main():
 
     vectors = app.embed_texts([c["text"] for c in chunks])
     for chunk, vector in zip(chunks, vectors):
-        chunk["embedding"] = vector
+        # Rounded - see EMBED_DECIMALS in main.py.
+        chunk["embedding"] = app.compact_embedding(vector)
 
     with open(config.EMBEDDINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(chunks, f)

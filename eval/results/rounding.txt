@@ -1,0 +1,4 @@
+Rounding stored embeddings to 6 decimal places (index of 1873 chunks):
+  questions with an identical top-10: 48 of 48
+  largest change in any cosine: 8.12e-07
+  index file: 31.6 MB after rounding (66.1 MB at full precision)

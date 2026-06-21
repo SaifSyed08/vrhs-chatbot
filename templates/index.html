@@ -2935,6 +2935,21 @@
       // click it a few times". A copy event raised inside the click itself
       // needs no permission, no selection and no focus change, and it has
       // succeeded or failed before the click handler returns.
+      // An answer as plain text with its links kept as "label (url)". Used
+      // for copying and for feedback: innerText alone drops every address,
+      // so a reader's "wrong link" complaint arrived with no way to tell
+      // which link they meant.
+      function answerText(bubble) {
+        const clone = (bubble || document.createElement("div")).cloneNode(true);
+        clone.querySelectorAll("a[href]").forEach(a => {
+          const label = a.textContent.trim();
+          const href = a.href;
+          a.replaceWith(document.createTextNode(
+            label && label !== href ? label + " (" + href + ")" : href));
+        });
+        return clone.textContent.replace(/\n{3,}/g, "\n\n").trim();
+      }
+
       function copyText(text) {
         let viaEvent = false;
         const onCopy = (e) => {
@@ -3251,6 +3266,7 @@
               comment: comment || null,
               retrieval_level: (context.retrieval || {}).level || null,
               retrieval_top: (context.retrieval || {}).top || null,
+              sources: context.sources || [],
               flagged: (context.notice || []).length > 0
             })
           }).catch(err => console.warn("feedback not recorded", err));
@@ -3391,15 +3407,7 @@
         const copyBtn = fb.querySelector(".fb-copy");
         let copiedTimer = null;
         copyBtn.addEventListener("click", () => {
-          const clone = (bubble || document.createElement("div"))
-                          .cloneNode(true);
-          clone.querySelectorAll("a[href]").forEach(a => {
-            const label = a.textContent.trim();
-            const href = a.href;
-            a.replaceWith(document.createTextNode(
-              label && label !== href ? label + " (" + href + ")" : href));
-          });
-          const text = clone.textContent.replace(/\n{3,}/g, "\n\n").trim();
+          const text = answerText(bubble);
           copyText(text).then((ok) => {
             if (!ok) return;
             copyBtn.classList.add("copied");
@@ -3662,7 +3670,8 @@
           // alone often produces a different answer than the one somebody
           // objected to. innerText, so the markup and the source pills stay
           // out of it.
-          answer: bubble.innerText,
+          answer: answerText(bubble),
+          sources: (meta.sources || []).map(s => s.url).filter(Boolean),
           notice: meta.notice || [],
           retrieval: meta.retrieval || {}
         };

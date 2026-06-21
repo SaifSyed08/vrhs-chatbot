@@ -62,6 +62,10 @@ def questions():
 
     def add(q, origin):
         key = main.cache_key(q)
+        # A question about today or tomorrow has a different right answer
+        # every day, and /ask will not serve a cached one; see AB_QUESTION.
+        if main.AB_QUESTION.search(q):
+            return
         if key and key not in seen:
             seen.add(key)
             out.append((q, origin))
