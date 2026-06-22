@@ -1942,6 +1942,22 @@ def ask():
     note = ab_day_note(question)
     if note:
         context = note + "\n\n" + context
+        # And the calendar is the source to show. Retrieval alone offered
+        # the AP exam schedule under "is tomorrow an A day" - it happens to
+        # print A and B beside its dates - which is a pill pointing at the
+        # wrong document for the answer above it.
+        calendar = {"url": abdays.CALENDAR_URL,
+                    "label": "A/B Calendar (VRHS 2026-2027)",
+                    "score": None,
+                    "snippet": abdays.describe(local_today()
+                                               + datetime.timedelta(days=1))}
+        # Matched on the Drive file id: the site links the same file with a
+        # "?usp=drive_link" tail, which would show the calendar twice.
+        file_id = abdays.CALENDAR_URL.split("/d/")[1].split("/")[0]
+        sources = [calendar] + [s for s in sources
+                                if file_id not in s["url"]
+                                and "exam-schedule" not in s["url"]
+                                ][:MAX_SOURCES - 1]
 
     # History sits between the system prompt and the current turn, so a
     # follow-up resolves against what was actually said rather than being
