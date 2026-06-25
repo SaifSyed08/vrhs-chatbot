@@ -13,6 +13,7 @@ from collections import Counter
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from main import decode_embedding as app_decode  # noqa: E402
 import corpus  # noqa: E402
 
 EMBEDDINGS = os.environ.get("VRHS_EMBEDDINGS",
@@ -20,7 +21,7 @@ EMBEDDINGS = os.environ.get("VRHS_EMBEDDINGS",
 
 
 def unit(docs):
-    E = np.array([d["embedding"] for d in docs], dtype=np.float64)
+    E = np.vstack([app_decode(d["embedding"]) for d in docs]).astype(np.float64)
     return E / np.linalg.norm(E, axis=1, keepdims=True)
 
 

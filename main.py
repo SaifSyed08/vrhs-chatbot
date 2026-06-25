@@ -12,11 +12,14 @@ import threading
 import time
 import re
 import traceback
+import collections
 from collections import OrderedDict, deque
 from urllib.parse import parse_qs, unquote, urlparse
 from zoneinfo import ZoneInfo
 import abdays
 import config
+import images
+import pdfs
 import feeds
 import livesearch
 import gdocs
@@ -126,7 +129,9 @@ SYSTEM_PROMPT = (
     "\n\n"
     "Reply in the language the question was asked in. The pages this runs on are English and the context will be too, so answering a question asked in Spanish means translating what the context says - do that, and translate the link labels with it. Never translate an email address, a URL, a room number, or the name of a person, a club or a course: somebody has to type those into a form or say them at a front desk, and a translated proper noun is one that cannot be found. The composer invites questions in Spanish, Hindi and Chinese, so an English-only answer to one of them is the interface making a promise the reply does not keep."
     "\n\n"
-    "Keep the formatting light. Short paragraphs, and a dash list when the answer really is a list. Markdown headings are rendered but they are heavy inside a chat bubble, so use one only when an answer has genuinely separate sections, and never above three hashes."
+    "Keep the formatting light. Short paragraphs, and a dash list when the answer really is a list. Markdown headings are rendered but they are heavy inside a chat bubble, so use one only when an answer has genuinely separate sections, and never above three hashes. The chat renders bold, links, headings and dash or numbered lists, and nothing else: never use a horizontal rule (---), a table or a code block - they reach the reader as raw symbols. Put a schedule in a list."
+    "\n\n"
+    "When the context dates something - an announcement's posting date, an event's day - give the date with it, and link the item's source. News without a date cannot be told from last year's. Asked for news, the latest, or what is happening, summarise the newest announcements in the context - the main items, each with its posted date and link - rather than searching the question's other words for a topic."
     "\n\n"
     "Only cite links as [label](url) if they appear in the context. Never "
     "construct a URL yourself, even when the address looks predictable. If a "
@@ -325,7 +330,9 @@ def unwrap_redirect(href):
 
 
 def absolute(href):
-    href = unwrap_redirect((href or "").strip())
+    # Spaces encoded: a page that writes an address with raw spaces produced
+    # a markdown link the model could not quote back intact.
+    href = unwrap_redirect((href or "").strip()).replace(" ", "%20")
     if href.startswith("/"):
         return SITE + href
     return href
@@ -452,7 +459,10 @@ def fetch(url):
     import requests
     from bs4 import BeautifulSoup
 
-    response = requests.get(url, timeout=25)
+    # A browser's User-Agent, as livesearch sends. Cloudflare in front of
+    # news.leanderisd.org answers python-requests' own with a 403, which is
+    # why the school's news category - a seed page - never made it in.
+    response = requests.get(url, timeout=25, headers={"User-Agent": livesearch.UA})
     response.raise_for_status()
     return BeautifulSoup(response.text, "html.parser")
 
@@ -508,20 +518,34 @@ def crawl_urls():
     return found
 
 
+# Three address forms, and all three are in use: the new one
+# (sites.google.com/leanderisd.org/x), a public "view" site, and the classic
+# one (sites.google.com/a/leanderisd.org/x) that teachers' own sites still
+# carry. Matching only the first two walked past every classic site - ten of
+# them, among them "Coach Sim's" calculus site, so "who is Coach Sim?" found
+# nothing though the staff directory linked straight to it.
 GSITE_ROOT = re.compile(
-    r"^https://sites\.google\.com/(leanderisd\.org/[^/?#]+|view/[^/?#]+)")
+    r"^https://sites\.google\.com/"
+    r"(a/leanderisd\.org/[^/?#]+|leanderisd\.org/[^/?#]+|view/[^/?#]+)")
 # Per site and overall. The biggest of these sites is about twenty pages; the
 # caps are there so a site that turns out to be an archive cannot swamp the
 # corpus or the fortnightly rebuild.
+GSITE_READ = []
 GSITE_MAX_PAGES = 30
-GSITE_TOTAL_PAGES = 200
+# Per pass. The second pass reads the sites only the staff directory names -
+# sixty-odd teachers' sites - and at 300 it ran out before reaching
+# "Coach Sim's", the one a reader had asked about.
+GSITE_TOTAL_PAGES = 900
 GSITE_CHROME = re.compile(
     r"Search this site|Embedded Files|Skip to main content|Skip to navigation"
     r"|Report abuse|Page details|Page updated|Google Sites")
 
 
-def google_sites(links):
-    """Read the Google Sites the school links to: (chunks, links, embeds).
+def google_sites(links, skip_roots=()):
+    """Read the Google Sites the school links to.
+
+    Returns (chunks, links, embeds, images): the pages' text, and what they
+    link, embed and show, for the same treatment the school site's get.
 
     Each linked site is crawled from its home page, within the site only.
     Google Sites write internal links relative to sites.google.com, which
@@ -539,10 +563,10 @@ def google_sites(links):
         m = GSITE_ROOT.match(href or "")
         if m:
             root = "https://sites.google.com/" + m.group(1)
-            if root not in roots:
+            if root not in roots and root not in skip_roots:
                 roots.append(root)
 
-    chunks, found_links, found_embeds = [], [], []
+    chunks, found_links, found_embeds, found_imgs = [], [], [], []
     total = 0
     for root in roots:
         if total >= GSITE_TOTAL_PAGES:
@@ -562,6 +586,9 @@ def google_sites(links):
                     a["href"] = "https://sites.google.com" + a["href"]
             found_links.extend(page_links(soup, url))
             found_embeds.extend(page_embeds(soup, url))
+            page_name = page_title(soup, url)
+            found_imgs.extend((img, url, page_name)
+                              for img in images.grab(soup))
             if depth < 2:
                 for a in soup.find_all("a", href=True):
                     link = normalise(unwrap_redirect(a["href"]))
@@ -585,10 +612,99 @@ def google_sites(links):
         log.info(f"read {pages} pages and kept {len(site_chunks)} chunks "
                  f"from {root}")
         chunks.extend(site_chunks)
-    return chunks, found_links, found_embeds
+        GSITE_READ.append(root)
+    return chunks, found_links, found_embeds, found_imgs
+
+
+DISTRICT_HOST = re.compile(r"^https?://(?:www\.|news\.)?leanderisd\.org/")
+DISTRICT_MAX_PAGES = 150
+
+
+def district_pages(links, skip=()):
+    """Read the Leander ISD pages the school and its sites link to.
+
+    The same one-hop reading linked Google Docs get. The school's pages and
+    its Google Sites link to some seventy district pages - class rank and GPA,
+    transportation, Home Access, the calendar - and the bot held only their
+    link text, so a reader asking what grade earns a 4.0 was told the site
+    did not say. The district's class-ranking page has the whole chart.
+
+    Fetched with livesearch's session: Cloudflare in front of the district
+    sites refuses a bare python-requests client, which is why the crawl never
+    got them. Menus, headers and footers are dropped as livesearch drops
+    them, and what is shared across most of these pages is stripped as one
+    site's menu, the way each Google Site's is.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from bs4 import BeautifulSoup
+
+    # Fetched as linked, trailing slash and all - WordPress redirects the
+    # slashless form, and every redirect is one more request for Cloudflare
+    # to count - but keyed on the normalised address so a page linked two
+    # ways is read once.
+    urls, keys = [], set()
+    for _, href, _ in links:
+        url = unwrap_redirect(href or "").split("#")[0]
+        key = normalise(url)
+        if (DISTRICT_HOST.match(url) and key not in keys and key not in skip
+                and not key.lower().endswith(SKIP_SUFFIXES)):
+            keys.add(key)
+            urls.append(url)
+    urls = urls[:DISTRICT_MAX_PAGES]
+    session = livesearch._session()
+    refused = collections.Counter()
+
+    def read(url):
+        import time
+        for attempt in range(3):
+            try:
+                r = session.get(url, timeout=20)
+            except Exception as e:
+                log.info(f"could not read {url}: {e}")
+                return None
+            # Cloudflare answers a burst with 403 or 429; it is a pace, not a
+            # ban, so the same request a moment later is served.
+            if r.status_code in (403, 429) and attempt < 2:
+                time.sleep(3 * (attempt + 1))
+                continue
+            break
+        if r.status_code != 200:
+            refused[r.status_code] += 1
+            return None
+        soup = BeautifulSoup(r.text, "html.parser")
+        title = " ".join((soup.title.string or "").split()) if soup.title else ""
+        title = re.sub(r"\s*[-|]\s*Leander ISD.*$", "", title) or source_label(url)
+        for tag in soup(["script", "style", "noscript", "nav", "header",
+                         "footer", "form"]):
+            tag.decompose()
+        # Links kept inline, resolved against this page, as page_markdown
+        # keeps them for the school's own pages. Reduced to bare text, a page
+        # listing "PRN Texas" and "SPEDTex" gave the model the names without
+        # the addresses, and it supplied addresses from memory - real ones,
+        # but not the page's, and the link check rightly flagged all five.
+        from urllib.parse import urljoin
+        for a in soup.find_all("a", href=True):
+            label = a.get_text(" ", strip=True)
+            href = urljoin(url, a["href"].strip()).replace(" ", "%20")
+            a.replace_with(f"[{label}]({href})" if label and href.startswith("http")
+                           else (label or ""))
+        words = soup.get_text(" ", strip=True).split()
+        return [{"text": f"{title} (Leander ISD). " + " ".join(words[k:k + 150]),
+                 "source": normalise(url), "label": title}
+                for k in range(0, len(words), 150) if words[k:k + 150]]
+
+    with ThreadPoolExecutor(2) as pool:
+        pages = [p for p in pool.map(read, urls) if p]
+    chunks = [c for page in pages for c in page]
+    if len(pages) > 1:
+        chunks = corpus.strip_boilerplate(chunks)
+    log.info(f"read {len(pages)} of {len(urls)} linked district pages, "
+             f"{len(chunks)} chunks; refused: {dict(refused) or 'none'}")
+    return chunks
 
 
 def scrape_vrhs_pages():
+    GSITE_READ.clear()
     urls = crawl_urls()
     log.info(f"crawled {len(urls)} pages from the live site")
     chunks = []
@@ -596,6 +712,7 @@ def scrape_vrhs_pages():
     all_links = []
     all_embeds = []
     feed_pages = []
+    page_imgs = []
 
     for url in urls:
         log.info(f"Scraping {url}...")
@@ -615,6 +732,7 @@ def scrape_vrhs_pages():
                 feed_pages.append((url, markup))
 
             title = page_title(soup, url)
+            page_imgs.extend((img, url, title) for img in images.grab(soup))
             combined_text = page_markdown(soup)
 
             words = combined_text.split()
@@ -635,10 +753,12 @@ def scrape_vrhs_pages():
     # is same-domain, so it walked past every one of them, and they hold the
     # answers readers kept asking for - how to verify enrollment, who to
     # email about hours owed, how to register for an AP exam.
-    site_chunks, site_links, site_embeds = google_sites(all_links)
+    site_chunks, site_links, site_embeds, site_imgs = google_sites(all_links)
     chunks.extend(site_chunks)
     all_links.extend(site_links)
     all_embeds.extend(site_embeds)
+    page_imgs.extend(site_imgs)
+
 
     # Two files on this site are both labelled "A/B Calendar" and one of them
     # is last year's. Nothing in the page text distinguishes them, so the model
@@ -681,6 +801,18 @@ def scrape_vrhs_pages():
         log.info(f"dropped {before - len(chunks)} link chunks for files read "
                  f"in full")
 
+    # Second pass: sites and district pages that only a document links to.
+    # The staff directory's "Website" column is the clearest case - it is the
+    # only place teachers' own sites are linked, Coach Sim's among them - and
+    # the first pass follows page links alone, so none of them was read.
+    named = [("", u, "") for _, _, pieces in read_documents for piece in pieces
+             for u in re.findall(r"https?://[^\s)\]>\"']+", piece or "")]
+    more_chunks, more_links, more_embeds, more_imgs = google_sites(
+        named, skip_roots=set(GSITE_READ))
+    chunks.extend(more_chunks)
+    all_links.extend(more_links)
+    page_imgs.extend(more_imgs)
+
     for label, url, pieces in read_documents:
         for piece in pieces:
             if piece:
@@ -695,6 +827,29 @@ def scrape_vrhs_pages():
                     # "Edit?usp=sharing". The title is right there at ingest.
                     "label": label,
                 })
+
+    # The district pages linked from any of it, read rather than only named.
+    chunks.extend(district_pages(all_links + named))
+
+    # The text inside the pages' pictures - schedules, flyers, tables - read
+    # once and attributed to the page that shows them. See images.py.
+    for url, title, text in images.read_page_images(page_imgs):
+        for piece in pdfs.pieces(text):
+            chunks.append({
+                "text": f"{title} (text in an image on the page): {piece}",
+                "source": url, "label": title, "kind": "image"})
+
+    # A link to a page that was read in full is the worse of two chunks about
+    # it, as with documents above: the page's own text says what the link
+    # label can only name. With the Google Sites and district pages read,
+    # that was over five hundred link chunks of menu.
+    read_pages = {normalise(c["source"]) for c in chunks
+                  if c.get("kind") not in ("link", "document")}
+    before = len(chunks)
+    chunks = [c for c in chunks
+              if not (c.get("kind") == "link"
+                      and normalise(c["source"]) in read_pages)]
+    log.info(f"dropped {before - len(chunks)} link chunks for pages read in full")
 
     # The calendar and the announcement feed, which are frames rather than
     # content and so were invisible to a same-origin crawl. Between them they
@@ -741,47 +896,6 @@ MANUAL_CHUNKS = [
     "The packet to request a new club/organization can be accessed here: "
     "[new club/organization request packet]"
     "(https://docs.google.com/document/d/1-gTgT9VXpYRzu282hvCj2gJBO5Up-6YIllXjH3F2RZ4/copy)",
-]
-
-
-# Facts the scrape can reach but cannot read: pages whose content is a
-# picture. Each carries the page it was transcribed from, so the answer cites
-# the page and the reader can check the transcription against the original.
-# Yearly, like abdays.py.
-SOURCED_MANUAL_CHUNKS = [
-    {
-        # The AP site's exam-schedule page is one image of a table with no
-        # text behind it, so crawling the site finds a title and nothing
-        # else. A reader asking when their AP Biology exam was got "not
-        # listed" and an invented excuse; it is on that page. The dates fall
-        # on these weekdays in 2027, and the A/B letters printed beside them
-        # agree with the A/B calendar.
-        "label": "AP Exam Schedule",
-        "source": "https://sites.google.com/leanderisd.org/advanced-placement/"
-                  "ap-courses-exams/exam-schedule",
-        "text": (
-            "AP Exam Schedule, May 2027, from the Vista Ridge Advanced "
-            "Placement site. Morning (AM) exams begin at 8:00 AM and "
-            "afternoon (PM) exams at 12:00 PM unless otherwise indicated. "
-            "Monday May 3 (A day): AM Human Geography, Physics C: Mechanics; "
-            "PM Biology. Tuesday May 4 (B day): AM US Government & Politics; "
-            "PM European History, Microeconomics. Wednesday May 5 (A day): AM "
-            "English Literature; PM Physics 1: Algebra-Based, Physics C: "
-            "Electricity and Magnetism. Thursday May 6 (B day): AM French "
-            "Language, World History; PM Chemistry. Friday May 7 (A day): AM "
-            "US History; PM Macroeconomics. Monday May 10 (B day): AM "
-            "Calculus AB, Calculus BC; PM Music Theory, Seminar. Tuesday May "
-            "11 (A day): AM Precalculus; PM Statistics. Wednesday May 12 (B "
-            "day): AM English Language; PM Art History, Computer Science A. "
-            "Thursday May 13 (A day): AM Spanish Language; PM Environmental "
-            "Science. Friday May 14 (B day): AM Spanish Literature, Computer "
-            "Science Principles; PM Psychology. Deadlines: Friday April 30, "
-            "11:59 PM ET, for AP Seminar and AP Research students to submit "
-            "performance tasks as final and for AP Computer Science "
-            "Principles students to submit their Create performance task as "
-            "final; Friday May 7, 8:00 PM ET, for AP Art & Design students to "
-            "submit their three portfolio components as final."),
-    },
 ]
 
 
@@ -849,24 +963,37 @@ def build_chunks(clean=True):
         # scraped words; leaving it in is what drove unrelated chunks to a 0.88
         # median cosine and made absolute similarity gating impossible.
         chunks = corpus.prepare(chunks)
+    images.save()
     chunks += roster_chunks(chunks)
     chunks += [{"text": t, "source": "manual"} for t in MANUAL_CHUNKS]
-    chunks += [dict(c, kind="document") for c in SOURCED_MANUAL_CHUNKS]
     return chunks
 
 
-# Decimal places kept in a stored embedding. json.dump writes every float at
-# full repr - eighteen digits for a component of a unit vector - which made
-# the index 66 MB once the Google Sites doubled the corpus: past GitHub's 50 MB
-# warning, a new 66 MB blob in the history every fortnight, and several
-# hundred megabytes of parse on a 512 MB instance. Six places moves a cosine
-# by about 1e-6, against gate thresholds set in hundredths, and leaves every
-# eval question's top ten unchanged; see eval/results/rounding.txt.
-EMBED_DECIMALS = 6
+# How a stored embedding is written: 1,536 float16 values, little-endian,
+# base64. json.dump wrote every float at full repr - eighteen digits for a
+# component of a unit vector - and once the Google Sites, the district pages
+# and the teachers' sites were read the index passed 60 MB: over GitHub's
+# 50 MB warning, a new blob of that size in the history every fortnight, and
+# a long parse on a 512 MB instance. Six decimal places took it to 32 MB and
+# then the corpus doubled again. Half-precision is a quarter of the text
+# (4,096 characters a vector against about 16,000) and moves a cosine by at
+# most 7e-5, against gate thresholds set in hundredths; on the 51 suggested
+# and complaint questions every top-five set is unchanged. See
+# eval/results/rounding.txt.
+import base64
 
 
 def compact_embedding(vector):
-    return [round(x, EMBED_DECIMALS) for x in vector]
+    return base64.b64encode(
+        np.asarray(vector, dtype="<f2").tobytes()).decode("ascii")
+
+
+def decode_embedding(stored):
+    """A stored embedding as floats: the base64 form above, or a plain list
+    (older indexes, and the eval's ablation corpora, write lists)."""
+    if isinstance(stored, str):
+        return np.frombuffer(base64.b64decode(stored), dtype="<f2").astype(np.float32)
+    return np.asarray(stored, dtype=np.float32)
 
 
 @app.route("/embed")
@@ -1014,7 +1141,8 @@ def load_index():
                 return None, None
             with open(EMBEDDINGS_PATH, "r", encoding="utf-8") as f:
                 docs = json.load(f)
-            matrix = np.array([d["embedding"] for d in docs], dtype=np.float64)
+            matrix = np.vstack([decode_embedding(d["embedding"])
+                                for d in docs]).astype(np.float64)
             matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
             _INDEX["docs"], _INDEX["matrix"] = docs, matrix
 
@@ -1310,15 +1438,149 @@ def with_address(doc):
     return doc["text"] + "\nSource: [" + label + "](" + url + ")"
 
 
+# Abbreviations a reader uses that the pages never spell out. Everything else
+# comes from the pages' own definitions - "School Resource Officer (SRO)" -
+# found at index load. "AP" is the case that forced this: the site defines it
+# only as Advanced Placement, and to a student "email of ap" means the
+# assistant principals, so the search heard one sense and missed the other.
+JARGON = {"AP": ["assistant principal", "Advanced Placement"]}
+# Two-letter words a question uses as words, not as abbreviations.
+NOT_ABBREVIATIONS = set("am an as at be by do go he hi if in is it me my no of "
+                        "oh ok on or so to up us we".split())
+# And the other order the site also uses: "(VOE) Verification of Enrollment".
+DEFINITION_AFTER = re.compile(r"\(([A-Z]{2,6})\)\s*((?:[A-Za-z]+[\s&/-]+){1,7})")
+DEFINITION = re.compile(r"\b((?:[A-Z][a-z]+[\s&/-]+){1,5}[A-Z][a-z]+)\s*\(([A-Z]{2,6})s?\)")
+_SENSES = {"docs": None, "senses": {}}
+
+
+def abbreviation_senses():
+    """{ABBR: [long forms]} from the corpus's own definitions, plus JARGON."""
+    docs, _ = load_index()
+    if docs is not None and _SENSES["docs"] is not docs:
+        found = {}
+        for d in docs:
+            for long, ab in DEFINITION.findall(d["text"]):
+                words = re.findall(r"[A-Z][a-z]+", long)
+                # Only a definition the letters actually spell: "Instructional
+                # Assistant (IA)", not "Room 2126 (B)".
+                tail = words[-len(ab):]
+                if len(tail) == len(ab) and "".join(w[0] for w in tail) == ab:
+                    found.setdefault(ab, set()).add(" ".join(tail))
+            for ab, long in DEFINITION_AFTER.findall(d["text"]):
+                # Spelled by every word, small ones included: VOE is
+                # Verification Of Enrollment.
+                words = re.findall(r"[A-Za-z]+", long)[:len(ab)]
+                if (len(words) == len(ab)
+                        and "".join(w[0] for w in words).upper() == ab):
+                    found.setdefault(ab, set()).add(" ".join(words))
+        senses = {ab: sorted(v) for ab, v in found.items()}
+        for ab, extra in JARGON.items():
+            senses[ab] = sorted(set(senses.get(ab, [])) | set(extra))
+        _SENSES["senses"], _SENSES["docs"] = senses, docs
+    return _SENSES["senses"]
+
+
+def query_variants(query):
+    """The query, plus one rewrite per sense of each abbreviation in it.
+
+    Every sense is searched and each chunk keeps its best score across them,
+    so a page that answers either reading of "AP" can rank. Which reading
+    the reader meant is left to the model, which the prompt tells to say
+    which one it answered.
+    """
+    senses = abbreviation_senses()
+    variants = [query]
+    for token in set(re.findall(r"\b[A-Za-z]{2,6}\b", query)):
+        if token.lower() in NOT_ABBREVIATIONS:
+            continue
+        # Lower case counts too - "email of ap" - but only for a word that is
+        # not an ordinary word, which NOT_ABBREVIATIONS covers at this length.
+        if not (token.isupper() or len(token) <= 3):
+            continue
+        for long in senses.get(token.upper(), []):
+            variants.append(re.sub(r"\b%s\b" % re.escape(token), long, query))
+    return variants[:5]
+
+
+# How far a chunk is from the school's own voice, as a small handicap on its
+# rank. The school's site, the documents and feeds it carries, and the
+# school's own Google Site are the school speaking; the district's pages, the
+# department and club sites and teachers' class sites are one step removed.
+# Reading those was the point - they hold answers the school's pages lack -
+# but on a question the school answers itself they should not outrank it.
+# Asked "what resources are there for parents?", the district's Young Parent
+# Services page (for teenage parents) and four teachers' resource pages all
+# ranked above the school's own Resources page. The handicap is a little
+# under the spread between a good match and a near miss, so it settles near
+# ties toward the school and cannot lift a poor school page over a good
+# answer elsewhere. It orders candidates only: the gate and the stats still
+# see the raw similarity.
+SECOND_HAND = 0.015
+SCHOOL_GSITE = "https://sites.google.com/leanderisd.org/vistaridgehighschool"
+_HANDICAP = {"docs": None, "vec": None}
+
+
+def handicaps(docs):
+    if _HANDICAP["docs"] is not docs:
+        vec = np.zeros(len(docs))
+        for i, d in enumerate(docs):
+            src = d.get("source") or ""
+            if d.get("kind") in ("document", "feed", "link") or src == "manual":
+                continue
+            if src.startswith(SITE) or src.startswith(SCHOOL_GSITE):
+                continue
+            vec[i] = SECOND_HAND
+        _HANDICAP["docs"], _HANDICAP["vec"] = docs, vec
+    return _HANDICAP["vec"]
+
+
+_ROSTER_OF = {"docs": None, "map": {}}
+
+
+def roster_of(docs):
+    """{index of a directory row: index of its role's roster chunk}.
+
+    A row is retrieved for the person on it; a question about the role needs
+    everyone who holds it. The roster is the row's group, so a retrieved row
+    brings its roster with it. Built from the same parse as roster_chunks.
+    """
+    if _ROSTER_OF["docs"] is docs:
+        return _ROSTER_OF["map"]
+    rosters = {}
+    for i, d in enumerate(docs):
+        m = re.match(r"From the linked document [^:]*: every (.+?) at Vista "
+                     r"Ridge High School \(\d+\): ", d["text"])
+        if m:
+            rosters[m.group(1)] = i
+    out = {}
+    for i, d in enumerate(docs):
+        m = DIRECTORY_ROW.match(d["text"])
+        if not m:
+            continue
+        base = re.sub(r"\s*\([^)]*\)", "", m.group("pos")).strip()
+        key = SAME_OFFICE.get(base, base)
+        if key in rosters:
+            out[i] = rosters[key]
+    _ROSTER_OF["docs"], _ROSTER_OF["map"] = docs, out
+    return out
+
+
 def get_relevant_context(query):
     """Return the top chunks, similarity stats, and the pages they came from."""
     docs, matrix = load_index()
     if docs is None:
         return "No knowledge base available. Please visit /embed first.", {}, []
 
-    q = np.array(embed_query(query), dtype=np.float64)
-    q /= np.linalg.norm(q)
-    sims = matrix @ q
+    # The best score for each chunk across the query and its abbreviation
+    # rewrites - see query_variants - for the gate, the links and the stats.
+    per_variant = []
+    for variant in query_variants(query):
+        q = np.array(embed_query(variant), dtype=np.float64)
+        q /= np.linalg.norm(q)
+        per_variant.append(matrix @ q)
+    sims = per_variant[0]
+    for s_v in per_variant[1:]:
+        sims = np.maximum(sims, s_v)
 
     # Prose and links are retrieved under separate quotas rather than as one
     # top-3. There are roughly twice as many link chunks as prose chunks, so a
@@ -1327,13 +1589,32 @@ def get_relevant_context(query):
     # while the paragraph that said so sat at rank 6. The model then correctly
     # declined to answer. Reserving slots keeps a narrative answer and a place
     # to go in the same context.
-    ranked = np.argsort(sims)[::-1]
+    # Ordered with the second-hand handicap; scored without it.
+    ranked = np.argsort(sims - handicaps(docs))[::-1]
     is_link = [docs[i].get("kind") == "link" for i in range(len(docs))]
 
     # Wider when the best non-link chunk is short of the solid gate. Retrieval
     # being unsure is exactly when a few more chunks are worth their tokens,
     # and a question it is sure about still gets the usual five.
     ordered_prose = [i for i in ranked if not is_link[i]]
+    # The prose slots go round the senses in turn rather than to the best
+    # scores overall. On the best score alone, the sense with more matching
+    # rows takes every slot: "email of ap" filled all five with Advanced
+    # Placement teachers' directory rows and the assistant principals'
+    # roster, which is what the reader meant, never got in.
+    if len(per_variant) > 1:
+        rankings = [[i for i in np.argsort(s_v - handicaps(docs))[::-1]
+                     if not is_link[i]] for s_v in per_variant[1:]]
+        merged, seen_i = [], set()
+        for k in range(len(ordered_prose)):
+            for ranking in rankings:
+                i = ranking[k]
+                if i not in seen_i:
+                    seen_i.add(i)
+                    merged.append(i)
+            if len(merged) >= 4 * PROSE_SLOTS * len(rankings):
+                break
+        ordered_prose = merged + [i for i in ordered_prose if i not in seen_i]
     best_prose = float(sims[ordered_prose[0]]) if ordered_prose else 0.0
     slots = (PROSE_SLOTS if best_prose >= hallucination.SIMILARITY_SOLID
              else config.WIDE_PROSE_SLOTS)
@@ -1345,8 +1626,15 @@ def get_relevant_context(query):
     # of five slots were the same Insider blurb and the attendance office's
     # own contact never made it in. A chunk mostly made of shingles already
     # taken is skipped and the next one gets the slot.
+    # A directory row stands in for its whole role: see roster_of. The roster
+    # replaces the row where the row ranked, and a second row for the same
+    # role is then a repeat.
+    rosters = roster_of(docs)
+    ordered_prose = [rosters.get(i, i) for i in ordered_prose]
     prose, taken = [], []
     for i in ordered_prose:
+        if i in prose:
+            continue
         sh = _shingles(i, docs)
         if any(len(sh & t) >= NEAR_DUP * min(len(sh), len(t)) for t in taken
                if sh and t):
@@ -1357,8 +1645,11 @@ def get_relevant_context(query):
             break
     links = [i for i in ranked if is_link[i]][:LINK_SLOTS]
 
-    # Keep overall similarity order so the strongest match leads the context.
-    order = sorted(set(prose) | set(links), key=lambda i: -sims[i])
+    # Keep overall similarity order so the strongest match leads the context -
+    # with the same second-hand handicap the slots were chosen by, so the
+    # school's own page leads when it was the near tie that won its slot.
+    adjusted = sims - handicaps(docs)
+    order = sorted(set(prose) | set(links), key=lambda i: -adjusted[i])
     context = "\n\n".join(with_address(docs[i]) for i in order)
 
     # The standard-score margin has to be computed here, while similarities to
@@ -1590,27 +1881,6 @@ def clean_history(raw):
     return turns
 
 
-# "AP" is two things here. About exams, courses and scores it is Advanced
-# Placement; about an email, an office, hours or a form it is the assistant
-# principals. The embedding only ever heard the first: "email of ap" retrieved
-# Advanced Placement pages and never the five assistant-principal rows in the
-# staff directory, which carry exactly the emails being asked for. So when a
-# question says AP and nothing course-shaped, the search also says "assistant
-# principal". The prompt already tells the model which sense it answered.
-AP_WORD = re.compile(r"\bAPs?\b", re.I)
-AP_COURSE = re.compile(
-    r"exam|test|class|course|score|credit|bio|chem|calc|physics|histor|"
-    r"lang|lit|gov|psych|stat|art\b|music|seminar|research|regist|placement",
-    re.I)
-
-
-def expand_ap(text):
-    if (AP_WORD.search(text) and not AP_COURSE.search(text)
-            and "assistant principal" not in text.lower()):
-        return text + " assistant principal"
-    return text
-
-
 def retrieval_query(question, history):
     """What to embed, which is not always what the user typed.
 
@@ -1631,20 +1901,20 @@ def retrieval_query(question, history):
     asking about the principal should retrieve bell schedules.
     """
     if not history:
-        return expand_ap(question)
+        return question
 
     words = question.split()
     dependent = len(words) <= 4 or bool(PRONOUN.search(question))
     if not dependent:
-        return expand_ap(question)
+        return question
 
     previous = next((t["content"] for t in reversed(history)
                      if t["role"] == "user"), None)
     if not previous:
-        return expand_ap(question)
+        return question
 
     log.info("[followup] embedding with prior turn: %s", question[:50])
-    return expand_ap(previous + " " + question)
+    return previous + " " + question
 
 
 FOLLOWUP_PROMPT = (
@@ -1743,11 +2013,83 @@ AB_QUESTION = re.compile(
     r"|\b[bc][\s-]?days?\b|\ban?\s+a[\s-]?day\b|\brotation\b", re.I)
 
 
+_ROTATION = {"docs": None, "rotation": None}
+
+
+def rotation():
+    """The A/B rotation worked out from the indexed calendar, or None.
+
+    Built once per index load - see abdays.build - and rebuilt when a
+    rebuilt index is loaded, so a new calendar takes effect on the next
+    deploy with nothing edited by hand.
+    """
+    docs, _ = load_index()
+    if docs is not None and _ROTATION["docs"] is not docs:
+        try:
+            _ROTATION["rotation"] = abdays.build(docs)
+        except Exception as e:
+            log.warning("[abdays] rotation not built: %s", e)
+            _ROTATION["rotation"] = None
+        _ROTATION["docs"] = docs
+        log.info("[abdays] rotation: %s", "%d school days" % len(
+            _ROTATION["rotation"].days) if _ROTATION["rotation"] else "none")
+    return _ROTATION["rotation"]
+
+
+# A question asking for what is new rather than about a topic. Retrieval
+# ranks by topic, so "give me the news" matches whatever page says "news"
+# most, and with a few thousand chunks that is rarely this week's Insider.
+NEWS_QUESTION = re.compile(
+    r"\b(?:news|latest|announcements?|happening|upcoming|this week|next week"
+    r"|recent(?:ly)?|insider|what'?s new)\b", re.I)
+POSTED = re.compile(r"posted \w+, (\w{3}) (\d{1,2}) (\d{4})")
+_RECENT = {"docs": None, "items": []}
+
+
+def latest_posts(n=2):
+    """The n most recently posted announcement chunks, newest first."""
+    docs, _ = load_index()
+    if docs is not None and _RECENT["docs"] is not docs:
+        dated = []
+        for d in docs:
+            if d.get("kind") != "feed":
+                continue
+            m = POSTED.search(d["text"])
+            if not m:
+                continue
+            try:
+                when = datetime.datetime.strptime(" ".join(m.groups()), "%b %d %Y").date()
+            except ValueError:
+                continue
+            dated.append((when, d))
+        dated.sort(key=lambda x: x[0], reverse=True)
+        _RECENT["docs"], _RECENT["items"] = docs, dated
+    # One chunk per post, so two long posts do not crowd out the second.
+    out, seen = [], set()
+    for when, d in _RECENT["items"]:
+        if d["source"] in seen:
+            continue
+        seen.add(d["source"])
+        out.append(d)
+        if len(out) >= n:
+            break
+    return out
+
+
+def news_note(question, context):
+    """The latest announcements, for a question asking what is new; else ""."""
+    if not question or not NEWS_QUESTION.search(question):
+        return ""
+    return "\n\n".join(with_address(d) for d in latest_posts()
+                        if d["text"] not in context)
+
+
 def ab_day_note(question):
     """The A/B days around today, for a question about a day; else ""."""
     if not question or not AB_QUESTION.search(question):
         return ""
-    return abdays.context_line(local_today())
+    rot = rotation()
+    return rot.context_line(local_today()) if rot else ""
 
 
 def context_block(context, stats, live=None, live_leads=True):
@@ -1939,6 +2281,11 @@ def ask():
     # rotation exists only as a picture on Drive - see abdays.py - so it is
     # computed rather than retrieved, and it goes in the context for the same
     # reason the front office does: the checks read the context.
+    # The newest announcements, for a question asking what is new.
+    latest = news_note(question, context)
+    if latest:
+        context = latest + "\n\n" + context
+
     note = ab_day_note(question)
     if note:
         context = note + "\n\n" + context
@@ -1946,17 +2293,19 @@ def ask():
         # the AP exam schedule under "is tomorrow an A day" - it happens to
         # print A and B beside its dates - which is a pill pointing at the
         # wrong document for the answer above it.
-        calendar = {"url": abdays.CALENDAR_URL,
-                    "label": "A/B Calendar (VRHS 2026-2027)",
+        rot = rotation()
+        calendar = {"url": rot.url, "label": "A/B Calendar",
                     "score": None,
-                    "snippet": abdays.describe(local_today()
-                                               + datetime.timedelta(days=1))}
+                    "snippet": rot.describe(local_today()
+                                            + datetime.timedelta(days=1))}
         # Matched on the Drive file id: the site links the same file with a
-        # "?usp=drive_link" tail, which would show the calendar twice.
-        file_id = abdays.CALENDAR_URL.split("/d/")[1].split("/")[0]
+        # "?usp=drive_link" tail, which would show the calendar twice. Other
+        # pages that merely print A and B beside their dates - the AP exam
+        # schedule does - are not the source of this answer either.
+        key = gdocs.file_key(rot.url) or rot.url
         sources = [calendar] + [s for s in sources
-                                if file_id not in s["url"]
-                                and "exam-schedule" not in s["url"]
+                                if (gdocs.file_key(s["url"]) or s["url"]) != key
+                                and s["url"] != rot.url
                                 ][:MAX_SOURCES - 1]
 
     # History sits between the system prompt and the current turn, so a

@@ -26,6 +26,8 @@ import io
 import logging
 import re
 
+import images
+
 log = logging.getLogger("vrhs.pdfs")
 
 TIMEOUT = 45
@@ -143,7 +145,10 @@ def fetch(url, session=None):
         log.info("could not fetch pdf %s: %s", url[:70], e)
         return None
 
-    return extract(b"".join(chunks))
+    data = b"".join(chunks)
+    # A scan has no text layer, and its content is a picture of a page -
+    # the A/B calendar is one. Read the picture rather than skip the file.
+    return extract(data) or images.pdf_text(data, url)
 
 
 def pieces(text):

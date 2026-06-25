@@ -1,4 +1,11 @@
-Rounding stored embeddings to 6 decimal places (index of 1873 chunks):
-  questions with an identical top-10: 48 of 48
-  largest change in any cosine: 8.12e-07
-  index file: 31.6 MB after rounding (66.1 MB at full precision)
+Storing embeddings at reduced precision, measured on the 43 suggested questions plus the
+reader-complaint questions (index of 3,595 chunks, 2026-10-06):
+
+  six decimal places (first step, index of 1,873 chunks): identical top-10 order 48/48,
+    largest cosine change 8.1e-07; index 66.1 MB -> 31.6 MB
+  float16, base64 (current): same top-5 set 51/51, identical top-10 order 48/51
+    (near-tied ranks 6-10 swapping), largest cosine change 6.7e-05;
+    4,096 characters per vector against about 16,000 for the decimal form
+
+Retrieval fills five prose slots, so the top-5 set is what reaches the model, and gate
+thresholds are set in hundredths, three orders of magnitude above the largest change.

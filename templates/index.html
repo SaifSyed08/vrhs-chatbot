@@ -1347,9 +1347,11 @@
     /* One row, full width, and a real target. The submit sits apart from the
        chips so that choosing a reason and sending it are visibly two steps -
        which they have to be now that a comment can be typed between them. */
+    /* On the left, under the box it submits - a reader asked for it there
+       rather than at the far edge of the panel. */
     .fb-actions {
       display: flex;
-      justify-content: flex-end;
+      justify-content: flex-start;
       gap: 8px;
       margin-top: 1px;
     }
@@ -2819,6 +2821,10 @@
       // work, and the newlines survive for white-space: pre-line.
       function renderInline(text) {
         return text.split("\n").map(function (line) {
+          // A horizontal rule is block markup the inline parser leaves as
+          // literal dashes; a reader filed one as "Formatting error?". The
+          // prompt asks for none, and this drops any that arrive anyway.
+          if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) return "";
           const h = /^\s{0,3}(#{1,6})\s+(.*)$/.exec(line);
           if (!h) return marked.parseInline(line);
           const body = h[2].replace(/\s*#+\s*$/, "");

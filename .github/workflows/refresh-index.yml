@@ -70,7 +70,10 @@ jobs:
           fi
 
           rm -f .index-changed
-          git add data/vrhs_embeddings.json
+          # The image transcriptions too: they are keyed on each image's hash,
+          # so committing them is what stops the next rebuild paying to read
+          # every picture on the site again. See images.py.
+          git add data/vrhs_embeddings.json data/image_text.json
           git commit -m "Refresh the index from the live site
 
           Scheduled fortnightly rebuild. See the run log for what the crawl

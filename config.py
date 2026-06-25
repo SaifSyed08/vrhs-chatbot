@@ -82,6 +82,12 @@ GRADER_MODEL = os.getenv("VRHS_GRADER_MODEL", "gpt-4o-mini")
 # behind the check the answer was waiting on anyway.
 FOLLOWUP_MODEL = os.getenv("VRHS_FOLLOWUP_MODEL", "gpt-4o-mini")
 
+# Reads the text in images at ingest - see images.py. The full model rather
+# than the mini: transcription errors become facts in the corpus, and on the
+# AP exam schedule it copied every cell of a ten-row table exactly. It runs
+# only on images it has not seen before, so the cost is paid once per image.
+VISION_MODEL = os.getenv("VRHS_VISION_MODEL", "gpt-4.1")
+
 
 # === Retrieval ===
 

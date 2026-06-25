@@ -389,10 +389,9 @@ def linked_documents(references):
 
         if kind == "pdf":
             # Drive will not export a PDF as text, so this is the file itself,
-            # downloaded and parsed. Three of the twenty on this site are
-            # scans with no text layer and come back None - correctly, because
-            # the alternative is OCR and a bad OCR pass is worse than the
-            # refusal the reader gets now.
+            # downloaded and parsed. A scan with no text layer is read from
+            # its page images instead - see images.py for why that is a
+            # transcription of printed text only.
             text = pdfs.fetch(
                 "https://drive.google.com/uc?export=download&id="
                 + drive_id(href), session)

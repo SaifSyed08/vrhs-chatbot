@@ -21,6 +21,7 @@ it so the reader knows which parts to verify.
 
 import json
 import re
+from urllib.parse import unquote
 
 import config
 
@@ -219,7 +220,14 @@ def find_ungrounded_links(answer, context):
     for url in cited_urls(answer):
         if url in ALWAYS_GROUNDED:
             continue
-        if url not in context and url not in seen:
+        # Compared decoded as well as verbatim. Pages write some addresses
+        # with raw spaces ("...Employment Guide 2014.pdf") and the answer
+        # cites them correctly encoded ("...Guide%202014.pdf"), and a verbatim
+        # match called the right link invented - a caution on an answer that
+        # had done exactly what it should.
+        if url in context or unquote(url) in context:
+            continue
+        if url not in seen:
             seen.add(url)
             bad.append(url)
     return bad

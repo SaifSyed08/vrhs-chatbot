@@ -207,6 +207,10 @@ def answer_for(question):
     # The front office's number rides on every context in /ask, so it rides
     # on every context here - and the judges grade against the same text.
     context = app.FRONT_OFFICE + "\n\n" + context
+    # The newest announcements, on the questions /ask adds them to.
+    latest = app.news_note(question, context)
+    if latest:
+        context = latest + "\n\n" + context
     # And the A/B day line, on the questions /ask adds it to.
     note = app.ab_day_note(question)
     if note:

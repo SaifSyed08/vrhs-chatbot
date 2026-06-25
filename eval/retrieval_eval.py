@@ -26,6 +26,7 @@ import numpy as np
 from openai import OpenAI
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from main import decode_embedding as app_decode  # noqa: E402
 import hallucination  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -79,7 +80,7 @@ def run():
     fx = json.load(open(FIXTURE, encoding="utf-8"))
     docs = json.load(open(EMBEDDINGS, encoding="utf-8"))
 
-    matrix = np.array([d["embedding"] for d in docs], dtype=np.float64)
+    matrix = np.vstack([app_decode(d["embedding"]) for d in docs]).astype(np.float64)
     matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)
     sources = [d["source"] for d in docs]
     texts = [d["text"] for d in docs]
