@@ -33,3 +33,10 @@ tzdata==2026.1
 # what makes it safe on a free instance - see pdfs.py for what it is and is
 # not asked to do.
 pypdf==6.18.0
+
+# Reads image sizes and converts formats for images.py, which transcribes the
+# text in the site's pictures at ingest. Without it every image fails the
+# size check and is skipped without a word - the refresh workflow installs
+# from this file, so a missing entry here silently turns the feature off.
+# 12.1.1 ships a cp311 manylinux wheel, checked before pinning.
+pillow==12.1.1
