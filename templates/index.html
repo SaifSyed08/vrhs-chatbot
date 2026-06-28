@@ -1663,6 +1663,32 @@
 
     .verify-line { margin: 1px 0; }
 
+    /* The "?" beside "Worth a second look". Small and quiet, in the note's
+       own amber, so it reads as part of the note rather than as a control
+       competing with the answer. */
+    .verify-why {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      margin-left: 6px;
+      padding: 0;
+      border: 1px solid #e8c88a;
+      border-radius: 50%;
+      background: #fff;
+      color: #9a7b3a;
+      font-family: inherit;
+      font-size: 0.68rem;
+      font-weight: 700;
+      line-height: 1;
+      vertical-align: 1px;
+      cursor: pointer;
+    }
+    .verify-why:hover { background: #fdf6e7; }
+    .note-points { margin: 0 0 12px 0; padding-left: 18px; }
+    .note-points li { margin: 4px 0; }
+
     /* ===================================================================
        Phones.
        ===================================================================
@@ -3469,6 +3495,7 @@
         // 2️⃣ show the user bubble
         appendMessage(message, 'user');
         if (window.stashPrompts) window.stashPrompts();
+        if (window.localizeComposer) window.localizeComposer(message);
         // Which question this is. A reader can ask again before the last
         // answer has finished, and only the newest one gets to rewrite the
         // suggestions - an older answer landing late would otherwise put
@@ -3775,6 +3802,18 @@
           const title = document.createElement("div");
           title.className = "verify-title";
           title.innerText = "Worth a second look";
+          // Asked for by a reader: what the note means, one tap away,
+          // rather than a warning with no reason given.
+          const why = document.createElement("button");
+          why.type = "button";
+          why.className = "verify-why";
+          why.textContent = "?";
+          why.setAttribute("aria-label", "Why am I seeing this note?");
+          const points = meta.notice.slice();
+          why.addEventListener("click", () => {
+            if (window.openNoteSheet) window.openNoteSheet(points);
+          });
+          title.appendChild(why);
           card.appendChild(title);
 
           meta.notice.forEach(point => {
@@ -4156,6 +4195,33 @@
     if (!pill || !box) return;
 
     const CHAT_PROMPT = box.getAttribute("placeholder") || "Ask about VRHS...";
+    // The conversation's prompt, in the language the reader last wrote in.
+    // The landing screen already cycles the invitation through the four
+    // languages it advertises; once a reader has asked in Spanish, an
+    // English "Ask about VRHS..." under a Spanish answer is the interface
+    // switching back on them.
+    const PROMPTS = {
+      en: CHAT_PROMPT,
+      es: "Pregunta sobre VRHS...",
+      hi: "VRHS के बारे में पूछें...",
+      zh: "询问关于 VRHS 的问题..."
+    };
+    let chatPrompt = CHAT_PROMPT;
+    const SPANISH = /\b(d[oó]nde|qu[eé]|c[oó]mo|cu[aá]ndo|cu[aá]l|qui[eé]n|es|el|la|los|las|para|por|hay|puedo|hola|gracias|escuela|clase|tengo|necesito)\b/gi;
+    const languageOf = (text) => {
+      if (/[\u0900-\u097F]/.test(text)) return "hi";
+      if (/[\u4e00-\u9fff]/.test(text)) return "zh";
+      const words = (text.match(SPANISH) || []).length;
+      if (/[ñ¿¡]/i.test(text) || words >= 2) return "es";
+      return "en";
+    };
+    window.localizeComposer = function (text) {
+      chatPrompt = PROMPTS[languageOf(text || "")] || CHAT_PROMPT;
+      if (!landing()) {
+        box.classList.remove("ph-fade");
+        setText(chatPrompt);
+      }
+    };
 
     // Bases without the dots. The dots are animated separately, so every
     // language gets them without four copies of the same three strings.
@@ -4198,7 +4264,7 @@
     const landing = () => document.body.classList.contains("compact")
                           && document.body.classList.contains("awaiting");
 
-    const resting = () => (landing() ? LANGS[0] + DOTS[2] : CHAT_PROMPT);
+    const resting = () => (landing() ? LANGS[0] + DOTS[2] : chatPrompt);
 
     const clearAll = function () {
       clearTimeout(timer);
@@ -4415,7 +4481,7 @@
       mode = "rest";
       base = LANGS[0];
       box.classList.remove("ph-fade");
-      if (!landing()) { setText(CHAT_PROMPT); return; }
+      if (!landing()) { setText(chatPrompt); return; }
       // Empty, so the typing has somewhere to start from.
       setText("");
       timer = setTimeout(startIntro, 260);
@@ -4464,7 +4530,7 @@
       clearAll();
       mode = "rest";
       box.classList.remove("ph-fade");
-      setText(CHAT_PROMPT);
+      setText(chatPrompt);
     }).observe(document.body, { attributes: true,
                                 attributeFilter: ["class"] });
   })();
@@ -4816,6 +4882,25 @@
     });
 
     // --- sources, by site ----------------------------------------------------
+    window.openNoteSheet = function (points) {
+      openSheet("About this note", true, (el) => {
+        para(el, "Every answer is checked against the pages it was written "
+               + "from before you see it. This note appears when part of the "
+               + "answer does not line up with those pages:", "sheet-lead");
+        const ul = document.createElement("ul");
+        ul.className = "note-points";
+        (points || []).forEach(t => {
+          const li = document.createElement("li");
+          li.textContent = t;
+          ul.appendChild(li);
+        });
+        el.appendChild(ul);
+        para(el, "It does not mean the answer is wrong - a detail may be "
+               + "worded differently from its source, or may not be in the "
+               + "pages at all. Check the linked sources before relying on it.");
+      });
+    };
+
     window.openSourcesSheet = function (sources) {
       // Grouped by site - by product, for Google's, so Docs and Sheets are
       // two groups though they share a host - in the order their best source

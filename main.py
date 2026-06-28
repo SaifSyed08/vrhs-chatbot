@@ -127,6 +127,12 @@ SYSTEM_PROMPT = (
     "it is on every page of the site as branding and in none of them as "
     "a sentence."
     "\n\n"
+    "Not every message is a question. To small talk - thanks, a greeting, a "
+    "compliment, a joke about yourself or about the reader - reply in a "
+    "sentence or two, warmly and in kind; playing along is fine (yes, they "
+    "are a cool guy). Do not repeat or carry on the previous answer, and do "
+    "not answer a different question than the one in front of you."
+    "\n\n"
     "Reply in the language the question was asked in. The pages this runs on are English and the context will be too, so answering a question asked in Spanish means translating what the context says - do that, and translate the link labels with it. Never translate an email address, a URL, a room number, or the name of a person, a club or a course: somebody has to type those into a form or say them at a front desk, and a translated proper noun is one that cannot be found. The composer invites questions in Spanish, Hindi and Chinese, so an English-only answer to one of them is the interface making a promise the reply does not keep."
     "\n\n"
     "Keep the formatting light. Short paragraphs, and a dash list when the answer really is a list. Markdown headings are rendered but they are heavy inside a chat bubble, so use one only when an answer has genuinely separate sections, and never above three hashes. The chat renders bold, links, headings and dash or numbered lists, and nothing else: never use a horizontal rule (---), a table or a code block - they reach the reader as raw symbols. Put a schedule in a list."
@@ -1703,7 +1709,8 @@ def get_relevant_context(query):
             if len(sources) >= MAX_SOURCES:
                 break
         seen.add(url)
-        sources.append({"url": url,
+        sources.append({"kind": docs[i].get("kind") or "prose",
+                        "url": url,
                         "label": docs[i].get("label") or source_label(url),
                         "score": round(float(sims[i]), 4),
                         "snippet": best_sentence(docs[i], query)})
@@ -1913,8 +1920,15 @@ def retrieval_query(question, history):
     if not previous:
         return question
 
+    # And the start of the bot's reply to it, because that is where the
+    # person or thing a pronoun points at was named. Asked "who teaches BC"
+    # and then "fun facts about her", the reader's own words never contain
+    # "Simoneau" - the answer does - so "her" was resolved against calculus
+    # teachers in general and found a different one.
+    replied = next((t["content"] for t in reversed(history)
+                    if t["role"] == "assistant"), "")
     log.info("[followup] embedding with prior turn: %s", question[:50])
-    return previous + " " + question
+    return " ".join(x for x in (previous, replied[:300], question) if x)
 
 
 FOLLOWUP_PROMPT = (
@@ -2090,6 +2104,22 @@ def ab_day_note(question):
         return ""
     rot = rotation()
     return rot.context_line(local_today()) if rot else ""
+
+
+def cited_sources(sources, answer):
+    """The sources worth a pill under this answer.
+
+    A page or document retrieval drew on stays, whether or not the answer
+    linked it - its text is what the answer is made of. A bare link is
+    different: its whole text is a label and an address, and it is only a
+    source if the answer used it. Retrieved for the label alone, it put
+    Barnes & Noble under "where is the library" and the Bureau of Labor
+    Statistics' "Occupational Outlook Handbook" under a question about the
+    student handbook.
+    """
+    cited = {u.rstrip("/") for u in hallucination.cited_urls(answer)}
+    return [s for s in sources
+            if s.get("kind", "prose") != "link" or s["url"].rstrip("/") in cited]
 
 
 def context_block(context, stats, live=None, live_leads=True):
@@ -2374,7 +2404,8 @@ def ask():
         # answer is its own kind of false confidence.
         meta = {
             "notice": verdict.notice_points(),
-            "sources": sources if verdict.retrieval_level != "none" else [],
+            "sources": cited_sources(sources, "".join(answer))
+                       if verdict.retrieval_level != "none" else [],
             "retrieval": {
                 "level": verdict.retrieval_level,
                 "top": verdict.retrieval_top,

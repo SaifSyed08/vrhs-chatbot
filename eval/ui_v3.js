@@ -91,7 +91,7 @@ async function newPage(browser, vp, mobile, keyboard) {
       p.__asks.push(JSON.parse(req.postData() || "{}"));
       const send = () => req.respond({ status: 200,
         contentType: "text/plain; charset=utf-8",
-        body: ANSWER + ":::meta" + META });
+        body: ANSWER + ":::meta" + (p.__meta || META) });
       // A queue of per-request delays when a test needs answers to finish
       // out of order; otherwise the one delay for every request.
       const wait = (p.__delays && p.__delays.length) ? p.__delays.shift() : p.__delay;
@@ -760,6 +760,37 @@ const landingFits = p => p.evaluate(() => {
     // out again; the composer keeps its one prompt.
     check("a tiny frame leaves the composer's prompt alone",
           seen.size === 1 && seen.has("Ask about VRHS..."), JSON.stringify([...seen]));
+    await p.close();
+  }
+
+  // ================= the composer's language, and the note's "?" =================
+  console.log("\n== composer language and the caution's ? ==");
+  {
+    const p = await newPage(browser, { width: 1100, height: 760 });
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await sleep(300);
+    p.__meta = JSON.stringify({ notice: ["Some details may not align with the sources below."],
+                                sources: SOURCES, retrieval: { level: "solid", top: 0.86 } });
+    await ask(p, "donde es la biblioteca?");
+    await sleep(1500);
+    const es = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
+    check("after a Spanish question the composer asks in Spanish", es === "Pregunta sobre VRHS...", es);
+    await p.click(".verify-why");
+    await sleep(600);
+    const note = await p.evaluate(() => {
+      const sh = document.querySelector(".sheet");
+      return sh && { title: sh.querySelector("h3").textContent,
+                     points: [...sh.querySelectorAll(".note-points li")].map(li => li.textContent) };
+    });
+    check("the caution's ? explains the note", note && note.title === "About this note"
+          && note.points[0] === "Some details may not align with the sources below.", JSON.stringify(note));
+    await p.keyboard.press("Escape");
+    await sleep(500);
+    p.__meta = null;
+    await ask(p, "where is the library?");
+    await sleep(1500);
+    const en = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
+    check("and back in English after an English one", en === "Ask about VRHS...", en);
     await p.close();
   }
 
