@@ -763,8 +763,8 @@ const landingFits = p => p.evaluate(() => {
     await p.close();
   }
 
-  // ================= the composer's language, and the note's "?" =================
-  console.log("\n== composer language and the caution's ? ==");
+  // ================= the composer's language =================
+  console.log("\n== composer language ==");
   {
     const p = await newPage(browser, { width: 1100, height: 760 });
     await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
@@ -775,17 +775,8 @@ const landingFits = p => p.evaluate(() => {
     await sleep(1500);
     const es = await p.evaluate(() => document.getElementById("query").getAttribute("placeholder"));
     check("after a Spanish question the composer asks in Spanish", es === "Pregunta sobre VRHS...", es);
-    await p.click(".verify-why");
-    await sleep(600);
-    const note = await p.evaluate(() => {
-      const sh = document.querySelector(".sheet");
-      return sh && { title: sh.querySelector("h3").textContent,
-                     points: [...sh.querySelectorAll(".note-points li")].map(li => li.textContent) };
-    });
-    check("the caution's ? explains the note", note && note.title === "About this note"
-          && note.points[0] === "Some details may not align with the sources below.", JSON.stringify(note));
-    await p.keyboard.press("Escape");
-    await sleep(500);
+    check("the caution note has no ? button",
+          await p.evaluate(() => !!document.querySelector(".verify-card") && !document.querySelector(".verify-card button")));
     p.__meta = null;
     await ask(p, "where is the library?");
     await sleep(1500);

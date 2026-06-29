@@ -1663,32 +1663,6 @@
 
     .verify-line { margin: 1px 0; }
 
-    /* The "?" beside "Worth a second look". Small and quiet, in the note's
-       own amber, so it reads as part of the note rather than as a control
-       competing with the answer. */
-    .verify-why {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      margin-left: 6px;
-      padding: 0;
-      border: 1px solid #e8c88a;
-      border-radius: 50%;
-      background: #fff;
-      color: #9a7b3a;
-      font-family: inherit;
-      font-size: 0.68rem;
-      font-weight: 700;
-      line-height: 1;
-      vertical-align: 1px;
-      cursor: pointer;
-    }
-    .verify-why:hover { background: #fdf6e7; }
-    .note-points { margin: 0 0 12px 0; padding-left: 18px; }
-    .note-points li { margin: 4px 0; }
-
     /* ===================================================================
        Phones.
        ===================================================================
@@ -3802,18 +3776,6 @@
           const title = document.createElement("div");
           title.className = "verify-title";
           title.innerText = "Worth a second look";
-          // Asked for by a reader: what the note means, one tap away,
-          // rather than a warning with no reason given.
-          const why = document.createElement("button");
-          why.type = "button";
-          why.className = "verify-why";
-          why.textContent = "?";
-          why.setAttribute("aria-label", "Why am I seeing this note?");
-          const points = meta.notice.slice();
-          why.addEventListener("click", () => {
-            if (window.openNoteSheet) window.openNoteSheet(points);
-          });
-          title.appendChild(why);
           card.appendChild(title);
 
           meta.notice.forEach(point => {
@@ -4882,25 +4844,6 @@
     });
 
     // --- sources, by site ----------------------------------------------------
-    window.openNoteSheet = function (points) {
-      openSheet("About this note", true, (el) => {
-        para(el, "Every answer is checked against the pages it was written "
-               + "from before you see it. This note appears when part of the "
-               + "answer does not line up with those pages:", "sheet-lead");
-        const ul = document.createElement("ul");
-        ul.className = "note-points";
-        (points || []).forEach(t => {
-          const li = document.createElement("li");
-          li.textContent = t;
-          ul.appendChild(li);
-        });
-        el.appendChild(ul);
-        para(el, "It does not mean the answer is wrong - a detail may be "
-               + "worded differently from its source, or may not be in the "
-               + "pages at all. Check the linked sources before relying on it.");
-      });
-    };
-
     window.openSourcesSheet = function (sources) {
       // Grouped by site - by product, for Google's, so Docs and Sheets are
       // two groups though they share a host - in the order their best source
