@@ -1544,6 +1544,19 @@
 
     .pill-tip.show { opacity: 1; transform: translateY(0); }
 
+    /* The site's icon at the start of a link's panel: smaller than the
+       pill's disc, sitting on the text's line, and without the white ring
+       that only matters where discs overlap. */
+    .pill-tip .fav {
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
+      vertical-align: -4px;
+      box-shadow: none;
+      font-size: 0.56rem;
+    }
+    .pill-tip .fav img { width: 12px; height: 12px; }
+
     /* Sits on the last line of the text rather than on its own row, so a
        one-line panel stays one line. */
     .tip-arrow {
@@ -2853,7 +2866,7 @@
       // inside an answer. Appended to the body rather than to the element it
       // describes: as a child it inherits the message list's clipping, and
       // fixed positioning only escapes that from the top of the document.
-      function attachTip(el, text, external) {
+      function attachTip(el, text, external, site) {
         const tip = document.createElement("span");
         tip.className = "pill-tip";
         // textContent, not innerHTML. This is text scraped off the web and
@@ -2861,6 +2874,11 @@
         // is appended as its own element rather than concatenated into the
         // string.
         tip.textContent = text;
+
+        // A link's panel leads with the icon of the site it opens, the same
+        // disc its source pill would carry, so "Opens Google Doc" and the
+        // Docs icon say the same thing at a glance.
+        if (site) tip.prepend(makeFav(site));
 
         if (external) {
           // The panel already says "Opens the district site", and a reader
@@ -3028,15 +3046,16 @@
         if (host === "drive.google.com") return google("drive", "Google Drive");
         if (host === "sites.google.com") return google("sites", "Google Sites");
         if (host === "calendar.google.com") return google("calendar", "Google Calendar");
+        // Everything else through the app's own route, which asks Google's
+        // favicon service and falls back to the icon the site declares
+        // (Google has none for the school's own site).
         return { key: host, label: SITE_NAMES[host] || host, host: host,
-                 icon: "https://www.google.com/s2/favicons?sz=64&domain="
-                       + encodeURIComponent(host) };
+                 icon: "/site-icon/" + encodeURIComponent(host) };
       }
 
       // A source's icon in a small disc. Google's products get their own
-      // (see siteOf); anything else comes from Google's favicon service,
-      // because the school and district sites serve theirs from paths that
-      // differ page to page. If it fails to load, the disc shows the site's
+      // (see siteOf); anything else comes from /site-icon, because the school
+      // and district sites serve theirs from paths that differ page to page. If it fails to load, the disc shows the site's
       // first letter rather than a broken image.
       function makeFav(url) {
         const site = siteOf(url);
@@ -3656,7 +3675,7 @@
         // been parsed.
         bubble.querySelectorAll("a[href]").forEach(a => {
           const where = describeLink(a.getAttribute("href"));
-          if (where) attachTip(a, where, true);
+          if (where) attachTip(a, where, true, a.getAttribute("href"));
         });
 
         // 4) source pills and the verification notice

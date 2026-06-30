@@ -327,7 +327,7 @@ const landingFits = p => p.evaluate(() => {
     const icons = await p.evaluate(() => [...document.querySelectorAll(".source-stack .fav img")]
       .map(i => i.getAttribute("src").replace(/^https:\/\/[^/]+/, "")));
     check("a Google Doc gets the Docs icon, not Google's G",
-          icons.some(s => /docs_2020q4/.test(s)) && icons.some(s => /s2\/favicons/.test(s)),
+          icons.some(s => /docs_2020q4/.test(s)) && icons.some(s => /\/site-icon\//.test(s)),
           JSON.stringify(icons));
 
     const btn = await p.evaluate(() => {
@@ -760,6 +760,33 @@ const landingFits = p => p.evaluate(() => {
     // out again; the composer keeps its one prompt.
     check("a tiny frame leaves the composer's prompt alone",
           seen.size === 1 && seen.has("Ask about VRHS..."), JSON.stringify([...seen]));
+    await p.close();
+  }
+
+  // ================= a link's panel carries its site's icon =================
+  console.log("\n== link hover icon ==");
+  {
+    const p = await newPage(browser, { width: 1100, height: 760 });
+    await p.goto(BASE + "/widget", { waitUntil: "networkidle2" });
+    await sleep(300);
+    await ask(p, "when does school start?");
+    await sleep(1500);
+    const a = await p.$('.chat-bubble a[href*="bell-schedules"]');
+    await a.hover();
+    await sleep(400);
+    const tip = await p.evaluate(() => {
+      const t = [...document.querySelectorAll(".pill-tip.show")].pop();
+      if (!t) return null;
+      const img = t.querySelector(".fav img");
+      const fav = t.querySelector(".fav");
+      const box = fav && fav.getBoundingClientRect();
+      return { text: t.textContent, first: t.firstChild === fav,
+               src: img && img.src, w: box && Math.round(box.width) };
+    });
+    check("hovering a link shows its site's icon first in the panel",
+          tip && tip.first && /vrhs\.leanderisd\.org/.test(decodeURIComponent(tip.src || ""))
+          && tip.text === "Opens the school site" && tip.w === 16, JSON.stringify(tip));
+    await shot(p, "link-tip-favicon");
     await p.close();
   }
 

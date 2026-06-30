@@ -14,7 +14,7 @@ import re
 import traceback
 import collections
 from collections import OrderedDict, deque
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 from zoneinfo import ZoneInfo
 import abdays
 import config
@@ -1827,6 +1827,120 @@ def widget():
     """
     return render_template("index.html", compact=True,
                            v3=request.args.get("v") != "2")
+
+
+# The small icon shown beside a source or a link. Google's favicon service
+# knows most sites, but not every one: it has never picked up the school's
+# own site, whose icon is declared in its <link rel="icon"> and served from a
+# Google Sites image address, so every link to the school showed the
+# service's generic globe - with a 404 status the browser renders anyway, so
+# the page cannot tell a real icon from the placeholder. This asks Google
+# first and, when Google has nothing, reads the icon the site itself
+# declares. Only for hosts the index actually holds, so the route cannot be
+# used to make the server fetch arbitrary addresses.
+FAVICON_SERVICE = "https://www.google.com/s2/favicons?sz=64&domain="
+SITE_ICON_SIZE = 64
+SITE_ICON_MAX_BYTES = 4_000_000
+_SITE_ICONS = {}
+_ICON_HOSTS = {"docs": None, "hosts": frozenset()}
+_HOST_IN_TEXT = re.compile(r"https?://([A-Za-z0-9.-]+)")
+
+
+def bare_host(host):
+    host = host.lower().rstrip(".")
+    return host[4:] if host.startswith("www.") else host
+
+
+def icon_hosts():
+    """Every host the index can show a reader: sources, and addresses in text."""
+    docs, _ = load_index()
+    if _ICON_HOSTS["docs"] is not docs:
+        hosts = set()
+        for d in docs:
+            for m in _HOST_IN_TEXT.finditer((d.get("source") or "") + " "
+                                            + (d.get("text") or "")):
+                hosts.add(bare_host(m.group(1)))
+        _ICON_HOSTS["docs"], _ICON_HOSTS["hosts"] = docs, frozenset(hosts)
+    return _ICON_HOSTS["hosts"]
+
+
+def _as_png(data):
+    """An icon file of any format Pillow reads, as a square 64px PNG."""
+    import io
+    from PIL import Image
+    im = Image.open(io.BytesIO(data))
+    im.load()
+    im = im.convert("RGBA")
+    im.thumbnail((SITE_ICON_SIZE, SITE_ICON_SIZE), Image.LANCZOS)
+    square = Image.new("RGBA", (SITE_ICON_SIZE, SITE_ICON_SIZE), (0, 0, 0, 0))
+    square.paste(im, ((SITE_ICON_SIZE - im.width) // 2,
+                      (SITE_ICON_SIZE - im.height) // 2))
+    out = io.BytesIO()
+    square.save(out, "PNG", optimize=True)
+    return out.getvalue()
+
+
+def _get_icon(url):
+    import requests
+    r = requests.get(url, timeout=8, stream=True,
+                     headers={"User-Agent": livesearch.UA})
+    if r.status_code != 200:
+        return None
+    data = r.raw.read(SITE_ICON_MAX_BYTES + 1, decode_content=True)
+    if len(data) > SITE_ICON_MAX_BYTES:
+        return None
+    return _as_png(data)
+
+
+def fetch_site_icon(host):
+    """PNG bytes of a host's icon, or None if neither Google nor the site has one."""
+    import requests
+    from bs4 import BeautifulSoup
+    try:
+        got = _get_icon(FAVICON_SERVICE + host)
+        if got:
+            return got
+    except Exception as e:
+        log.info("[icon] favicon service failed for %s: %s", host, e)
+    candidates = []
+    for home in ("https://" + host + "/", "https://www." + host + "/"):
+        try:
+            page = requests.get(home, timeout=8,
+                                headers={"User-Agent": livesearch.UA})
+            if page.status_code != 200:
+                continue
+            soup = BeautifulSoup(page.text, "html.parser")
+            for link in soup.find_all("link", href=True):
+                rel = " ".join(link.get("rel") or []).lower()
+                if "icon" in rel:
+                    candidates.append(urljoin(page.url, link["href"]))
+            candidates.append(urljoin(page.url, "/favicon.ico"))
+            break
+        except Exception as e:
+            log.info("[icon] could not read %s: %s", home, e)
+    for url in candidates:
+        try:
+            got = _get_icon(url)
+            if got:
+                return got
+        except Exception as e:
+            log.info("[icon] %s: %s", url, e)
+    return None
+
+
+@app.route("/site-icon/<host>")
+def site_icon(host):
+    host = bare_host(host)
+    if host not in icon_hosts():
+        return Response(status=404)
+    if host not in _SITE_ICONS:
+        _SITE_ICONS[host] = fetch_site_icon(host)
+    png = _SITE_ICONS[host]
+    if not png:
+        # No body, so the page's image errors and shows the site's letter.
+        return Response(status=404, headers={"Cache-Control": "public, max-age=86400"})
+    return Response(png, mimetype="image/png",
+                    headers={"Cache-Control": "public, max-age=604800"})
 
 
 @app.route("/report", methods=["POST"])
