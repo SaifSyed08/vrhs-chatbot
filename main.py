@@ -1836,12 +1836,34 @@ def widget():
 # service's generic globe - with a 404 status the browser renders anyway, so
 # the page cannot tell a real icon from the placeholder. This asks Google
 # first and, when Google has nothing, reads the icon the site itself
-# declares. Only for hosts the index actually holds, so the route cannot be
-# used to make the server fetch arbitrary addresses.
+# declares.
+#
+# It fetches third-party addresses from inside the app, so it is fenced:
+#  - only for hosts the index holds; any other host is sent on to Google's
+#    service from the reader's browser, which is what every icon did before;
+#  - every address, including each redirect and wherever a page's
+#    <link rel="icon"> points, must resolve to public addresses only;
+#  - bodies are capped in bytes, and images in pixels before they are
+#    decoded, since a small PNG can unpack to hundreds of megabytes on a
+#    512 MB instance;
+#  - fetching happens on two background threads under an overall deadline,
+#    and a request waits for it only briefly, so a slow or dead site costs
+#    a reader a missing icon rather than holding one of the eight threads
+#    that stream answers;
+#  - a site with no icon is remembered for a day, a fetch that failed for
+#    ten minutes, so one timeout does not mean a letter until the restart.
 FAVICON_SERVICE = "https://www.google.com/s2/favicons?sz=64&domain="
 SITE_ICON_SIZE = 64
-SITE_ICON_MAX_BYTES = 4_000_000
-_SITE_ICONS = {}
+SITE_ICON_MAX_BYTES = 2_000_000
+SITE_ICON_MAX_PIXELS = 9_000_000      # 3000 x 3000; the school's is 2344 x 2344
+SITE_PAGE_MAX_BYTES = 2_000_000
+SITE_ICON_DEADLINE = 20               # seconds for one host, all attempts
+SITE_ICON_WAIT = 6                    # seconds a request waits for a cold fetch
+SITE_ICON_TTL = {"found": 7 * 86400, "none": 86400, "failed": 600}
+_SITE_ICONS = {}                      # host -> (png or None, outcome, expires)
+_ICON_PENDING = {}
+_ICON_LOCK = threading.Lock()
+_ICON_POOL = None
 _ICON_HOSTS = {"docs": None, "hosts": frozenset()}
 _HOST_IN_TEXT = re.compile(r"https?://([A-Za-z0-9.-]+)")
 
@@ -1864,11 +1886,62 @@ def icon_hosts():
     return _ICON_HOSTS["hosts"]
 
 
+def public_address(url):
+    """True if the URL is http(s) and its host resolves only to public addresses."""
+    import ipaddress
+    import socket
+    u = urlparse(url)
+    if u.scheme not in ("http", "https") or not u.hostname:
+        return False
+    try:
+        infos = socket.getaddrinfo(u.hostname, u.port or 443,
+                                   proto=socket.IPPROTO_TCP)
+    except (OSError, ValueError):
+        return False
+    try:
+        return bool(infos) and all(
+            ipaddress.ip_address(info[4][0].split("%")[0]).is_global
+            for info in infos)
+    except ValueError:
+        return False
+
+
+def _icon_get(url, limit, deadline):
+    """(body, final url) for a GET, or (None, url) if refused or not a 200.
+
+    Redirects are followed by hand so each hop is checked to be public.
+    Network errors propagate; the caller counts them as a failed fetch.
+    """
+    import requests
+    for _ in range(4):
+        if time.monotonic() > deadline:
+            raise TimeoutError("icon deadline")
+        if not public_address(url):
+            return None, url
+        r = requests.get(url, timeout=(4, 6), stream=True,
+                         allow_redirects=False,
+                         headers={"User-Agent": livesearch.UA})
+        try:
+            if r.is_redirect and r.headers.get("location"):
+                url = urljoin(url, r.headers["location"])
+                continue
+            if r.status_code != 200:
+                return None, url
+            data = r.raw.read(limit + 1, decode_content=True)
+            return (data if len(data) <= limit else None), url
+        finally:
+            r.close()
+    return None, url
+
+
 def _as_png(data):
-    """An icon file of any format Pillow reads, as a square 64px PNG."""
+    """An icon file of any format Pillow reads, as a square 64px PNG, or None."""
     import io
     from PIL import Image
     im = Image.open(io.BytesIO(data))
+    # The header alone gives the size; refuse before decoding any pixels.
+    if im.width * im.height > SITE_ICON_MAX_PIXELS:
+        return None
     im.load()
     im = im.convert("RGBA")
     im.thumbnail((SITE_ICON_SIZE, SITE_ICON_SIZE), Image.LANCZOS)
@@ -1880,65 +1953,113 @@ def _as_png(data):
     return out.getvalue()
 
 
-def _get_icon(url):
-    import requests
-    r = requests.get(url, timeout=8, stream=True,
-                     headers={"User-Agent": livesearch.UA})
-    if r.status_code != 200:
-        return None
-    data = r.raw.read(SITE_ICON_MAX_BYTES + 1, decode_content=True)
-    if len(data) > SITE_ICON_MAX_BYTES:
-        return None
-    return _as_png(data)
-
-
 def fetch_site_icon(host):
-    """PNG bytes of a host's icon, or None if neither Google nor the site has one."""
+    """(png or None, outcome): "found", "none" (no icon anywhere) or "failed"."""
+    import base64
     import requests
     from bs4 import BeautifulSoup
-    try:
-        got = _get_icon(FAVICON_SERVICE + host)
-        if got:
-            return got
-    except Exception as e:
-        log.info("[icon] favicon service failed for %s: %s", host, e)
+    deadline = time.monotonic() + SITE_ICON_DEADLINE
+    failed = False
+
+    def attempt(url):
+        nonlocal failed
+        try:
+            if url.startswith("data:image") and ";base64," in url:
+                data = base64.b64decode(url.split(",", 1)[1], validate=False)
+            else:
+                data, _ = _icon_get(url, SITE_ICON_MAX_BYTES, deadline)
+            return _as_png(data) if data else None
+        except (requests.RequestException, OSError, TimeoutError) as e:
+            # OSError also covers Pillow's "cannot identify image file", which
+            # is a real answer rather than a failure - tell them apart.
+            if type(e).__name__ == "UnidentifiedImageError":
+                return None
+            failed = True
+            log.info("[icon] %s: %s", url[:120], e)
+            return None
+        except Exception as e:
+            log.info("[icon] %s: %s", url[:120], e)
+            return None
+
+    got = attempt(FAVICON_SERVICE + host)
+    if got:
+        return got, "found"
+
     candidates = []
     for home in ("https://" + host + "/", "https://www." + host + "/"):
         try:
-            page = requests.get(home, timeout=8,
-                                headers={"User-Agent": livesearch.UA})
-            if page.status_code != 200:
-                continue
-            soup = BeautifulSoup(page.text, "html.parser")
-            for link in soup.find_all("link", href=True):
-                rel = " ".join(link.get("rel") or []).lower()
-                if "icon" in rel:
-                    candidates.append(urljoin(page.url, link["href"]))
-            candidates.append(urljoin(page.url, "/favicon.ico"))
-            break
-        except Exception as e:
+            page, final = _icon_get(home, SITE_PAGE_MAX_BYTES, deadline)
+        except (requests.RequestException, OSError, TimeoutError) as e:
+            failed = True
             log.info("[icon] could not read %s: %s", home, e)
-    for url in candidates:
-        try:
-            got = _get_icon(url)
-            if got:
-                return got
-        except Exception as e:
-            log.info("[icon] %s: %s", url, e)
-    return None
+            continue
+        if not page:
+            continue
+        soup = BeautifulSoup(page, "html.parser")
+        for link in soup.find_all("link", href=True):
+            rel = " ".join(link.get("rel") or []).lower()
+            if "icon" in rel:
+                candidates.append(urljoin(final, link["href"].strip()))
+        candidates.append(urljoin(final, "/favicon.ico"))
+        break
+    # Even with no readable home page, the conventional address may answer.
+    candidates += ["https://" + host + "/favicon.ico",
+                   "https://www." + host + "/favicon.ico"]
+    for url in dict.fromkeys(candidates):
+        got = attempt(url)
+        if got:
+            return got, "found"
+    return None, ("failed" if failed else "none")
+
+
+def _fill_site_icon(host):
+    try:
+        png, outcome = fetch_site_icon(host)
+    except Exception as e:
+        log.info("[icon] %s: %s", host, e)
+        png, outcome = None, "failed"
+    with _ICON_LOCK:
+        _SITE_ICONS[host] = (png, outcome,
+                             time.monotonic() + SITE_ICON_TTL[outcome])
+        _ICON_PENDING.pop(host, None)
+    return png, outcome
 
 
 @app.route("/site-icon/<host>")
 def site_icon(host):
+    global _ICON_POOL
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as Waited
+    from flask import redirect
     host = bare_host(host)
     if host not in icon_hosts():
-        return Response(status=404)
-    if host not in _SITE_ICONS:
-        _SITE_ICONS[host] = fetch_site_icon(host)
-    png = _SITE_ICONS[host]
+        # Not ours to fetch; the reader's browser can ask Google directly.
+        return redirect(FAVICON_SERVICE + host, code=302)
+    with _ICON_LOCK:
+        hit = _SITE_ICONS.get(host)
+        if hit and hit[2] > time.monotonic():
+            job = None
+        else:
+            hit = None
+            job = _ICON_PENDING.get(host)
+            if job is None:
+                if _ICON_POOL is None:
+                    _ICON_POOL = ThreadPoolExecutor(max_workers=2,
+                                                    thread_name_prefix="icon")
+                job = _ICON_POOL.submit(_fill_site_icon, host)
+                _ICON_PENDING[host] = job
+    if hit:
+        png, outcome = hit[0], hit[1]
+    else:
+        try:
+            png, outcome = job.result(timeout=SITE_ICON_WAIT)
+        except Waited:
+            # Still fetching. The letter for now; the next load gets the icon.
+            return Response(status=404, headers={"Cache-Control": "no-store"})
     if not png:
         # No body, so the page's image errors and shows the site's letter.
-        return Response(status=404, headers={"Cache-Control": "public, max-age=86400"})
+        age = 86400 if outcome == "none" else 600
+        return Response(status=404,
+                        headers={"Cache-Control": "public, max-age=%d" % age})
     return Response(png, mimetype="image/png",
                     headers={"Cache-Control": "public, max-age=604800"})
 
