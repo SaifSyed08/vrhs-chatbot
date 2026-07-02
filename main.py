@@ -1843,19 +1843,28 @@ def widget():
 #    service from the reader's browser, which is what every icon did before;
 #  - every address, including each redirect and wherever a page's
 #    <link rel="icon"> points, must resolve to public addresses only;
-#  - bodies are capped in bytes, and images in pixels before they are
-#    decoded, since a small PNG can unpack to hundreds of megabytes on a
-#    512 MB instance;
+#  - bodies are capped in bytes and in time, read a piece at a time so a
+#    server dripping a byte every few seconds cannot hold a thread;
+#  - images are capped in pixels from what their headers declare, before
+#    Pillow opens them (its ICO reader decodes the largest frame on open),
+#    since a small file can unpack to hundreds of megabytes on a 512 MB
+#    instance, and are decoded one at a time;
 #  - fetching happens on two background threads under an overall deadline,
-#    and a request waits for it only briefly, so a slow or dead site costs
-#    a reader a missing icon rather than holding one of the eight threads
-#    that stream answers;
-#  - a site with no icon is remembered for a day, a fetch that failed for
-#    ten minutes, so one timeout does not mean a letter until the restart.
+#    and a request waits for it only briefly - not at all when the threads
+#    are busy - so a slow or dead site costs a reader a missing icon rather
+#    than holding one of the eight threads that stream answers;
+#  - a site with no icon is remembered for a day, a fetch that failed (a
+#    timeout, a 5xx or 429, a DNS failure) for ten minutes, and an icon past
+#    its week is still served while it is fetched again.
+# Not fenced: DNS rebinding. The address is resolved to be checked and then
+# again to be fetched, so a name with a zero TTL could change in between.
+# What that buys is a blind GET whose body comes back only if it decodes as
+# an image, from an instance with nothing internal worth reaching.
 FAVICON_SERVICE = "https://www.google.com/s2/favicons?sz=64&domain="
 SITE_ICON_SIZE = 64
 SITE_ICON_MAX_BYTES = 2_000_000
 SITE_ICON_MAX_PIXELS = 9_000_000      # 3000 x 3000; the school's is 2344 x 2344
+SITE_ICON_FORMATS = ["PNG", "ICO", "GIF", "JPEG", "BMP", "WEBP"]
 SITE_PAGE_MAX_BYTES = 2_000_000
 SITE_ICON_DEADLINE = 20               # seconds for one host, all attempts
 SITE_ICON_WAIT = 6                    # seconds a request waits for a cold fetch
@@ -1863,6 +1872,11 @@ SITE_ICON_TTL = {"found": 7 * 86400, "none": 86400, "failed": 600}
 _SITE_ICONS = {}                      # host -> (png or None, outcome, expires)
 _ICON_PENDING = {}
 _ICON_LOCK = threading.Lock()
+_ICON_DECODE = threading.Lock()
+
+
+class IconFetchFailed(Exception):
+    """A fetch that may succeed later: a 5xx, a 429, a name that did not resolve."""
 _ICON_POOL = None
 _ICON_HOSTS = {"docs": None, "hosts": frozenset()}
 _HOST_IN_TEXT = re.compile(r"https?://([A-Za-z0-9.-]+)")
@@ -1887,17 +1901,23 @@ def icon_hosts():
 
 
 def public_address(url):
-    """True if the URL is http(s) and its host resolves only to public addresses."""
+    """True if the URL is http(s) and its host resolves only to public addresses.
+
+    None if the name did not resolve, which may be a passing failure.
+    """
     import ipaddress
     import socket
     u = urlparse(url)
     if u.scheme not in ("http", "https") or not u.hostname:
         return False
     try:
-        infos = socket.getaddrinfo(u.hostname, u.port or 443,
-                                   proto=socket.IPPROTO_TCP)
-    except (OSError, ValueError):
+        port = u.port or 443
+    except ValueError:
         return False
+    try:
+        infos = socket.getaddrinfo(u.hostname, port, proto=socket.IPPROTO_TCP)
+    except OSError:
+        return None
     try:
         return bool(infos) and all(
             ipaddress.ip_address(info[4][0].split("%")[0]).is_global
@@ -1916,7 +1936,10 @@ def _icon_get(url, limit, deadline):
     for _ in range(4):
         if time.monotonic() > deadline:
             raise TimeoutError("icon deadline")
-        if not public_address(url):
+        allowed = public_address(url)
+        if allowed is None:
+            raise IconFetchFailed("did not resolve: " + url[:80])
+        if not allowed:
             return None, url
         r = requests.get(url, timeout=(4, 6), stream=True,
                          allow_redirects=False,
@@ -1925,26 +1948,82 @@ def _icon_get(url, limit, deadline):
             if r.is_redirect and r.headers.get("location"):
                 url = urljoin(url, r.headers["location"])
                 continue
+            if r.status_code == 429 or r.status_code >= 500:
+                raise IconFetchFailed("%d from %s" % (r.status_code, url[:80]))
             if r.status_code != 200:
                 return None, url
-            data = r.raw.read(limit + 1, decode_content=True)
-            return (data if len(data) <= limit else None), url
+            # read1, not read: read(n) keeps receiving until it has n bytes,
+            # so a server sending a byte every few seconds never trips the
+            # per-receive timeout. read1 returns after one receive, and the
+            # deadline is checked between them.
+            parts, size = [], 0
+            while size <= limit:
+                if time.monotonic() > deadline:
+                    raise TimeoutError("icon deadline, mid-body")
+                part = r.raw.read1(65536, decode_content=True)
+                if not part:
+                    break
+                parts.append(part)
+                size += len(part)
+            return (b"".join(parts) if size <= limit else None), url
         finally:
             r.close()
     return None, url
 
 
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def declared_too_big(data):
+    """True if any image in the file declares more pixels than the cap.
+
+    Read from the bytes, because Pillow's ICO reader decodes the largest
+    frame while opening the file - an ICO whose directory says 16x16 can
+    hold a 9400x9400 PNG, and was decoded (325 MB) before any size check.
+    Every PNG header anywhere in the file is checked, which covers PNG
+    frames in an ICO, and each BMP frame of an ICO by its own header.
+    """
+    import struct
+    i = data.find(PNG_SIGNATURE)
+    while i != -1:
+        if len(data) < i + 24:
+            return True
+        w, h = struct.unpack(">II", data[i + 16:i + 24])
+        if w * h > SITE_ICON_MAX_PIXELS:
+            return True
+        i = data.find(PNG_SIGNATURE, i + 1)
+    if data[:4] == b"\x00\x00\x01\x00":
+        count = struct.unpack("<H", data[4:6])[0]
+        for k in range(count):
+            entry = 6 + 16 * k
+            if len(data) < entry + 16:
+                return True
+            offset = struct.unpack("<I", data[entry + 12:entry + 16])[0]
+            if data[offset:offset + 8] == PNG_SIGNATURE:
+                continue
+            if len(data) < offset + 12:
+                return True
+            w, h = struct.unpack("<ii", data[offset + 4:offset + 12])
+            if abs(w) * (abs(h) // 2) > SITE_ICON_MAX_PIXELS:
+                return True
+    return False
+
+
 def _as_png(data):
-    """An icon file of any format Pillow reads, as a square 64px PNG, or None."""
+    """An icon file in a usual icon format, as a square 64px PNG, or None."""
     import io
     from PIL import Image
-    im = Image.open(io.BytesIO(data))
-    # The header alone gives the size; refuse before decoding any pixels.
-    if im.width * im.height > SITE_ICON_MAX_PIXELS:
+    if declared_too_big(data):
         return None
-    im.load()
-    im = im.convert("RGBA")
-    im.thumbnail((SITE_ICON_SIZE, SITE_ICON_SIZE), Image.LANCZOS)
+    # One at a time: two 9M-pixel icons decoding at once is 150 MB.
+    with _ICON_DECODE:
+        im = Image.open(io.BytesIO(data), formats=SITE_ICON_FORMATS)
+        # The header gives the size; refuse before decoding any pixels.
+        if im.width * im.height > SITE_ICON_MAX_PIXELS:
+            return None
+        im.load()
+        im = im.convert("RGBA")
+        im.thumbnail((SITE_ICON_SIZE, SITE_ICON_SIZE), Image.LANCZOS)
     square = Image.new("RGBA", (SITE_ICON_SIZE, SITE_ICON_SIZE), (0, 0, 0, 0))
     square.paste(im, ((SITE_ICON_SIZE - im.width) // 2,
                       (SITE_ICON_SIZE - im.height) // 2))
@@ -1957,9 +2036,15 @@ def fetch_site_icon(host):
     """(png or None, outcome): "found", "none" (no icon anywhere) or "failed"."""
     import base64
     import requests
+    import urllib3
     from bs4 import BeautifulSoup
+    from PIL import UnidentifiedImageError
     deadline = time.monotonic() + SITE_ICON_DEADLINE
     failed = False
+    # Worth trying again later. urllib3's own errors (a read timeout or a
+    # reset mid-body) are none of requests', OSError or TimeoutError.
+    transient = (requests.RequestException, urllib3.exceptions.HTTPError,
+                 IconFetchFailed, OSError, TimeoutError)
 
     def attempt(url):
         nonlocal failed
@@ -1969,11 +2054,11 @@ def fetch_site_icon(host):
             else:
                 data, _ = _icon_get(url, SITE_ICON_MAX_BYTES, deadline)
             return _as_png(data) if data else None
-        except (requests.RequestException, OSError, TimeoutError) as e:
-            # OSError also covers Pillow's "cannot identify image file", which
-            # is a real answer rather than a failure - tell them apart.
-            if type(e).__name__ == "UnidentifiedImageError":
-                return None
+        except UnidentifiedImageError:
+            # Not an image (an SVG, an HTML error page): a real answer, and
+            # an OSError, so it is caught before the transient ones.
+            return None
+        except transient as e:
             failed = True
             log.info("[icon] %s: %s", url[:120], e)
             return None
@@ -1989,7 +2074,7 @@ def fetch_site_icon(host):
     for home in ("https://" + host + "/", "https://www." + host + "/"):
         try:
             page, final = _icon_get(home, SITE_PAGE_MAX_BYTES, deadline)
-        except (requests.RequestException, OSError, TimeoutError) as e:
+        except transient as e:
             failed = True
             log.info("[icon] could not read %s: %s", home, e)
             continue
@@ -2019,6 +2104,10 @@ def _fill_site_icon(host):
         log.info("[icon] %s: %s", host, e)
         png, outcome = None, "failed"
     with _ICON_LOCK:
+        old = _SITE_ICONS.get(host)
+        if not png and outcome == "failed" and old and old[0]:
+            # A refetch that failed keeps the icon it was replacing.
+            png = old[0]
         _SITE_ICONS[host] = (png, outcome,
                              time.monotonic() + SITE_ICON_TTL[outcome])
         _ICON_PENDING.pop(host, None)
@@ -2036,22 +2125,27 @@ def site_icon(host):
         return redirect(FAVICON_SERVICE + host, code=302)
     with _ICON_LOCK:
         hit = _SITE_ICONS.get(host)
-        if hit and hit[2] > time.monotonic():
-            job = None
-        else:
-            hit = None
+        job, wait = None, 0
+        if not hit or hit[2] <= time.monotonic():
             job = _ICON_PENDING.get(host)
             if job is None:
                 if _ICON_POOL is None:
                     _ICON_POOL = ThreadPoolExecutor(max_workers=2,
                                                     thread_name_prefix="icon")
+                # Wait only if this fetch can start now. Behind others it
+                # would hold a request thread for nothing.
+                wait = SITE_ICON_WAIT if len(_ICON_PENDING) < 2 else 0
                 job = _ICON_POOL.submit(_fill_site_icon, host)
                 _ICON_PENDING[host] = job
+            if hit and hit[0]:
+                job = None          # an expired icon still serves meanwhile
+            else:
+                hit = None
     if hit:
         png, outcome = hit[0], hit[1]
     else:
         try:
-            png, outcome = job.result(timeout=SITE_ICON_WAIT)
+            png, outcome = job.result(timeout=wait)
         except Waited:
             # Still fetching. The letter for now; the next load gets the icon.
             return Response(status=404, headers={"Cache-Control": "no-store"})

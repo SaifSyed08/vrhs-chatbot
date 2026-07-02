@@ -7,9 +7,13 @@ index and the network (the school's own icon is fetched for real).
 
     python eval/site_icon_check.py
 """
+import http.server
 import io
 import os
+import socket
+import struct
 import sys
+import threading
 import time
 
 from PIL import Image
@@ -47,8 +51,9 @@ for url, want in [("https://vrhs.leanderisd.org/", True),
                   ("http://127.0.0.1/", False), ("http://localhost:8080/", False),
                   ("http://10.0.0.5/", False), ("http://169.254.169.254/latest", False),
                   ("http://[::1]/", False), ("file:///etc/passwd", False),
-                  ("http://papercut/", False)]:
-    check("public_address(%s) is %s" % (url, want), main.public_address(url) is want)
+                  ("http://papercut/", None)]:
+    check("public_address(%s) is %s" % (url, want), main.public_address(url) is want,
+          main.public_address(url))
 
 # An image whose header promises more pixels than the cap is refused unread.
 big = io.BytesIO()
@@ -86,6 +91,110 @@ check("a failed fetch is retried within minutes, not after a restart",
       main._SITE_ICONS[host][1] == "failed"
       and main._SITE_ICONS[host][2] - time.monotonic() <= main.SITE_ICON_TTL["failed"]
       and client.get("/site-icon/" + host).headers["Cache-Control"] == "public, max-age=600")
+main.fetch_site_icon = real
+
+# --- second review: what the first round of fences missed -------------------------
+
+# An ICO whose directory says 16x16 but holds a 9400x9400 PNG. Pillow's ICO
+# reader decodes the largest frame while opening, so the size check has to
+# come from the bytes.
+frame = io.BytesIO()
+Image.new("L", (9400, 9400)).save(frame, "PNG")
+frame = frame.getvalue()
+ico = (struct.pack("<HHH", 0, 1, 1)
+       + struct.pack("<BBBBHHII", 16, 16, 0, 0, 1, 32, len(frame), 22) + frame)
+check("an ICO hiding a 9400x9400 PNG behind a 16x16 directory is refused unopened",
+      main.declared_too_big(ico) and main._as_png(ico) is None)
+small = io.BytesIO()
+Image.new("RGBA", (48, 48), (200, 0, 0, 255)).save(small, "ICO", sizes=[(16, 16), (48, 48)])
+check("an ordinary ICO still converts", main._as_png(small.getvalue()) is not None)
+
+# A local server that misbehaves in the ways a real one can. public_address
+# is opened up for it, since it is on 127.0.0.1.
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):
+        if self.path == "/drip":
+            self.send_response(200)
+            self.send_header("Content-Length", "100000")
+            self.end_headers()
+            try:
+                for _ in range(40):
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+                    time.sleep(1)
+            except OSError:
+                pass
+        elif self.path == "/reset":
+            self.send_response(200)
+            self.send_header("Content-Length", "100000")
+            self.end_headers()
+            self.wfile.write(b"\x89PNG")
+            self.wfile.flush()
+            self.connection.shutdown(socket.SHUT_RDWR)
+        elif self.path == "/busy":
+            self.send_response(503)
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+local = "http://127.0.0.1:%d" % server.server_address[1]
+real_public = main.public_address
+main.public_address = lambda url: True
+
+t = time.monotonic()
+try:
+    main._icon_get(local + "/drip", main.SITE_ICON_MAX_BYTES, time.monotonic() + 3)
+    dripped = "returned"
+except TimeoutError:
+    dripped = "deadline"
+check("a byte-a-second body is cut off at the deadline",
+      dripped == "deadline" and time.monotonic() - t < 3 + 2, (dripped, round(time.monotonic() - t, 1)))
+
+for path in ("/reset", "/busy"):
+    real_service = main.FAVICON_SERVICE
+    main.FAVICON_SERVICE = local + path + "?"
+    try:
+        png, outcome = main.fetch_site_icon("does-not-exist.invalid")
+    finally:
+        main.FAVICON_SERVICE = real_service
+    check("%s counts as a failure to retry, not 'no icon'" % path, outcome == "failed", outcome)
+main.public_address = real_public
+check("a name that does not resolve is a failure, not a refusal",
+      main.public_address("https://does-not-exist.invalid/") is None)
+server.shutdown()
+
+# An icon past its week is served while it is fetched again, and kept if
+# the refetch fails.
+host = "vrhs.leanderisd.org"
+png, _, _ = main._SITE_ICONS[host]
+main._SITE_ICONS[host] = (png, "found", time.monotonic() - 1)
+calls.clear()
+main.fetch_site_icon = slow
+t = time.monotonic()
+r = client.get("/site-icon/" + host)
+check("an expired icon is served at once while it is refetched",
+      r.status_code == 200 and r.data == png and time.monotonic() - t < 1)
+time.sleep(main.SITE_ICON_WAIT + 3)
+check("and kept when the refetch fails", main._SITE_ICONS[host][0] == png)
+
+# With both fetch threads busy, a new host does not wait behind them.
+main._ICON_PENDING.clear()
+busy = sorted(h for h in main.icon_hosts() if h.endswith(".org") and h not in main._SITE_ICONS)[:3]
+for h in busy[:2]:
+    threading.Thread(target=client.get, args=("/site-icon/" + h,)).start()
+time.sleep(0.5)
+t = time.monotonic()
+r = client.get("/site-icon/" + busy[2])
+check("with the fetch threads busy a request does not wait",
+      r.status_code == 404 and time.monotonic() - t < 1, round(time.monotonic() - t, 2))
+time.sleep(main.SITE_ICON_WAIT + 3)
 main.fetch_site_icon = real
 
 print("\n%s" % ("all checks passed" if not failures else "%d FAILED" % failures))
