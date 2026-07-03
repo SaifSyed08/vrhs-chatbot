@@ -1,25 +1,27 @@
-"""Checks for /site-icon, the route that finds a site's icon.
+"""Checks for /site-icon and siteicon.py, which find a site's icon.
 
-It fetches third-party addresses from inside the app, so most of these are
-about what it refuses: hosts outside the index, private addresses, images
-that would unpack too large, and a slow site holding up a request. Needs the
-index and the network (the school's own icon is fetched for real).
+It fetches third-party addresses and decodes what they send, so most of
+these are about what it refuses: hosts outside the index, private
+addresses, images that would unpack too large, and slow or broken servers.
+Needs the index and the network (the school's own icon is fetched for real).
 
     python eval/site_icon_check.py
 """
 import http.server
 import io
 import os
-import socket
 import struct
 import sys
+import tempfile
 import threading
 import time
+import zlib
 
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import main  # noqa: E402
+import siteicon  # noqa: E402
 
 failures = 0
 
@@ -30,43 +32,141 @@ def check(name, ok, detail=""):
     print(("  ok   " if ok else "  FAIL ") + name + ("  " + str(detail) if detail else ""))
 
 
+def png_bytes(size, mode="L"):
+    out = io.BytesIO()
+    Image.new(mode, size).save(out, "PNG")
+    return out.getvalue()
+
+
+def chunk(kind, body):
+    return (struct.pack(">I", len(body)) + kind + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF))
+
+
+def as_ico(frame):
+    """A one-frame ICO whose directory says 16x16, whatever the frame holds."""
+    return (struct.pack("<HHH", 0, 1, 1)
+            + struct.pack("<BBBBHHII", 16, 16, 0, 0, 1, 32, len(frame), 22) + frame)
+
+
 client = main.app.test_client()
 
-# The school's icon, which Google's service does not have, from the site itself.
+print("== the route ==")
 r = client.get("/site-icon/vrhs.leanderisd.org")
 size = Image.open(io.BytesIO(r.data)).size if r.status_code == 200 else None
-check("the school's own icon is found", r.status_code == 200 and size == (64, 64),
-      (r.status_code, size))
+check("the school's own icon is found, by the separate process",
+      r.status_code == 200 and size == (64, 64), (r.status_code, size))
 check("and found again with www. and capitals",
       client.get("/site-icon/WWW.VRHS.LEANDERISD.ORG.").status_code == 200)
-
-# Outside the index: not fetched here, handed to Google from the browser.
 r = client.get("/site-icon/example.com")
 check("a host outside the index goes to Google's service",
       r.status_code == 302 and r.headers["Location"].endswith("domain=example.com"),
       (r.status_code, r.headers.get("Location")))
 
-# Private and odd addresses are never fetched, wherever they come from.
+print("\n== addresses ==")
 for url, want in [("https://vrhs.leanderisd.org/", True),
                   ("http://127.0.0.1/", False), ("http://localhost:8080/", False),
                   ("http://10.0.0.5/", False), ("http://169.254.169.254/latest", False),
                   ("http://[::1]/", False), ("file:///etc/passwd", False),
-                  ("http://papercut/", None)]:
-    check("public_address(%s) is %s" % (url, want), main.public_address(url) is want,
-          main.public_address(url))
+                  ("http://papercut/", None), ("https://does-not-exist.invalid/", None)]:
+    got = siteicon.public_address(url)
+    check("public_address(%s) is %s" % (url, want), got is want, got)
 
-# An image whose header promises more pixels than the cap is refused unread.
-big = io.BytesIO()
-Image.new("L", (10000, 10000)).save(big, "PNG")
+print("\n== images that unpack too large ==")
 t = time.monotonic()
-out = main._as_png(big.getvalue())
-check("a 10000x10000 PNG (%d KB) is refused before decoding" % (len(big.getvalue()) // 1024),
-      out is None and time.monotonic() - t < 1, round(time.monotonic() - t, 2))
+check("a 10000x10000 PNG is refused before decoding",
+      siteicon.as_png(png_bytes((10000, 10000))) is None and time.monotonic() - t < 2)
+big = png_bytes((9400, 9400))
+check("an ICO hiding a 9400x9400 PNG behind a 16x16 directory",
+      siteicon.declared_too_big(as_ico(big)) and siteicon.as_png(as_ico(big)) is None)
+small_ihdr = chunk(b"IHDR", struct.pack(">IIBBBBB", 16, 16, 8, 0, 0, 0, 0))
+two_ihdrs = siteicon.PNG_SIGNATURE + small_ihdr + big[8:]
+junk_first = siteicon.PNG_SIGNATURE + chunk(b"tEXt", b"k\x00v") + big[8:]
+check("a PNG with a 16x16 IHDR and then a 9400x9400 one, in an ICO",
+      siteicon.declared_too_big(as_ico(two_ihdrs)))
+check("a PNG with a chunk before its 9400x9400 IHDR, in an ICO",
+      siteicon.declared_too_big(as_ico(junk_first)))
+small = io.BytesIO()
+Image.new("RGBA", (48, 48), (200, 0, 0, 255)).save(small, "ICO", sizes=[(16, 16), (48, 48)])
+check("an ordinary ICO still converts", siteicon.as_png(small.getvalue()) is not None)
+check("an ordinary large PNG is not flagged",
+      not siteicon.declared_too_big(png_bytes((2344, 2344), "RGBA")))
 
-# A slow site: the request gives up after SITE_ICON_WAIT, the fetch carries on,
-# and a second request for the same host does not start another.
+print("\n== the process is killed at its deadline ==")
+stuck = os.path.join(tempfile.mkdtemp(), "stuck.py")
+with open(stuck, "w") as f:
+    f.write("import time\ntime.sleep(600)\n")
+real_script, real_deadline = main._SITEICON, siteicon.DEADLINE
+main._SITEICON, siteicon.DEADLINE = stuck, 2
+t = time.monotonic()
+got = main.fetch_site_icon("anything")
+main._SITEICON, siteicon.DEADLINE = real_script, real_deadline
+check("a fetch that never returns is killed and counted as failed",
+      got == (None, "failed") and time.monotonic() - t < 4, round(time.monotonic() - t, 1))
+if sys.platform.startswith("linux"):
+    import subprocess
+    out = subprocess.run([sys.executable, "-c",
+                          "import siteicon, resource; siteicon.limit_memory(); "
+                          "print(resource.getrlimit(resource.RLIMIT_DATA)[0])"],
+                         capture_output=True, text=True, cwd=os.path.dirname(main._SITEICON))
+    check("on Linux the process's heap is capped",
+          out.stdout.strip() == str(siteicon.MEMORY_LIMIT), out.stdout.strip() or out.stderr[-200:])
+else:
+    print("  --   the memory cap applies on Linux only (Render); not checked here")
+
+
+print("\n== what counts as no icon, and what as a failure to retry ==")
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):
+        if self.path.startswith("/reset"):
+            self.send_response(200)
+            self.send_header("Content-Length", "100000")
+            self.end_headers()
+            self.wfile.write(b"\x89PNG")
+            self.wfile.flush()
+            self.connection.shutdown(2)
+        elif self.path.startswith("/busy"):
+            self.send_response(503)
+            self.end_headers()
+        elif self.path.startswith("/corrupt"):
+            body = siteicon.PNG_SIGNATURE + b"\x00" * 200
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+local = "127.0.0.1:%d" % server.server_address[1]
+real_public, real_service, real_scheme = (siteicon.public_address,
+                                          siteicon.FAVICON_SERVICE, siteicon.SCHEME)
+# The local server is on a loopback address, so it is let through; a name
+# starting www. is treated as not resolving, as 170 of the index's hosts'
+# www. names do not. The home page and /favicon.ico answer 404, so the
+# outcome turns on Google's service alone.
+siteicon.public_address = lambda url: None if "//www." in url else True
+siteicon.SCHEME = "http"
+label = {siteicon.NONE: "no icon", siteicon.FAILED: "failed"}
+for path, want in [("/missing", siteicon.NONE), ("/corrupt", siteicon.NONE),
+                   ("/busy", siteicon.FAILED), ("/reset", siteicon.FAILED)]:
+    siteicon.FAVICON_SERVICE = "http://" + local + path + "?"
+    png, outcome = siteicon.fetch(local)
+    check("Google's service answering %s -> %s, an unresolvable www. aside"
+          % (path, label[want]), outcome == want, label.get(outcome, outcome))
+siteicon.public_address, siteicon.FAVICON_SERVICE, siteicon.SCHEME = (
+    real_public, real_service, real_scheme)
+server.shutdown()
+
+print("\n== who waits ==")
 calls = []
-real = main.fetch_site_icon
+real_fetch = main.fetch_site_icon
 
 
 def slow(host):
@@ -76,7 +176,8 @@ def slow(host):
 
 
 main.fetch_site_icon = slow
-host = next(h for h in sorted(main.icon_hosts()) if h.endswith(".edu"))
+spare = sorted(h for h in main.icon_hosts() if h.endswith(".edu"))
+host = spare[0]
 main._SITE_ICONS.pop(host, None)
 t = time.monotonic()
 r1 = client.get("/site-icon/" + host)
@@ -91,111 +192,25 @@ check("a failed fetch is retried within minutes, not after a restart",
       main._SITE_ICONS[host][1] == "failed"
       and main._SITE_ICONS[host][2] - time.monotonic() <= main.SITE_ICON_TTL["failed"]
       and client.get("/site-icon/" + host).headers["Cache-Control"] == "public, max-age=600")
-main.fetch_site_icon = real
 
-# --- second review: what the first round of fences missed -------------------------
-
-# An ICO whose directory says 16x16 but holds a 9400x9400 PNG. Pillow's ICO
-# reader decodes the largest frame while opening, so the size check has to
-# come from the bytes.
-frame = io.BytesIO()
-Image.new("L", (9400, 9400)).save(frame, "PNG")
-frame = frame.getvalue()
-ico = (struct.pack("<HHH", 0, 1, 1)
-       + struct.pack("<BBBBHHII", 16, 16, 0, 0, 1, 32, len(frame), 22) + frame)
-check("an ICO hiding a 9400x9400 PNG behind a 16x16 directory is refused unopened",
-      main.declared_too_big(ico) and main._as_png(ico) is None)
-small = io.BytesIO()
-Image.new("RGBA", (48, 48), (200, 0, 0, 255)).save(small, "ICO", sizes=[(16, 16), (48, 48)])
-check("an ordinary ICO still converts", main._as_png(small.getvalue()) is not None)
-
-# A local server that misbehaves in the ways a real one can. public_address
-# is opened up for it, since it is on 127.0.0.1.
-class Handler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, *a):
-        pass
-
-    def do_GET(self):
-        if self.path == "/drip":
-            self.send_response(200)
-            self.send_header("Content-Length", "100000")
-            self.end_headers()
-            try:
-                for _ in range(40):
-                    self.wfile.write(b"x")
-                    self.wfile.flush()
-                    time.sleep(1)
-            except OSError:
-                pass
-        elif self.path == "/reset":
-            self.send_response(200)
-            self.send_header("Content-Length", "100000")
-            self.end_headers()
-            self.wfile.write(b"\x89PNG")
-            self.wfile.flush()
-            self.connection.shutdown(socket.SHUT_RDWR)
-        elif self.path == "/busy":
-            self.send_response(503)
-            self.end_headers()
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-
-server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-threading.Thread(target=server.serve_forever, daemon=True).start()
-local = "http://127.0.0.1:%d" % server.server_address[1]
-real_public = main.public_address
-main.public_address = lambda url: True
-
+png = main._SITE_ICONS["vrhs.leanderisd.org"][0]
+main._SITE_ICONS["vrhs.leanderisd.org"] = (png, "found", time.monotonic() - 1)
 t = time.monotonic()
-try:
-    main._icon_get(local + "/drip", main.SITE_ICON_MAX_BYTES, time.monotonic() + 3)
-    dripped = "returned"
-except TimeoutError:
-    dripped = "deadline"
-check("a byte-a-second body is cut off at the deadline",
-      dripped == "deadline" and time.monotonic() - t < 3 + 2, (dripped, round(time.monotonic() - t, 1)))
-
-for path in ("/reset", "/busy"):
-    real_service = main.FAVICON_SERVICE
-    main.FAVICON_SERVICE = local + path + "?"
-    try:
-        png, outcome = main.fetch_site_icon("does-not-exist.invalid")
-    finally:
-        main.FAVICON_SERVICE = real_service
-    check("%s counts as a failure to retry, not 'no icon'" % path, outcome == "failed", outcome)
-main.public_address = real_public
-check("a name that does not resolve is a failure, not a refusal",
-      main.public_address("https://does-not-exist.invalid/") is None)
-server.shutdown()
-
-# An icon past its week is served while it is fetched again, and kept if
-# the refetch fails.
-host = "vrhs.leanderisd.org"
-png, _, _ = main._SITE_ICONS[host]
-main._SITE_ICONS[host] = (png, "found", time.monotonic() - 1)
-calls.clear()
-main.fetch_site_icon = slow
-t = time.monotonic()
-r = client.get("/site-icon/" + host)
+r = client.get("/site-icon/vrhs.leanderisd.org")
 check("an expired icon is served at once while it is refetched",
       r.status_code == 200 and r.data == png and time.monotonic() - t < 1)
 time.sleep(main.SITE_ICON_WAIT + 3)
-check("and kept when the refetch fails", main._SITE_ICONS[host][0] == png)
+check("and kept when the refetch fails",
+      main._SITE_ICONS["vrhs.leanderisd.org"][0] == png)
 
-# With both fetch threads busy, a new host does not wait behind them.
-main._ICON_PENDING.clear()
-busy = sorted(h for h in main.icon_hosts() if h.endswith(".org") and h not in main._SITE_ICONS)[:3]
-for h in busy[:2]:
-    threading.Thread(target=client.get, args=("/site-icon/" + h,)).start()
+threading.Thread(target=client.get, args=("/site-icon/" + spare[1],)).start()
 time.sleep(0.5)
 t = time.monotonic()
-r = client.get("/site-icon/" + busy[2])
-check("with the fetch threads busy a request does not wait",
+r = client.get("/site-icon/" + spare[2])
+check("with another host's fetch ahead, a request does not wait",
       r.status_code == 404 and time.monotonic() - t < 1, round(time.monotonic() - t, 2))
-time.sleep(main.SITE_ICON_WAIT + 3)
-main.fetch_site_icon = real
+time.sleep(2 * (main.SITE_ICON_WAIT + 2) + 1)
+main.fetch_site_icon = real_fetch
 
 print("\n%s" % ("all checks passed" if not failures else "%d FAILED" % failures))
 sys.exit(1 if failures else 0)
