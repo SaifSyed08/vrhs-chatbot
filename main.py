@@ -1922,12 +1922,14 @@ def site_icon(host):
         hit = _SITE_ICONS.get(host)
         job, wait = None, 0
         if not hit or hit[2] <= time.monotonic():
-            # Wait only if no other host's fetch is ahead of this one;
-            # behind another it would hold a request thread for nothing.
-            ahead = len(_ICON_PENDING) - (host in _ICON_PENDING)
-            wait = SITE_ICON_WAIT if ahead == 0 else 0
+            # Wait only for a fetch that is running, or would start at once.
+            # Queued behind another host's, it would hold a request thread
+            # for nothing.
             job = _ICON_PENDING.get(host)
-            if job is None:
+            if job is not None:
+                wait = SITE_ICON_WAIT if job.running() else 0
+            else:
+                wait = SITE_ICON_WAIT if not _ICON_PENDING else 0
                 if _ICON_POOL is None:
                     _ICON_POOL = ThreadPoolExecutor(max_workers=1,
                                                     thread_name_prefix="icon")

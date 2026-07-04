@@ -91,6 +91,14 @@ Image.new("RGBA", (48, 48), (200, 0, 0, 255)).save(small, "ICO", sizes=[(16, 16)
 check("an ordinary ICO still converts", siteicon.as_png(small.getvalue()) is not None)
 check("an ordinary large PNG is not flagged",
       not siteicon.declared_too_big(png_bytes((2344, 2344), "RGBA")))
+unit = struct.pack(">I", 4) + b"tEXt" + siteicon.PNG_SIGNATURE
+packed = siteicon.PNG_SIGNATURE + unit * (2_000_000 // len(unit))
+t = time.monotonic()
+refused = siteicon.declared_too_big(packed) and siteicon.declared_too_big(as_ico(packed))
+check("2 MB of tiny chunks full of PNG signatures is refused, quickly",
+      refused and time.monotonic() - t < 0.5, round(time.monotonic() - t, 3))
+check("an ICO claiming 65535 frames is refused",
+      siteicon.declared_too_big(struct.pack("<HHH", 0, 1, 65535) + b"\x00" * 64))
 
 print("\n== the process is killed at its deadline ==")
 stuck = os.path.join(tempfile.mkdtemp(), "stuck.py")
@@ -105,12 +113,27 @@ check("a fetch that never returns is killed and counted as failed",
       got == (None, "failed") and time.monotonic() - t < 4, round(time.monotonic() - t, 1))
 if sys.platform.startswith("linux"):
     import subprocess
-    out = subprocess.run([sys.executable, "-c",
-                          "import siteicon, resource; siteicon.limit_memory(); "
-                          "print(resource.getrlimit(resource.RLIMIT_DATA)[0])"],
-                         capture_output=True, text=True, cwd=os.path.dirname(main._SITEICON))
-    check("on Linux the process's heap is capped",
-          out.stdout.strip() == str(siteicon.MEMORY_LIMIT), out.stdout.strip() or out.stderr[-200:])
+    probe = """
+import io
+import siteicon
+from PIL import Image
+siteicon.limit_memory()
+b = io.BytesIO()
+Image.new('RGBA', (3000, 3000), (9, 9, 9, 255)).save(b, 'PNG')
+print('fits' if siteicon.as_png(b.getvalue()) else 'refused')
+try:
+    Image.new('RGBA', (8000, 8000))
+    print('allocated')
+except MemoryError:
+    print('stopped')
+print(open('/proc/self/oom_score_adj').read().strip())
+"""
+    out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True,
+                         cwd=os.path.dirname(main._SITEICON))
+    lines = out.stdout.split()
+    check("on Linux a 3000x3000 icon decodes under the cap", lines[:1] == ["fits"], out.stdout + out.stderr[-200:])
+    check("a 256 MB allocation is stopped by it", lines[1:2] == ["stopped"], lines)
+    check("and the kernel would kill the fetch before the worker", lines[2:3] == ["1000"], lines)
 else:
     print("  --   the memory cap applies on Linux only (Render); not checked here")
 
@@ -131,6 +154,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif self.path.startswith("/busy"):
             self.send_response(503)
             self.end_headers()
+        elif self.path == "/" and HOME_LINKS:
+            body = "".join('<link rel="icon" href="%s">' % h for h in HOME_LINKS).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/favicon.ico" and HOME_LINKS:
+            body = png_bytes((32, 32))
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         elif self.path.startswith("/corrupt"):
             body = siteicon.PNG_SIGNATURE + b"\x00" * 200
             self.send_response(200)
@@ -142,6 +177,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
 
+HOME_LINKS = []
 server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 local = "127.0.0.1:%d" % server.server_address[1]
@@ -153,13 +189,24 @@ real_public, real_service, real_scheme = (siteicon.public_address,
 # outcome turns on Google's service alone.
 siteicon.public_address = lambda url: None if "//www." in url else True
 siteicon.SCHEME = "http"
-label = {siteicon.NONE: "no icon", siteicon.FAILED: "failed"}
+label = {siteicon.NONE: "no icon", siteicon.FAILED: "failed", siteicon.FOUND: "found"}
 for path, want in [("/missing", siteicon.NONE), ("/corrupt", siteicon.NONE),
                    ("/busy", siteicon.FAILED), ("/reset", siteicon.FAILED)]:
     siteicon.FAVICON_SERVICE = "http://" + local + path + "?"
     png, outcome = siteicon.fetch(local)
     check("Google's service answering %s -> %s, an unresolvable www. aside"
           % (path, label[want]), outcome == want, label.get(outcome, outcome))
+# A home page whose icon links are all malformed, and a good /favicon.ico:
+# each bad link is that candidate's problem, and the fetch carries on.
+HOME_LINKS[:] = ['data:image/png;base64,abc', 'http://' + 'a' * 70 + '.com/x.ico',
+                 'http://[bad']
+siteicon.public_address = lambda url: (None if "//www." in url else
+                                       real_public(url) if "aaaa" in url else True)
+siteicon.FAVICON_SERVICE = "http://" + local + "/missing?"
+png, outcome = siteicon.fetch(local)
+check("malformed icon links (bad data: URI, 70-char label, http://[bad) don't stop /favicon.ico",
+      outcome == siteicon.FOUND, label.get(outcome, outcome))
+HOME_LINKS[:] = []
 siteicon.public_address, siteicon.FAVICON_SERVICE, siteicon.SCHEME = (
     real_public, real_service, real_scheme)
 server.shutdown()
@@ -209,6 +256,10 @@ t = time.monotonic()
 r = client.get("/site-icon/" + spare[2])
 check("with another host's fetch ahead, a request does not wait",
       r.status_code == 404 and time.monotonic() - t < 1, round(time.monotonic() - t, 2))
+t = time.monotonic()
+client.get("/site-icon/" + spare[1])
+check("but a request for the running one waits for it, though another is queued",
+      time.monotonic() - t > 2, round(time.monotonic() - t, 1))
 time.sleep(2 * (main.SITE_ICON_WAIT + 2) + 1)
 main.fetch_site_icon = real_fetch
 

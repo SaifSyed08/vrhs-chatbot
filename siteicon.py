@@ -62,15 +62,17 @@ def public_address(url):
 
     None if the name did not resolve, which may be a passing failure.
     """
-    u = urlparse(url)
-    if u.scheme not in ("http", "https") or not u.hostname:
-        return False
     try:
+        u = urlparse(url)
+        if u.scheme not in ("http", "https") or not u.hostname:
+            return False
         port = u.port or 443
     except ValueError:
         return False
     try:
         infos = socket.getaddrinfo(u.hostname, port, proto=socket.IPPROTO_TCP)
+    except UnicodeError:
+        return False            # a label over 63 characters: never a name
     except OSError:
         return None
     try:
@@ -112,46 +114,57 @@ def get(url, limit):
     return None, url
 
 
-def _png_sizes(data, start):
-    """Every IHDR's (width, height) in the PNG at start, walking its chunks.
+MAX_CHUNKS = 4096      # a 2 MB PNG in 8 KB IDAT chunks has about 260
+MAX_ICO_FRAMES = 64    # real icons carry a handful of sizes
 
-    Not just the first: Pillow accepts chunks before IHDR and keeps the last
-    IHDR it sees, so a 16x16 header followed by a 9400x9400 one decodes at
-    the second size.
+
+def png_too_big(data, start):
+    """True if the PNG at start declares too many pixels, or can't be walked.
+
+    Every IHDR, not just the first: Pillow accepts chunks before IHDR and
+    keeps the last IHDR it sees, so a 16x16 header followed by a 9400x9400
+    one decodes at the second size. The walk is capped in chunks, so a file
+    of thousands of tiny chunks costs a refusal rather than the CPU.
     """
     i = start + 8
-    while i + 8 <= len(data):
+    for _ in range(MAX_CHUNKS):
+        if i + 8 > len(data):
+            return False
         length, kind = struct.unpack(">I4s", data[i:i + 8])
         if kind == b"IHDR":
             if i + 16 > len(data):
-                yield (1 << 31, 1 << 31)
-                return
-            yield struct.unpack(">II", data[i + 8:i + 16])
+                return True
+            w, h = struct.unpack(">II", data[i + 8:i + 16])
+            if w * h > MAX_PIXELS:
+                return True
         if kind == b"IEND":
-            return
+            return False
         i += 12 + length
+    return True
 
 
 def declared_too_big(data):
-    """True if any image in the file declares more pixels than the cap.
+    """True if any image Pillow would decode from the file declares too many pixels.
 
-    Every PNG anywhere in the file (which covers an ICO's PNG frames), and
-    each BMP frame of an ICO by its own header.
+    That is the PNG a PNG file is, and each frame of an ICO at the offset
+    its directory gives - a PNG walked by png_too_big, a BMP by its own
+    header. (Searching the whole file for PNG signatures instead, and
+    walking from each, was quadratic on a file built of them.)
     """
-    i = data.find(PNG_SIGNATURE)
-    while i != -1:
-        for w, h in _png_sizes(data, i):
-            if w * h > MAX_PIXELS:
-                return True
-        i = data.find(PNG_SIGNATURE, i + 1)
+    if data[:8] == PNG_SIGNATURE:
+        return png_too_big(data, 0)
     if data[:4] == b"\x00\x00\x01\x00":
         count = struct.unpack("<H", data[4:6])[0]
+        if count > MAX_ICO_FRAMES:
+            return True
         for k in range(count):
             entry = 6 + 16 * k
             if len(data) < entry + 16:
                 return True
             offset = struct.unpack("<I", data[entry + 12:entry + 16])[0]
             if data[offset:offset + 8] == PNG_SIGNATURE:
+                if png_too_big(data, offset):
+                    return True
                 continue
             if len(data) < offset + 12:
                 return True
@@ -203,6 +216,11 @@ def fetch(host):
             failed = failed or not optional
             print("[icon] %s: %s" % (url[:120], e), file=sys.stderr)
             return None
+        except Exception as e:
+            # A malformed address or data: URI. This candidate is no good;
+            # the next one, and /favicon.ico, may be.
+            print("[icon] %s: %s" % (url[:120], e), file=sys.stderr)
+            return None
         if not data:
             return None
         try:
@@ -228,11 +246,19 @@ def fetch(host):
             continue
         if not page:
             continue
-        soup = BeautifulSoup(page, "html.parser")
-        for link in soup.find_all("link", href=True):
-            rel = " ".join(link.get("rel") or []).lower()
-            if "icon" in rel:
-                candidates.append((urljoin(final, link["href"].strip()), False))
+        try:
+            soup = BeautifulSoup(page, "html.parser")
+            for link in soup.find_all("link", href=True):
+                rel = " ".join(link.get("rel") or []).lower()
+                if "icon" in rel:
+                    try:
+                        candidates.append((urljoin(final, link["href"].strip()), False))
+                    except ValueError:      # an href like http://[bad
+                        pass
+        except Exception as e:
+            # Including MemoryError on a page dense with tags: the page
+            # yields nothing, and /favicon.ico is still tried below.
+            print("[icon] could not parse %s: %s" % (home, e), file=sys.stderr)
         candidates.append((urljoin(final, "/favicon.ico"), False))
         break
     # Even with no readable home page, the conventional address may answer.
@@ -255,6 +281,14 @@ def limit_memory():
     except ImportError:          # Windows, where this only runs in development
         return
     resource.setrlimit(resource.RLIMIT_DATA, (MEMORY_LIMIT, MEMORY_LIMIT))
+    # If the instance as a whole runs short anyway, the kernel kills the
+    # process with the highest score. Make that this one, not the worker
+    # that streams every answer.
+    try:
+        with open("/proc/self/oom_score_adj", "w") as f:
+            f.write("1000")
+    except OSError:
+        pass
 
 
 if __name__ == "__main__":
