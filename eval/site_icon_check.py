@@ -154,6 +154,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif self.path.startswith("/busy"):
             self.send_response(503)
             self.end_headers()
+        elif self.path == "/" and HOME_LINKS == ["redirect"]:
+            self.send_response(302)
+            self.send_header("Location", "http://[bad")
+            self.end_headers()
         elif self.path == "/" and HOME_LINKS:
             body = "".join('<link rel="icon" href="%s">' % h for h in HOME_LINKS).encode()
             self.send_response(200)
@@ -205,6 +209,13 @@ siteicon.public_address = lambda url: (None if "//www." in url else
 siteicon.FAVICON_SERVICE = "http://" + local + "/missing?"
 png, outcome = siteicon.fetch(local)
 check("malformed icon links (bad data: URI, 70-char label, http://[bad) don't stop /favicon.ico",
+      outcome == siteicon.FOUND, label.get(outcome, outcome))
+HOME_LINKS[:] = ["redirect"]
+try:
+    png, outcome = siteicon.fetch(local)
+except Exception as e:
+    outcome = type(e).__name__
+check("nor does a home page redirecting to http://[bad",
       outcome == siteicon.FOUND, label.get(outcome, outcome))
 HOME_LINKS[:] = []
 siteicon.public_address, siteicon.FAVICON_SERVICE, siteicon.SCHEME = (

@@ -101,7 +101,10 @@ def get(url, limit):
                          allow_redirects=False, headers={"User-Agent": UA})
         try:
             if r.is_redirect and r.headers.get("location"):
-                url = urljoin(url, r.headers["location"])
+                try:
+                    url = urljoin(url, r.headers["location"])
+                except ValueError:      # Location: http://[bad
+                    return None, url
                 continue
             if r.status_code == 429 or r.status_code >= 500:
                 raise Transient("%d from %s" % (r.status_code, url[:80]))
@@ -242,6 +245,10 @@ def fetch(host):
             page, final = get(home, PAGE_MAX_BYTES)
         except network as e:
             failed = failed or not optional
+            print("[icon] could not read %s: %s" % (home, e), file=sys.stderr)
+            continue
+        except Exception as e:
+            # Not the network: this page yields nothing, the rest still run.
             print("[icon] could not read %s: %s" % (home, e), file=sys.stderr)
             continue
         if not page:
